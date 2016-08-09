@@ -773,6 +773,29 @@ resource "softlayer_lb_vpx_vip" "testacc_vip" {
 
 ## Development
 
+### Setup
+
+You should have the correct source in your _$GOPATH_ for both terraform and softlayer-go.
+
+To get _softlayer-go_:
+
+```
+go get github.com/TheWeatherCompany/softlayer-go
+cd $GOPATH/src/TheWeatherCompany/softlayer-go
+git checkout -b sl-dev origin/sl-dev
+```
+
+To get _terraform_:
+
+```
+cd $GOPATH/src
+mkdir hashicorp
+cd hashicorp
+git clone git@github.com:TheWeatherCompany/terraform.git
+cd terraform
+git checkout -b feature/softlayer origin/feature/softlayer
+```
+
 ### Build
 
 ```
