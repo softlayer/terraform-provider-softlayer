@@ -7,14 +7,15 @@ import (
 
 	"crypto/sha1"
 	"encoding/hex"
-	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
+	"github.ibm.com/riethm/gopherlayer/datatypes"
+	"github.ibm.com/riethm/gopherlayer/services"
 	"regexp"
 )
 
 func TestAccSoftLayerUserCustomer_Basic(t *testing.T) {
-	var user datatypes.SoftLayer_User_Customer
+	var user datatypes.User_Customer
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -102,7 +103,7 @@ func TestAccSoftLayerUserCustomer_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerUserCustomerDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client).userCustomerService
+	client := services.GetUserCustomerService(testAccProvider.Meta().(*Client).session)
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_user" {
@@ -112,10 +113,10 @@ func testAccCheckSoftLayerUserCustomerDestroy(s *terraform.State) error {
 		userID, _ := strconv.Atoi(rs.Primary.ID)
 
 		// Try to find the user
-		user, err := client.GetObject(userID)
+		user, err := client.Id(userID).GetObject()
 
 		// Users are not immediately deleted, but rather placed into a 'cancel_pending' (1021) status
-		if err != nil || user.UserStatus != 1021 {
+		if err != nil || *user.UserStatusId != 1021 {
 			return fmt.Errorf("SoftLayer User still exists")
 		}
 	}
@@ -123,7 +124,7 @@ func testAccCheckSoftLayerUserCustomerDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccCheckSoftLayerUserCustomerExists(n string, user *datatypes.SoftLayer_User_Customer) resource.TestCheckFunc {
+func testAccCheckSoftLayerUserCustomerExists(n string, user *datatypes.User_Customer) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 
@@ -137,14 +138,14 @@ func testAccCheckSoftLayerUserCustomerExists(n string, user *datatypes.SoftLayer
 
 		userID, _ := strconv.Atoi(rs.Primary.ID)
 
-		client := testAccProvider.Meta().(*Client).userCustomerService
-		foundUser, err := client.GetObject(userID)
+		client := services.GetUserCustomerService(testAccProvider.Meta().(*Client).session)
+		foundUser, err := client.Id(userID).GetObject()
 
 		if err != nil {
 			return err
 		}
 
-		if strconv.Itoa(int(foundUser.Id)) != rs.Primary.ID {
+		if strconv.Itoa(int(*foundUser.Id)) != rs.Primary.ID {
 			return fmt.Errorf("Record not found")
 		}
 
