@@ -124,6 +124,16 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Computed: true,
 			},
 
+			"ip_address_id": &schema.Schema{
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+
+			"ip_address_id_private": &schema.Schema{
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+
 			"ssh_keys": &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
@@ -188,12 +198,7 @@ func getBlockDevices(d *schema.ResourceData) []datatypes.BlockDevice {
 		return blocks
 	}
 }
-
-func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).virtualGuestService
-	if client == nil {
-		return fmt.Errorf("The client was nil.")
-	}
+func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData) (datatypes.SoftLayer_Virtual_Guest_Template, error) {
 
 	dc := datatypes.Datacenter{
 		Name: d.Get("region").(string),
@@ -203,12 +208,11 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 		MaxSpeed: d.Get("public_network_speed").(int),
 	}
 
-	privateNetworkOnly := d.Get("private_network_only").(bool)
 	opts := datatypes.SoftLayer_Virtual_Guest_Template{
 		Hostname:               d.Get("name").(string),
 		Domain:                 d.Get("domain").(string),
 		HourlyBillingFlag:      d.Get("hourly_billing").(bool),
-		PrivateNetworkOnlyFlag: privateNetworkOnly,
+		PrivateNetworkOnlyFlag: d.Get("private_network_only").(bool),
 		Datacenter:             dc,
 		StartCpus:              d.Get("cpu").(int),
 		MaxMemory:              d.Get("ram").(int),
@@ -236,7 +240,7 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 	if param, ok := d.GetOk("frontend_vlan_id"); ok {
 		frontendVlanId, err := strconv.Atoi(param.(string))
 		if err != nil {
-			return fmt.Errorf("Not a valid frontend ID, must be an integer: %s", err)
+			return opts, fmt.Errorf("Not a valid frontend ID, must be an integer: %s", err)
 		}
 		opts.PrimaryNetworkComponent = &datatypes.PrimaryNetworkComponent{
 			NetworkVlan: datatypes.NetworkVlan{Id: frontendVlanId},
@@ -247,7 +251,7 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 	if param, ok := d.GetOk("backend_vlan_id"); ok {
 		backendVlanId, err := strconv.Atoi(param.(string))
 		if err != nil {
-			return fmt.Errorf("Not a valid backend ID, must be an integer: %s", err)
+			return opts, fmt.Errorf("Not a valid backend ID, must be an integer: %s", err)
 		}
 		opts.PrimaryBackendNetworkComponent = &datatypes.PrimaryBackendNetworkComponent{
 			NetworkVlan: datatypes.NetworkVlan{Id: backendVlanId},
@@ -276,6 +280,21 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 		}
 	}
 
+	return opts, nil
+}
+
+func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{}) error {
+	client := meta.(*Client).virtualGuestService
+	if client == nil {
+		return fmt.Errorf("The client was nil.")
+	}
+
+	opts, err := getVirtualGuestTemplateFromResourceData(d)
+
+	if err != nil {
+		return err
+	}
+
 	log.Printf("[INFO] Creating virtual machine")
 
 	guest, err := client.CreateObject(opts)
@@ -296,6 +315,7 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 			"Error waiting for virtual machine (%s) to become ready: %s", d.Id(), err)
 	}
 
+	privateNetworkOnly := d.Get("private_network_only").(bool)
 	if !privateNetworkOnly {
 		_, err = WaitForPublicIpAvailable(d, meta)
 		if err != nil {
@@ -309,6 +329,7 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 
 func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client).virtualGuestService
+
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
@@ -330,6 +351,8 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	d.Set("has_public_ip", result.PrimaryIpAddress != "")
 	d.Set("ipv4_address", result.PrimaryIpAddress)
 	d.Set("ipv4_address_private", result.PrimaryBackendIpAddress)
+	d.Set("ip_address_id", result.PrimaryNetworkComponent.PrimaryIpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
+	d.Set("ip_address_id_private", result.PrimaryBackendNetworkComponent.PrimaryIpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
 	d.Set("private_network_only", result.PrivateNetworkOnlyFlag)
 	d.Set("hourly_billing", result.HourlyBillingFlag)
 	d.Set("local_disk", result.LocalDiskFlag)
@@ -352,6 +375,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 
 func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client).virtualGuestService
+
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
@@ -411,6 +435,7 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 
 func resourceSoftLayerVirtualGuestDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client).virtualGuestService
+
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
