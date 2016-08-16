@@ -1,15 +1,15 @@
 package softlayer
 
 import (
-	"fmt"
-	"log"
-	"strconv"
 	"bytes"
+	"fmt"
 	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
 	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/schema"
-	"time"
+	"log"
 	"regexp"
+	"strconv"
+	"time"
 )
 
 const SoftLayerTimeFormat = string("2006-01-02T15:04:05-07:00")
@@ -144,17 +144,17 @@ func resourceSoftLayerScalePolicyCreate(d *schema.ResourceData, meta interface{}
 			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
 		}
 
-		opts.OneTimeTriggers,err = prepareOneTimeTriggers(d)
+		opts.OneTimeTriggers, err = prepareOneTimeTriggers(d)
 		if err != nil {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
 		}
 
-		opts.RepeatingTriggers,err = prepareRepeatingTriggers(d)
+		opts.RepeatingTriggers, err = prepareRepeatingTriggers(d)
 		if err != nil {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
 		}
 
-		opts.ResourceUseTriggers,err = prepareResourceUseTriggers(d)
+		opts.ResourceUseTriggers, err = prepareResourceUseTriggers(d)
 		if err != nil {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
 		}
@@ -252,15 +252,15 @@ func resourceSoftLayerScalePolicyUpdate(d *schema.ResourceData, meta interface{}
 	}
 
 	if _, ok := d.GetOk("triggers"); ok {
-		template.OneTimeTriggers,err = prepareOneTimeTriggers(d)
+		template.OneTimeTriggers, err = prepareOneTimeTriggers(d)
 		if err != nil {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
 		}
-		template.RepeatingTriggers,err = prepareRepeatingTriggers(d)
+		template.RepeatingTriggers, err = prepareRepeatingTriggers(d)
 		if err != nil {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
 		}
-		template.ResourceUseTriggers,err = prepareResourceUseTriggers(d)
+		template.ResourceUseTriggers, err = prepareResourceUseTriggers(d)
 		if err != nil {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
 		}
@@ -344,7 +344,7 @@ func prepareOneTimeTriggers(d *schema.ResourceData) ([]datatypes.SoftLayer_Scale
 			}
 
 			// SoftLayer triggers only accept EST time zone
-			isEST,_ := regexp.MatchString("-05:00$", timeStampString)
+			isEST, _ := regexp.MatchString("-05:00$", timeStampString)
 			if !isEST {
 				return nil, fmt.Errorf("The time zone should be an EST(-05:00).")
 			}
@@ -400,12 +400,12 @@ func prepareWatches(d *schema.Set) ([]datatypes.SoftLayer_Scale_Policy_Trigger_R
 		watchMap := watcheList.(map[string]interface{})
 
 		watch.Metric = watchMap["metric"].(string)
-		if watch.Metric != "host.cpu.percent" && watch.Metric != "host.network.backend.in.rate" && watch.Metric != "host.network.backend.out.rate" && watch.Metric != "host.network.frontend.in.rate" && watch.Metric != "host.network.frontend.out.rate"{
+		if watch.Metric != "host.cpu.percent" && watch.Metric != "host.network.backend.in.rate" && watch.Metric != "host.network.backend.out.rate" && watch.Metric != "host.network.frontend.in.rate" && watch.Metric != "host.network.frontend.out.rate" {
 			return nil, fmt.Errorf("Invalid metric : %s", watch.Metric)
 		}
 
 		watch.Operator = watchMap["operator"].(string)
-		if watch.Operator !=">" && watch.Operator !="<" {
+		if watch.Operator != ">" && watch.Operator != "<" {
 			return nil, fmt.Errorf("Invalid operator : %s", watch.Operator)
 		}
 

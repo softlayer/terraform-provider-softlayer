@@ -444,7 +444,7 @@ func populateMemberTemplateResourceData(template datatypes.SoftLayer_Virtual_Gue
 	} else {
 		d["user_data"] = ""
 	}
-	
+
 	if template.BlockDeviceTemplateGroup != nil {
 		d["block_device_template_group_gid"] = template.BlockDeviceTemplateGroup.GlobalIdentifier
 	} else {
