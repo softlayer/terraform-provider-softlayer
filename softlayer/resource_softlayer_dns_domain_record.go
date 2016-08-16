@@ -16,6 +16,7 @@ func resourceSoftLayerDnsDomainResourceRecord() *schema.Resource {
 		Read:   resourceSoftLayerDnsDomainResourceRecordRead,
 		Update: resourceSoftLayerDnsDomainResourceRecordUpdate,
 		Delete: resourceSoftLayerDnsDomainResourceRecordDelete,
+		Importer: &schema.ResourceImporter{},
 		Schema: map[string]*schema.Schema{
 			"record_data": &schema.Schema{
 				Type:     schema.TypeString,

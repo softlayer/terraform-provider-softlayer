@@ -18,6 +18,7 @@ func resourceSoftLayerNetworkLoadBalancerVirtualIpAddress() *schema.Resource {
 		Update: resourceSoftLayerNetworkLoadBalancerVirtualIpAddressUpdate,
 		Delete: resourceSoftLayerNetworkLoadBalancerVirtualIpAddressDelete,
 		Exists: resourceSoftLayerNetworkLoadBalancerVirtualIpAddressExists,
+		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
 			"nad_controller_id": &schema.Schema{

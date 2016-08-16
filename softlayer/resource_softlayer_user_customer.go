@@ -19,6 +19,7 @@ func resourceSoftLayerUserCustomer() *schema.Resource {
 		Update: resourceSoftLayerUserCustomerUpdate,
 		Delete: resourceSoftLayerUserCustomerDelete,
 		Exists: resourceSoftLayerUserCustomerExists,
+		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
 			"id": &schema.Schema{

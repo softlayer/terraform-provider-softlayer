@@ -16,6 +16,7 @@ func resourceSoftLayerLoadBalancerService() *schema.Resource {
 		Update: resourceSoftLayerLoadBalancerServiceUpdate,
 		Delete: resourceSoftLayerLoadBalancerServiceDelete,
 		Exists: resourceSoftLayerLoadBalancerServiceExists,
+		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
 			"service_group_id": &schema.Schema{

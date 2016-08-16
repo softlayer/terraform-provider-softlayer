@@ -17,6 +17,7 @@ func resourceSoftLayerSSHKey() *schema.Resource {
 		Update: resourceSoftLayerSSHKeyUpdate,
 		Delete: resourceSoftLayerSSHKeyDelete,
 		Exists: resourceSoftLayerSSHKeyExists,
+		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
 			"id": &schema.Schema{

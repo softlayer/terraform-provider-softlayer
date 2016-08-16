@@ -16,6 +16,7 @@ func resourceSoftLayerSecurityCertificate() *schema.Resource {
 		Read:   resourceSoftLayerSecurityCertificateRead,
 		Delete: resourceSoftLayerSecurityCertificateDelete,
 		Exists: resourceSoftLayerSecurityCertificateExists,
+		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
 			"id": &schema.Schema{

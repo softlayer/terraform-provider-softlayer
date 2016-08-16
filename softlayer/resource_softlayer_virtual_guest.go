@@ -21,6 +21,8 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 		Update: resourceSoftLayerVirtualGuestUpdate,
 		Delete: resourceSoftLayerVirtualGuestDelete,
 		Exists: resourceSoftLayerVirtualGuestExists,
+		Importer: &schema.ResourceImporter{},
+		
 		Schema: map[string]*schema.Schema{
 			"name": &schema.Schema{
 				Type:     schema.TypeString,

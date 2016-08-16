@@ -17,6 +17,7 @@ func resourceSoftLayerProvisioningHook() *schema.Resource {
 		Update: resourceSoftLayerProvisioningHookUpdate,
 		Delete: resourceSoftLayerProvisioningHookDelete,
 		Exists: resourceSoftLayerProvisioningHookExists,
+		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
 			"id": &schema.Schema{

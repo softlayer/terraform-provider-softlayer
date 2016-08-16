@@ -19,6 +19,7 @@ func resourceSoftLayerNetworkApplicationDeliveryController() *schema.Resource {
 		Read:   resourceSoftLayerNetworkApplicationDeliveryControllerRead,
 		Delete: resourceSoftLayerNetworkApplicationDeliveryControllerDelete,
 		Exists: resourceSoftLayerNetworkApplicationDeliveryControllerExists,
+		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
 			"name": &schema.Schema{
