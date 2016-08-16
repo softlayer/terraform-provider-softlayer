@@ -11,20 +11,23 @@ import (
 )
 
 const (
-	DATACENTER_TYPE_NAME   = "SoftLayer_Location_Datacenter"
-	ROUTING_TYPE_NAME      = "SoftLayer_Network_Application_Delivery_Controller_LoadBalancer_Routing_Type"
-	ROUTING_METHOD_NAME    = "SoftLayer_Network_Application_Delivery_Controller_LoadBalancer_Routing_Method"
-	HEALTH_CHECK_TYPE_NAME = "SoftLayer_Network_Application_Delivery_Controller_LoadBalancer_Health_Check_Type"
+	DATACENTER_TYPE_NAME         = "SoftLayer_Location_Datacenter"
+	LOCATION_GROUP_REGIONAL_NAME = "SoftLayer_Location_Group_Regional"
+	ROUTING_TYPE_NAME            = "SoftLayer_Network_Application_Delivery_Controller_LoadBalancer_Routing_Type"
+	ROUTING_METHOD_NAME          = "SoftLayer_Network_Application_Delivery_Controller_LoadBalancer_Routing_Method"
+	HEALTH_CHECK_TYPE_NAME       = "SoftLayer_Network_Application_Delivery_Controller_LoadBalancer_Health_Check_Type"
 
-	DATACENTER_VALUE_NAME        = "name"
-	ROUTING_TYPE_VALUE_NAME      = "keyname"
-	ROUTING_METHOD_VALUE_NAME    = "keyname"
-	HEALTH_CHECK_TYPE_VALUE_NAME = "keyname"
+	DATACENTER_VALUE_NAME              = "name"
+	LOCATION_GROUP_REGIONAL_VALUE_NAME = "name"
+	ROUTING_TYPE_VALUE_NAME            = "keyname"
+	ROUTING_METHOD_VALUE_NAME          = "keyname"
+	HEALTH_CHECK_TYPE_VALUE_NAME       = "keyname"
 
-	DATACENTER_GET_JSON_NAME        = "getDatacenters.json"
-	ROUTING_TYPE_GET_JSON_NAME      = "getAllObjects.json"
-	ROUTING_METHOD_GET_JSON_NAME    = "getAllObjects.json"
-	HEALTH_CHECK_TYPE_GET_JSON_NAME = "getAllObjects.json"
+	DATACENTER_GET_JSON_NAME              = "getDatacenters.json"
+	LOCATION_GROUP_REGIONAL_GET_JSON_NAME = "getAllObjects.json"
+	ROUTING_TYPE_GET_JSON_NAME            = "getAllObjects.json"
+	ROUTING_METHOD_GET_JSON_NAME          = "getAllObjects.json"
+	HEALTH_CHECK_TYPE_GET_JSON_NAME       = "getAllObjects.json"
 )
 
 type lookup func([]byte) (interface{}, error)
@@ -222,6 +225,45 @@ func GetHealthCheckType(client softlayer.Client, key interface{}) (interface{}, 
 				}
 
 				return -1, fmt.Errorf("Health check type %s not found", key)
+			}
+		})
+}
+
+func GetLocationGroupRegional(client softlayer.Client, key interface{}) (interface{}, error) {
+	getById, err := isInt(key)
+
+	if err != nil {
+		return -1, err
+	}
+
+	return getValueFromKey(client, LOCATION_GROUP_REGIONAL_VALUE_NAME, LOCATION_GROUP_REGIONAL_NAME, LOCATION_GROUP_REGIONAL_GET_JSON_NAME, key, getById,
+		func(response []byte) (interface{}, error) {
+			if getById {
+				locationGroupRegional := datatypes.SoftLayer_Location_Group_Regional{}
+
+				err := json.Unmarshal(response, &locationGroupRegional)
+
+				if err != nil {
+					return -1, err
+				}
+
+				return locationGroupRegional.Name, nil
+			} else {
+				locationGroupRegionals := []datatypes.SoftLayer_Location_Group_Regional{}
+
+				err := json.Unmarshal(response, &locationGroupRegionals)
+
+				if err != nil {
+					return -1, err
+				}
+
+				for _, locationGroupRegional := range locationGroupRegionals {
+					if locationGroupRegional.Name == key.(string) {
+						return locationGroupRegional.Id, nil
+					}
+				}
+
+				return -1, fmt.Errorf("Location group regional %s not found", key)
 			}
 		})
 }

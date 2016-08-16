@@ -11,6 +11,7 @@ type SoftLayer_Account_Service interface {
 	GetUsers() ([]datatypes.SoftLayer_User_Customer, error)
 	GetVirtualGuests() ([]datatypes.SoftLayer_Virtual_Guest, error)
 	GetVirtualGuestsByFilter(filters string) ([]datatypes.SoftLayer_Virtual_Guest, error)
+	GetNetworkVlans(objectMask []string, objectFilter string) ([]datatypes.SoftLayer_Network_Vlan, error)
 	GetNetworkStorage() ([]datatypes.SoftLayer_Network_Storage, error)
 	GetHubNetworkStorage() ([]datatypes.SoftLayer_Network_Storage, error)
 	GetHubNetworkStorageByFilter(filter string) ([]datatypes.SoftLayer_Network_Storage, error)

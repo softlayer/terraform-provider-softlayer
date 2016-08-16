@@ -3,35 +3,35 @@
 	"ignore": "appengine test",
 	"package": [
 		{
-			"checksumSHA1": "xtR334Bl1GzrP9PbiJOYA5mIELs=",
+			"checksumSHA1": "Q8ac7IaoPVXOPQoWqhofILgTswA=",
 			"path": "github.com/TheWeatherCompany/softlayer-go/client",
-			"revision": "678037409c7ecf9a3e2f21ba3194eb911a747c4e",
-			"revisionTime": "2016-08-05T17:52:23Z"
+			"revision": "7ec4165526003614b9825d3e7aa87ee20dce270b",
+			"revisionTime": "2016-08-15T19:02:24Z"
 		},
 		{
-			"checksumSHA1": "+BWLS6euvUeVj9e8OdZjaNeVWXE=",
+			"checksumSHA1": "Wot7Vv6bIsHFJ+zaKhp5aHV8YKo=",
 			"path": "github.com/TheWeatherCompany/softlayer-go/common",
-			"revision": "678037409c7ecf9a3e2f21ba3194eb911a747c4e",
-			"revisionTime": "2016-08-05T17:52:23Z"
+			"revision": "7ec4165526003614b9825d3e7aa87ee20dce270b",
+			"revisionTime": "2016-08-15T19:02:24Z"
 		},
 		{
-			"checksumSHA1": "NDNq8rbWFuTvDM5uUqinlbsOqW0=",
+			"checksumSHA1": "lApoDhO+RGoE4rUa3CUWy2f8kc0=",
 			"path": "github.com/TheWeatherCompany/softlayer-go/data_types",
-			"revision": "678037409c7ecf9a3e2f21ba3194eb911a747c4e",
-			"revisionTime": "2016-08-05T17:52:23Z"
+			"revision": "7ec4165526003614b9825d3e7aa87ee20dce270b",
+			"revisionTime": "2016-08-15T19:02:24Z"
 		},
 		{
-			"checksumSHA1": "02lDgbpmX1l8n8P2XROAjdJ8UD0=",
+			"checksumSHA1": "5TkY8KCnTIAA30DmGYrVRuKrM58=",
 			"path": "github.com/TheWeatherCompany/softlayer-go/services",
-			"revision": "678037409c7ecf9a3e2f21ba3194eb911a747c4e",
-			"revisionTime": "2016-08-05T17:52:23Z"
+			"revision": "7ec4165526003614b9825d3e7aa87ee20dce270b",
+			"revisionTime": "2016-08-15T19:02:24Z"
 		},
 		{
-			"checksumSHA1": "UF1BRbbrff9990Pm2J2DHoDhPrs=",
+			"checksumSHA1": "+oC32riQcQi+Mzv6nPUQhArdXn8=",
 			"path": "github.com/TheWeatherCompany/softlayer-go/softlayer",
-			"revision": "678037409c7ecf9a3e2f21ba3194eb911a747c4e",
-			"revisionTime": "2016-08-05T17:52:23Z"
+			"revision": "7ec4165526003614b9825d3e7aa87ee20dce270b",
+			"revisionTime": "2016-08-15T19:02:24Z"
 		}
 	],
-	"rootPath": "github.ibm.com/emergin-tech/terraform-softlayer"
+	"rootPath": "github.ibm.com/emerging-tech/terraform-provider-softlayer.git"
 }
