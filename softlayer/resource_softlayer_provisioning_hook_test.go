@@ -5,13 +5,15 @@ import (
 	"strconv"
 	"testing"
 
-	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/session"
 )
 
 func TestAccSoftLayerProvisioningHook_Basic(t *testing.T) {
-	var hook datatypes.SoftLayer_Provisioning_Hook
+	var hook datatypes.Provisioning_Hook
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -45,7 +47,7 @@ func TestAccSoftLayerProvisioningHook_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerProvisioningHookDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client).provisioningHookService
+	service := services.GetProvisioningHookService(testAccProvider.Meta().(*session.Session))
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_provisioning_hook" {
@@ -55,7 +57,7 @@ func testAccCheckSoftLayerProvisioningHookDestroy(s *terraform.State) error {
 		hookId, _ := strconv.Atoi(rs.Primary.ID)
 
 		// Try to find the provisioning hook
-		_, err := client.GetObject(hookId)
+		_, err := service.Id(hookId).GetObject()
 
 		if err == nil {
 			return fmt.Errorf("Provisioning Hook still exists")
@@ -65,7 +67,7 @@ func testAccCheckSoftLayerProvisioningHookDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccCheckSoftLayerProvisioningHookAttributes(hook *datatypes.SoftLayer_Provisioning_Hook) resource.TestCheckFunc {
+func testAccCheckSoftLayerProvisioningHookAttributes(hook *datatypes.Provisioning_Hook) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 
 		if hook.Name != "test-sl-hook" {
@@ -80,7 +82,7 @@ func testAccCheckSoftLayerProvisioningHookAttributes(hook *datatypes.SoftLayer_P
 	}
 }
 
-func testAccCheckSoftLayerProvisioningHookExists(n string, hook *datatypes.SoftLayer_Provisioning_Hook) resource.TestCheckFunc {
+func testAccCheckSoftLayerProvisioningHookExists(n string, hook *datatypes.Provisioning_Hook) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 
@@ -94,8 +96,8 @@ func testAccCheckSoftLayerProvisioningHookExists(n string, hook *datatypes.SoftL
 
 		hookId, _ := strconv.Atoi(rs.Primary.ID)
 
-		client := testAccProvider.Meta().(*Client).provisioningHookService
-		foundHook, err := client.GetObject(hookId)
+		service := services.GetProvisioningHookService(testAccProvider.Meta().(*session.Session))
+		foundHook, err := service.Id(hookId).GetObject()
 
 		if err != nil {
 			return err
