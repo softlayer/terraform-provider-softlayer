@@ -5,13 +5,15 @@ import (
 	"strconv"
 	"testing"
 
-	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/session"
 )
 
 func TestAccSoftLayerDnsDomain_Basic(t *testing.T) {
-	var dns_domain datatypes.SoftLayer_Dns_Domain
+	var dns_domain datatypes.Dns_Domain
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -75,7 +77,7 @@ func TestAccSoftLayerDnsDomain_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerDnsDomainDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client).dnsDomainService
+	service := services.GetDnsDomainService(testAccProvider.Meta().(*session.Session))
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_dns_domain" {
@@ -85,7 +87,7 @@ func testAccCheckSoftLayerDnsDomainDestroy(s *terraform.State) error {
 		dnsId, _ := strconv.Atoi(rs.Primary.ID)
 
 		// Try to find the domain
-		_, err := client.GetObject(dnsId)
+		_, err := service.Id(dnsId).GetObject()
 
 		if err != nil {
 			return fmt.Errorf("Dns Domain with id %d does not exist", dnsId)
@@ -95,7 +97,7 @@ func testAccCheckSoftLayerDnsDomainDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccCheckSoftLayerDnsDomainRecordDomainId(n string, dns_domain *datatypes.SoftLayer_Dns_Domain) resource.TestCheckFunc {
+func testAccCheckSoftLayerDnsDomainRecordDomainId(n string, dns_domain *datatypes.Dns_Domain) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 
@@ -109,46 +111,46 @@ func testAccCheckSoftLayerDnsDomainRecordDomainId(n string, dns_domain *datatype
 
 		id, _ := strconv.Atoi(rs.Primary.Attributes["domain_id"])
 		if dns_domain.Id != id {
-			return fmt.Errorf("Dns domain id (%d) and Dns domain record domain id (%d) should be equal", dns_domain.Id, id)
+			return fmt.Errorf("Dns domain id (%d) and Dns domain record domain id (%d) should be equal", *dns_domain.Id, id)
 		}
 
 		return nil
 	}
 }
 
-func testAccCheckSoftLayerDnsDomainAttributes(dns *datatypes.SoftLayer_Dns_Domain) resource.TestCheckFunc {
+func testAccCheckSoftLayerDnsDomainAttributes(dns *datatypes.Dns_Domain) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 
-		if dns.Name == "" {
+		if *dns.Name == "" {
 			return fmt.Errorf("Empty dns domain name")
 		}
 
-		if dns.Serial == 0 {
-			return fmt.Errorf("Bad dns domain serial: %d", dns.Serial)
+		if *dns.Serial == 0 {
+			return fmt.Errorf("Bad dns domain serial: %d", *dns.Serial)
 		}
 
-		if dns.Id == 0 {
-			return fmt.Errorf("Bad dns domain id: %d", dns.Id)
+		if *dns.Id == 0 {
+			return fmt.Errorf("Bad dns domain id: %d", *dns.Id)
 		}
 
 		return nil
 	}
 }
 
-func saveSoftLayerDnsDomainId(dns *datatypes.SoftLayer_Dns_Domain, id_holder *int) resource.TestCheckFunc {
+func saveSoftLayerDnsDomainId(dns *datatypes.Dns_Domain, id_holder *int) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		*id_holder = dns.Id
+		*id_holder = *dns.Id
 
 		return nil
 	}
 }
 
-func testAccCheckSoftLayerDnsDomainChanged(dns *datatypes.SoftLayer_Dns_Domain) resource.TestCheckFunc {
+func testAccCheckSoftLayerDnsDomainChanged(dns *datatypes.Dns_Domain) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*Client).dnsDomainService
+		service := services.GetDnsDomainService(testAccProvider.Meta().(*session.Session))
 
-		response, _ := client.GetObject(firstDnsId)
-		if response.Id == firstDnsId {
+		response, _ := service.Id(firstDnsId).GetObject()
+		if *response.Id == firstDnsId {
 			return fmt.Errorf("Dns domain with id %d still exists", firstDnsId)
 		}
 
@@ -156,7 +158,7 @@ func testAccCheckSoftLayerDnsDomainChanged(dns *datatypes.SoftLayer_Dns_Domain) 
 	}
 }
 
-func testAccCheckSoftLayerDnsDomainExists(n string, dns_domain *datatypes.SoftLayer_Dns_Domain) resource.TestCheckFunc {
+func testAccCheckSoftLayerDnsDomainExists(n string, dns_domain *datatypes.Dns_Domain) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 
@@ -170,14 +172,14 @@ func testAccCheckSoftLayerDnsDomainExists(n string, dns_domain *datatypes.SoftLa
 
 		dns_id, _ := strconv.Atoi(rs.Primary.ID)
 
-		client := testAccProvider.Meta().(*Client).dnsDomainService
-		found_domain, err := client.GetObject(dns_id)
+		service := services.GetDnsDomainService(testAccProvider.Meta().(*session.Session))
+		found_domain, err := service.Id(dns_id).GetObject()
 
 		if err != nil {
 			return err
 		}
 
-		if strconv.Itoa(int(found_domain.Id)) != rs.Primary.ID {
+		if strconv.Itoa(int(*found_domain.Id)) != rs.Primary.ID {
 			return fmt.Errorf("Record not found")
 		}
 
@@ -201,18 +203,18 @@ func testAccCheckSoftLayerDnsDomainRecordsExists(dn string, expected_record_coun
 
 		dns_id, _ := strconv.Atoi(rs.Primary.ID)
 
-		client := testAccProvider.Meta().(*Client).dnsDomainService
-		found_domain, err := client.GetObject(dns_id)
+		service := services.GetDnsDomainService(testAccProvider.Meta().(*session.Session))
+		found_domain, err := service.Id(dns_id).GetObject()
 
 		if err != nil {
 			return err
 		}
 
-		if found_domain.ResourceRecordCount != expected_record_count {
-			return fmt.Errorf("Wrong record count:%d, expected:%d", found_domain.ResourceRecordCount, expected_record_count)
+		if *found_domain.ResourceRecordCount != expected_record_count {
+			return fmt.Errorf("Wrong record count:%d, expected:%d", *found_domain.ResourceRecordCount, expected_record_count)
 		}
 
-		if strconv.Itoa(int(found_domain.Id)) != rs.Primary.ID {
+		if strconv.Itoa(int(*found_domain.Id)) != rs.Primary.ID {
 			return fmt.Errorf("Record not found")
 		}
 

@@ -5,14 +5,16 @@ import (
 	"strconv"
 	"testing"
 
-	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/session"
 )
 
 func TestAccSoftLayerDnsDomainRecord_Basic(t *testing.T) {
-	var dns_domain datatypes.SoftLayer_Dns_Domain
-	var dns_domain_record datatypes.SoftLayer_Dns_Domain_ResourceRecord
+	var dns_domain datatypes.Dns_Domain
+	var dns_domain_record datatypes.Dns_Domain_ResourceRecord
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -41,8 +43,8 @@ func TestAccSoftLayerDnsDomainRecord_Basic(t *testing.T) {
 }
 
 func TestAccSoftLayerDnsDomainRecord_Types(t *testing.T) {
-	var dns_domain datatypes.SoftLayer_Dns_Domain
-	var dns_domain_record datatypes.SoftLayer_Dns_Domain_ResourceRecord
+	var dns_domain datatypes.Dns_Domain
+	var dns_domain_record datatypes.Dns_Domain_ResourceRecord
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -68,7 +70,7 @@ func TestAccSoftLayerDnsDomainRecord_Types(t *testing.T) {
 	})
 }
 
-func testAccCheckSoftLayerDnsDomainRecordExists(n string, dns_domain_record *datatypes.SoftLayer_Dns_Domain_ResourceRecord) resource.TestCheckFunc {
+func testAccCheckSoftLayerDnsDomainRecordExists(n string, dns_domain_record *datatypes.Dns_Domain_ResourceRecord) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 
@@ -82,8 +84,8 @@ func testAccCheckSoftLayerDnsDomainRecordExists(n string, dns_domain_record *dat
 
 		dns_id, _ := strconv.Atoi(rs.Primary.ID)
 
-		client := testAccProvider.Meta().(*Client).dnsDomainResourceRecordService
-		found_domain_record, err := client.GetObject(dns_id)
+		service := services.GetDnsDomainResourceRecordService(testAccProvider.Meta().(*session.Session))
+		found_domain_record, err := service.Id(dns_id).GetObject()
 
 		if err != nil {
 			return err
