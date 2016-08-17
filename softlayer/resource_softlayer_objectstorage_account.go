@@ -4,10 +4,16 @@ import (
 	"fmt"
 	"log"
 
-	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
+	"time"
+
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
-	"time"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/filter"
+	"github.ibm.com/riethm/gopherlayer.git/helpers/order"
+	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/session"
+	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
 func resourceSoftLayerObjectStorageAccount() *schema.Resource {
@@ -36,7 +42,8 @@ func resourceSoftLayerObjectStorageAccount() *schema.Resource {
 }
 
 func resourceSoftLayerObjectStorageAccountCreate(d *schema.ResourceData, meta interface{}) error {
-	accountService := meta.(*Client).accountService
+	sess := meta.(*session.Session)
+	accountService := services.GetAccountService(sess)
 
 	// Check if an object storage account exists
 	objectStorageAccounts, err := accountService.GetHubNetworkStorage()
@@ -46,16 +53,15 @@ func resourceSoftLayerObjectStorageAccountCreate(d *schema.ResourceData, meta in
 
 	if len(objectStorageAccounts) == 0 {
 		// Order the account
-		productOrderService := meta.(*Client).productOrderService
+		productOrderService := services.GetProductOrderService(sess)
 
-		receipt, err := productOrderService.PlaceOrder(datatypes.SoftLayer_Container_Product_Order{
-			ComplexType: "SoftLayer_Container_Product_Order_Network_Storage_Hub",
-			Quantity:    1,
-			PackageId:   0,
-			Prices: []datatypes.SoftLayer_Product_Item_Price{
+		receipt, err := productOrderService.PlaceOrder(datatypes.Container_Product_Order{
+			Quantity:  1,
+			PackageId: 0,
+			Prices: []datatypes.Product_Item_Price{
 				{Id: 30920},
 			},
-		})
+		}, sl.Bool(false))
 		if err != nil {
 			return fmt.Errorf(
 				"resource_softlayer_objectstorage_account: Error ordering account: %s", err)
@@ -69,9 +75,9 @@ func resourceSoftLayerObjectStorageAccountCreate(d *schema.ResourceData, meta in
 		}
 
 		// Get accountName using filter on hub network storage
-		objectStorageAccounts, err = accountService.GetHubNetworkStorageByFilter(
-			fmt.Sprintf(`{"billingItem":{"id":{"operation":%d}}}`, billingOrderItem.BillingItem.Id),
-		)
+		objectStorageAccounts, err = accountService.Filter(
+			filter.Path("billingItem.id").Eq(billingOrderItem.BillingItem.Id).Build(),
+		).GetNetworkStorage()
 		if err != nil {
 			return fmt.Errorf("resource_softlayer_objectstorage_account: Error on retrieving new: %s", err)
 		}
@@ -88,21 +94,23 @@ func resourceSoftLayerObjectStorageAccountCreate(d *schema.ResourceData, meta in
 	return nil
 }
 
-func WaitForOrderCompletion(receipt *datatypes.SoftLayer_Container_Product_Order_Receipt, meta interface{}) (datatypes.SoftLayer_Billing_Order_Item, error) {
+func WaitForOrderCompletion(receipt *datatypes.Container_Product_Order_Receipt, meta interface{}) (datatypes.Billing_Order_Item, error) {
 	log.Printf("Waiting for billing order %d to have zero active transactions", receipt.OrderId)
-	var billingOrderItem datatypes.SoftLayer_Billing_Order_Item
+	var billingOrderItem datatypes.Billing_Order_Item
 
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"", "in progress"},
 		Target:  []string{"complete"},
 		Refresh: func() (interface{}, string, error) {
-			billingItemService := meta.(*Client).billingItemService
 			var err error
 			var completed bool
-			completed, billingOrderItem, err = billingItemService.CheckOrderStatus(receipt, []string{})
+
+			sess := meta.(*session.Session)
+			completed, billingOrderItem, err = order.CheckBillingOrderComplete(sess, receipt)
 			if err != nil {
 				return nil, "", err
 			}
+
 			if completed {
 				return billingOrderItem, "complete", nil
 			} else {
@@ -119,13 +127,15 @@ func WaitForOrderCompletion(receipt *datatypes.SoftLayer_Container_Product_Order
 }
 
 func resourceSoftLayerObjectStorageAccountRead(d *schema.ResourceData, meta interface{}) error {
-	accountService := meta.(*Client).accountService
+	sess := meta.(*session.Session)
+	accountService := services.GetAccountService(sess)
 	accountName := d.Id()
 	d.Set("name", accountName)
 
 	// Check if an object storage account exists
-	objectStorageAccounts, err := accountService.GetHubNetworkStorageByFilter(
-		fmt.Sprintf(`{"username":{"operation":"%s"}}`, accountName))
+	objectStorageAccounts, err := accountService.Filter(
+		filter.Path("username").Eq(accountName).Build(),
+	).GetHubNetworkStorage()
 	if err != nil {
 		return fmt.Errorf("resource_softlayer_objectstorage_account: Error on Read: %s", err)
 	}

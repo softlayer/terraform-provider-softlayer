@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"log"
 
-	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
 	"github.com/hashicorp/terraform/helper/schema"
 	"strconv"
 	"strings"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/session"
+	"github.ibm.com/riethm/gopherlayer.git/services"
 )
 
 func resourceSoftLayerSecurityCertificate() *schema.Resource {
@@ -90,21 +92,18 @@ func resourceSoftLayerSecurityCertificate() *schema.Resource {
 }
 
 func resourceSoftLayerSecurityCertificateCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).securityCertificateService
+	sess := meta.(*session.Session)
+	service := services.GetSecurityCertificateService(sess)
 
-	if client == nil {
-		return fmt.Errorf("The client is nil.")
-	}
-
-	template := datatypes.SoftLayer_Security_Certificate_Template{
-		Certificate:             d.Get("certificate").(string),
-		IntermediateCertificate: d.Get("intermediate_certificate").(string),
-		PrivateKey:              d.Get("private_key").(string),
+	template := datatypes.Security_Certificate{
+		Certificate:             &d.Get("certificate").(string),
+		IntermediateCertificate: &d.Get("intermediate_certificate").(string),
+		PrivateKey:              &d.Get("private_key").(string),
 	}
 
 	log.Printf("[INFO] Creating Security Certificate")
 
-	cert, err := client.CreateSecurityCertificate(template)
+	cert, err := service.CreateObject(&template)
 
 	if err != nil {
 		return fmt.Errorf("Error creating Security Certificate: %s", err)
@@ -116,17 +115,15 @@ func resourceSoftLayerSecurityCertificateCreate(d *schema.ResourceData, meta int
 }
 
 func resourceSoftLayerSecurityCertificateRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).securityCertificateService
-	if client == nil {
-		return fmt.Errorf("The client is nil.")
-	}
+	sess := meta.(*session.Session)
+	service := services.GetSecurityCertificateService(sess)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
 
-	cert, err := client.GetObject(id)
+	cert, err := service.Id(id).GetObject()
 
 	if err != nil {
 		return fmt.Errorf("Unable to get Security Certificate: %s", err)
@@ -149,13 +146,10 @@ func resourceSoftLayerSecurityCertificateRead(d *schema.ResourceData, meta inter
 }
 
 func resourceSoftLayerSecurityCertificateDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).securityCertificateService
+	sess := meta.(*session.Session)
+	service := services.GetSecurityCertificateService(sess)
 
-	if client == nil {
-		return fmt.Errorf("The client was nil.")
-	}
-
-	_, err := client.DeleteObject(d.Get("id").(int))
+	_, err := service.Id(d.Get("id").(int)).DeleteObject()
 
 	if err != nil {
 		return fmt.Errorf("Error deleting Security Certificate %s: %s", d.Get("id"), err)
@@ -165,14 +159,15 @@ func resourceSoftLayerSecurityCertificateDelete(d *schema.ResourceData, meta int
 }
 
 func resourceSoftLayerSecurityCertificateExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	client := meta.(*Client).securityCertificateService
+	sess := meta.(*session.Session)
+	service := services.GetSecurityCertificateService(sess)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
 
-	cert, err := client.GetObject(id)
+	cert, err := service.Id(id).GetObject()
 
 	if err != nil {
 		return false, fmt.Errorf("Error fetching Security Cerfiticate: %s", err)

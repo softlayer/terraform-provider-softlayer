@@ -6,13 +6,15 @@ import (
 	"strings"
 	"testing"
 
-	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/session"
+	"github.ibm.com/riethm/gopherlayer.git/services"
 )
 
 func TestAccSoftLayerSSHKey_Basic(t *testing.T) {
-	var key datatypes.SoftLayer_Security_Ssh_Key
+	var key datatypes.Security_Ssh_Key
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -50,7 +52,7 @@ func TestAccSoftLayerSSHKey_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerSSHKeyDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client).sshKeyService
+	service := services.GetSecuritySshKeyService(testAccProvider.Meta().(*session.Session))
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_ssh_key" {
@@ -60,7 +62,7 @@ func testAccCheckSoftLayerSSHKeyDestroy(s *terraform.State) error {
 		keyId, _ := strconv.Atoi(rs.Primary.ID)
 
 		// Try to find the key
-		_, err := client.GetObject(keyId)
+		_, err := service.Id(keyId).GetObject()
 
 		if err == nil {
 			return fmt.Errorf("SSH key still exists")
@@ -70,7 +72,7 @@ func testAccCheckSoftLayerSSHKeyDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccCheckSoftLayerSSHKeyAttributes(key *datatypes.SoftLayer_Security_Ssh_Key) resource.TestCheckFunc {
+func testAccCheckSoftLayerSSHKeyAttributes(key *datatypes.Security_Ssh_Key) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 
 		if key.Label != "testacc_foobar" {
@@ -81,7 +83,7 @@ func testAccCheckSoftLayerSSHKeyAttributes(key *datatypes.SoftLayer_Security_Ssh
 	}
 }
 
-func testAccCheckSoftLayerSSHKeyExists(n string, key *datatypes.SoftLayer_Security_Ssh_Key) resource.TestCheckFunc {
+func testAccCheckSoftLayerSSHKeyExists(n string, key *datatypes.Security_Ssh_Key) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 
@@ -95,8 +97,8 @@ func testAccCheckSoftLayerSSHKeyExists(n string, key *datatypes.SoftLayer_Securi
 
 		keyId, _ := strconv.Atoi(rs.Primary.ID)
 
-		client := testAccProvider.Meta().(*Client).sshKeyService
-		foundKey, err := client.GetObject(keyId)
+		service := services.GetSecuritySshKeyService(testAccProvider.Meta().(*session.Session))
+		foundKey, err := service.Id(keyId).GetObject()
 
 		if err != nil {
 			return err

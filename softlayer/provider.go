@@ -3,6 +3,7 @@ package softlayer
 import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
+	"github.ibm.com/riethm/gopherlayer.git/session"
 )
 
 func Provider() terraform.ResourceProvider {
@@ -19,6 +20,12 @@ func Provider() terraform.ResourceProvider {
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("SOFTLAYER_API_KEY", nil),
 				Description: "The API key for SoftLayer API operations.",
+			},
+			"endpoint_url": &schema.Schema{
+				Type:        schema.TypeString,
+				Required:    true,
+				DefaultFunc: schema.EnvDefaultFunc("SOFTLAYER_ENDPOINT_URL", session.DefaultEndpoint),
+				Description: "The endpoint url for the SoftLayer API.",
 			},
 		},
 
@@ -46,10 +53,9 @@ func Provider() terraform.ResourceProvider {
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	config := Config{
-		Username: d.Get("username").(string),
-		ApiKey:   d.Get("api_key").(string),
+	return &session.Session{
+		UserName: d.Get("username").(string),
+		APIKey:   d.Get("api_key").(string),
+		Endpoint: d.Get("endpoint_url").(string),
 	}
-
-	return config.Client()
 }

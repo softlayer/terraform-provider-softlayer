@@ -6,8 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/session"
 )
 
 func resourceSoftLayerSSHKey() *schema.Resource {
@@ -51,10 +53,11 @@ func resourceSoftLayerSSHKey() *schema.Resource {
 }
 
 func resourceSoftLayerSSHKeyCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).sshKeyService
+	sess := meta.(*session.Session)
+	service := services.GetSecuritySshKeyService(sess)
 
 	// Build up our creation options
-	opts := datatypes.SoftLayer_Security_Ssh_Key{
+	opts := datatypes.Security_Ssh_Key{
 		Label: d.Get("name").(string),
 		Key:   d.Get("public_key").(string),
 	}
@@ -63,7 +66,7 @@ func resourceSoftLayerSSHKeyCreate(d *schema.ResourceData, meta interface{}) err
 		opts.Notes = notes.(string)
 	}
 
-	res, err := client.CreateObject(opts)
+	res, err := service.CreateObject(opts)
 	if err != nil {
 		return fmt.Errorf("Error creating SSH Key: %s", err)
 	}
@@ -75,11 +78,12 @@ func resourceSoftLayerSSHKeyCreate(d *schema.ResourceData, meta interface{}) err
 }
 
 func resourceSoftLayerSSHKeyRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).sshKeyService
+	sess := meta.(*session.Session)
+	service := services.GetSecuritySshKeyService(sess)
 
 	keyId, _ := strconv.Atoi(d.Id())
 
-	key, err := client.GetObject(keyId)
+	key, err := service.Id(keyId).GetObject()
 	if err != nil {
 		// If the key is somehow already destroyed, mark as
 		// succesfully gone
@@ -101,11 +105,12 @@ func resourceSoftLayerSSHKeyRead(d *schema.ResourceData, meta interface{}) error
 }
 
 func resourceSoftLayerSSHKeyUpdate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).sshKeyService
+	sess := meta.(*session.Session)
+	service := services.GetSecuritySshKeyService(sess)
 
 	keyId, _ := strconv.Atoi(d.Id())
 
-	key, err := client.GetObject(keyId)
+	key, err := service.Id(keyId).GetObject()
 	if err != nil {
 		return fmt.Errorf("Error retrieving SSH key: %s", err)
 	}
@@ -118,7 +123,7 @@ func resourceSoftLayerSSHKeyUpdate(d *schema.ResourceData, meta interface{}) err
 		key.Notes = d.Get("notes").(string)
 	}
 
-	_, err = client.EditObject(keyId, key)
+	_, err = service.Id(keyId).EditObject(key)
 	if err != nil {
 		return fmt.Errorf("Error editing SSH key: %s", err)
 	}
@@ -126,7 +131,8 @@ func resourceSoftLayerSSHKeyUpdate(d *schema.ResourceData, meta interface{}) err
 }
 
 func resourceSoftLayerSSHKeyDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).sshKeyService
+	sess := meta.(*session.Session)
+	service := services.GetSecuritySshKeyService(sess)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -134,7 +140,7 @@ func resourceSoftLayerSSHKeyDelete(d *schema.ResourceData, meta interface{}) err
 	}
 
 	log.Printf("[INFO] Deleting SSH key: %d", id)
-	_, err = client.DeleteObject(id)
+	_, err = service.Id(id).DeleteObject()
 	if err != nil {
 		return fmt.Errorf("Error deleting SSH key: %s", err)
 	}
@@ -144,17 +150,14 @@ func resourceSoftLayerSSHKeyDelete(d *schema.ResourceData, meta interface{}) err
 }
 
 func resourceSoftLayerSSHKeyExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	client := meta.(*Client).sshKeyService
-
-	if client == nil {
-		return false, fmt.Errorf("The client was nil.")
-	}
+	sess := meta.(*session.Session)
+	service := services.GetSecuritySshKeyService(sess)
 
 	keyId, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
 
-	result, err := client.GetObject(keyId)
+	result, err := service.Id(keyId).GetObject()
 	return result.Id == keyId && err == nil, nil
 }
