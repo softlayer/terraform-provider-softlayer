@@ -104,7 +104,7 @@ func testAccCheckSoftLayerSSHKeyExists(n string, key *datatypes.Security_Ssh_Key
 			return err
 		}
 
-		if strconv.Itoa(int(foundKey.Id)) != rs.Primary.ID {
+		if strconv.Itoa(int(*foundKey.Id)) != rs.Primary.ID {
 			return fmt.Errorf("Record not found")
 		}
 

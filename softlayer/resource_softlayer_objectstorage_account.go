@@ -56,10 +56,10 @@ func resourceSoftLayerObjectStorageAccountCreate(d *schema.ResourceData, meta in
 		productOrderService := services.GetProductOrderService(sess)
 
 		receipt, err := productOrderService.PlaceOrder(datatypes.Container_Product_Order{
-			Quantity:  1,
-			PackageId: 0,
+			Quantity:  sl.Int(1),
+			PackageId: sl.Int(0),
 			Prices: []datatypes.Product_Item_Price{
-				{Id: 30920},
+				{Id: sl.Int(30920)},
 			},
 		}, sl.Bool(false))
 		if err != nil {
@@ -88,8 +88,8 @@ func resourceSoftLayerObjectStorageAccountCreate(d *schema.ResourceData, meta in
 	}
 
 	// Get account name and set as the Id
-	d.SetId(objectStorageAccounts[0].Username)
-	d.Set("name", objectStorageAccounts[0].Username)
+	d.SetId(*objectStorageAccounts[0].Username)
+	d.Set("name", *objectStorageAccounts[0].Username)
 
 	return nil
 }
@@ -141,7 +141,7 @@ func resourceSoftLayerObjectStorageAccountRead(d *schema.ResourceData, meta inte
 	}
 
 	for _, objectStorageAccount := range objectStorageAccounts {
-		if objectStorageAccount.Username == accountName {
+		if *objectStorageAccount.Username == accountName {
 			return nil
 		}
 	}

@@ -58,21 +58,21 @@ func resourceSoftLayerSSHKeyCreate(d *schema.ResourceData, meta interface{}) err
 
 	// Build up our creation options
 	opts := datatypes.Security_Ssh_Key{
-		Label: d.Get("name").(string),
-		Key:   d.Get("public_key").(string),
+		Label: &d.Get("name").(string),
+		Key:   &d.Get("public_key").(string),
 	}
 
 	if notes, ok := d.GetOk("notes"); ok {
-		opts.Notes = notes.(string)
+		opts.Notes = &(notes.(string)[:])
 	}
 
-	res, err := service.CreateObject(opts)
+	res, err := service.CreateObject(&opts)
 	if err != nil {
 		return fmt.Errorf("Error creating SSH Key: %s", err)
 	}
 
-	d.SetId(strconv.Itoa(res.Id))
-	log.Printf("[INFO] SSH Key: %d", res.Id)
+	d.SetId(strconv.Itoa(*res.Id))
+	log.Printf("[INFO] SSH Key: %d", *res.Id)
 
 	return resourceSoftLayerSSHKeyRead(d, meta)
 }
@@ -95,11 +95,11 @@ func resourceSoftLayerSSHKeyRead(d *schema.ResourceData, meta interface{}) error
 		return fmt.Errorf("Error retrieving SSH key: %s", err)
 	}
 
-	d.Set("id", key.Id)
-	d.Set("name", key.Label)
-	d.Set("public_key", strings.TrimSpace(key.Key))
-	d.Set("fingerprint", key.Fingerprint)
-	d.Set("notes", key.Notes)
+	d.Set("id", *key.Id)
+	d.Set("name", *key.Label)
+	d.Set("public_key", strings.TrimSpace(*key.Key))
+	d.Set("fingerprint", *key.Fingerprint)
+	d.Set("notes", *key.Notes)
 
 	return nil
 }
@@ -116,14 +116,14 @@ func resourceSoftLayerSSHKeyUpdate(d *schema.ResourceData, meta interface{}) err
 	}
 
 	if d.HasChange("name") {
-		key.Label = d.Get("name").(string)
+		key.Label = &d.Get("name").(string)
 	}
 
 	if d.HasChange("notes") {
-		key.Notes = d.Get("notes").(string)
+		key.Notes = &d.Get("notes").(string)
 	}
 
-	_, err = service.Id(keyId).EditObject(key)
+	_, err = service.Id(keyId).EditObject(&key)
 	if err != nil {
 		return fmt.Errorf("Error editing SSH key: %s", err)
 	}

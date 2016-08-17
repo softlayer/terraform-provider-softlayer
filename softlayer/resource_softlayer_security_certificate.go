@@ -109,7 +109,7 @@ func resourceSoftLayerSecurityCertificateCreate(d *schema.ResourceData, meta int
 		return fmt.Errorf("Error creating Security Certificate: %s", err)
 	}
 
-	d.SetId(fmt.Sprintf("%d", cert.Id))
+	d.SetId(fmt.Sprintf("%d", *cert.Id))
 
 	return resourceSoftLayerSecurityCertificateRead(d, meta)
 }
@@ -129,18 +129,18 @@ func resourceSoftLayerSecurityCertificateRead(d *schema.ResourceData, meta inter
 		return fmt.Errorf("Unable to get Security Certificate: %s", err)
 	}
 
-	d.SetId(fmt.Sprintf("%d", cert.Id))
-	d.Set("certificate", cert.Certificate)
-	d.Set("intermediate_certificate", cert.IntermediateCertificate)
-	d.Set("private_key", cert.PrivateKey)
-	d.Set("common_name", cert.CommonName)
-	d.Set("organization_name", cert.OrganizationName)
-	d.Set("validity_begin", cert.ValidityBegin)
-	d.Set("validity_days", cert.ValidityDays)
-	d.Set("validity_end", cert.ValidityEnd)
-	d.Set("key_size", cert.KeySize)
-	d.Set("create_date", cert.CreateDate)
-	d.Set("modify_date", cert.ModifyDate)
+	d.SetId(fmt.Sprintf("%d", *cert.Id))
+	d.Set("certificate", *cert.Certificate)
+	d.Set("intermediate_certificate", *cert.IntermediateCertificate)
+	d.Set("private_key", *cert.PrivateKey)
+	d.Set("common_name", *cert.CommonName)
+	d.Set("organization_name", *cert.OrganizationName)
+	d.Set("validity_begin", *cert.ValidityBegin)
+	d.Set("validity_days", *cert.ValidityDays)
+	d.Set("validity_end", *cert.ValidityEnd)
+	d.Set("key_size", *cert.KeySize)
+	d.Set("create_date", *cert.CreateDate)
+	d.Set("modify_date", *cert.ModifyDate)
 
 	return nil
 }
