@@ -9,6 +9,8 @@ import (
 	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
+	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/session"
 )
 
 func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
@@ -135,7 +137,7 @@ func TestAccSoftLayerVirtualGuest_postInstallScriptUri(t *testing.T) {
 }
 
 func testAccCheckSoftLayerVirtualGuestDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client).virtualGuestService
+	service := services.GetVirtualGuestService(testAccProvider.Meta().(*session.Session))
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_virtual_guest" {
@@ -145,7 +147,7 @@ func testAccCheckSoftLayerVirtualGuestDestroy(s *terraform.State) error {
 		guestId, _ := strconv.Atoi(rs.Primary.ID)
 
 		// Try to find the guest
-		_, err := client.GetObject(guestId)
+		_, err := service.Id(guestId).GetObject()
 
 		// Wait
 
@@ -176,8 +178,8 @@ func testAccCheckSoftLayerVirtualGuestExists(n string, guest *datatypes.SoftLaye
 			return err
 		}
 
-		client := testAccProvider.Meta().(*Client).virtualGuestService
-		retrieveVirtGuest, err := client.GetObject(id)
+		service := services.GetVirtualGuestService(testAccProvider.Meta().(*session.Session))
+		retrieveVirtGuest, err := service.Id(id).GetObject()
 
 		if err != nil {
 			return err
@@ -185,7 +187,7 @@ func testAccCheckSoftLayerVirtualGuestExists(n string, guest *datatypes.SoftLaye
 
 		fmt.Printf("The ID is %d", id)
 
-		if retrieveVirtGuest.Id != id {
+		if *retrieveVirtGuest.Id != id {
 			return fmt.Errorf("Virtual guest not found")
 		}
 

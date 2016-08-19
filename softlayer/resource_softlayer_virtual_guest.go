@@ -3,10 +3,12 @@ package softlayer
 import (
 	"encoding/base64"
 	"fmt"
-	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
-	"github.com/TheWeatherCompany/softlayer-go/softlayer"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/helpers/virtual"
+	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/session"
 	"log"
 	"math"
 	"strconv"
@@ -16,13 +18,13 @@ import (
 
 func resourceSoftLayerVirtualGuest() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerVirtualGuestCreate,
-		Read:   resourceSoftLayerVirtualGuestRead,
-		Update: resourceSoftLayerVirtualGuestUpdate,
-		Delete: resourceSoftLayerVirtualGuestDelete,
-		Exists: resourceSoftLayerVirtualGuestExists,
+		Create:   resourceSoftLayerVirtualGuestCreate,
+		Read:     resourceSoftLayerVirtualGuestRead,
+		Update:   resourceSoftLayerVirtualGuestUpdate,
+		Delete:   resourceSoftLayerVirtualGuestDelete,
+		Exists:   resourceSoftLayerVirtualGuestExists,
 		Importer: &schema.ResourceImporter{},
-		
+
 		Schema: map[string]*schema.Schema{
 			"name": &schema.Schema{
 				Type:     schema.TypeString,
@@ -179,20 +181,20 @@ func getNameForBlockDevice(i int) string {
 	}
 }
 
-func getBlockDevices(d *schema.ResourceData) []datatypes.BlockDevice {
+func getBlockDevices(d *schema.ResourceData) []datatypes.Virtual_Guest_Block_Device {
 	numBlocks := d.Get("disks.#").(int)
 	if numBlocks == 0 {
 		return nil
 	} else {
-		blocks := make([]datatypes.BlockDevice, 0, numBlocks)
+		blocks := make([]datatypes.Virtual_Guest_Block_Device, 0, numBlocks)
 		for i := 0; i < numBlocks; i++ {
 			blockRef := fmt.Sprintf("disks.%d", i)
 			name := getNameForBlockDevice(i)
 			capacity := d.Get(blockRef).(int)
-			block := datatypes.BlockDevice{
-				Device: name,
-				DiskImage: datatypes.DiskImage{
-					Capacity: capacity,
+			block := datatypes.Virtual_Guest_Block_Device{
+				Device: &name,
+				DiskImage: &datatypes.Virtual_Disk_Image{
+					Capacity: &capacity,
 				},
 			}
 			blocks = append(blocks, block)
@@ -200,42 +202,42 @@ func getBlockDevices(d *schema.ResourceData) []datatypes.BlockDevice {
 		return blocks
 	}
 }
-func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData) (datatypes.SoftLayer_Virtual_Guest_Template, error) {
+func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData) (datatypes.Virtual_Guest, error) {
 
-	dc := datatypes.Datacenter{
-		Name: d.Get("region").(string),
+	dc := datatypes.Location{
+		Name: &d.Get("region").(string),
 	}
 
-	networkComponent := datatypes.NetworkComponents{
-		MaxSpeed: d.Get("public_network_speed").(int),
+	networkComponent := datatypes.Virtual_Guest_Network_Component{
+		MaxSpeed: &d.Get("public_network_speed").(int),
 	}
 
-	opts := datatypes.SoftLayer_Virtual_Guest_Template{
-		Hostname:               d.Get("name").(string),
-		Domain:                 d.Get("domain").(string),
-		HourlyBillingFlag:      d.Get("hourly_billing").(bool),
-		PrivateNetworkOnlyFlag: d.Get("private_network_only").(bool),
-		Datacenter:             dc,
-		StartCpus:              d.Get("cpu").(int),
-		MaxMemory:              d.Get("ram").(int),
-		NetworkComponents:      []datatypes.NetworkComponents{networkComponent},
+	opts := datatypes.Virtual_Guest{
+		Hostname:               &d.Get("name").(string),
+		Domain:                 &d.Get("domain").(string),
+		HourlyBillingFlag:      &d.Get("hourly_billing").(bool),
+		PrivateNetworkOnlyFlag: &d.Get("private_network_only").(bool),
+		Datacenter:             &dc,
+		StartCpus:              &d.Get("cpu").(int),
+		MaxMemory:              &d.Get("ram").(int),
+		NetworkComponents:      []datatypes.Virtual_Guest_Network_Component{networkComponent},
 		BlockDevices:           getBlockDevices(d),
-		LocalDiskFlag:          d.Get("local_disk").(bool),
-		PostInstallScriptUri:   d.Get("post_install_script_uri").(string),
+		LocalDiskFlag:          &d.Get("local_disk").(bool),
+		PostInstallScriptUri:   &d.Get("post_install_script_uri").(string),
 	}
 
 	if dedicatedAcctHostOnly, ok := d.GetOk("dedicated_acct_host_only"); ok {
-		opts.DedicatedAccountHostOnlyFlag = dedicatedAcctHostOnly.(bool)
+		opts.DedicatedAccountHostOnlyFlag = &dedicatedAcctHostOnly.(bool)
 	}
 
 	if globalIdentifier, ok := d.GetOk("block_device_template_group_gid"); ok {
-		opts.BlockDeviceTemplateGroup = &datatypes.BlockDeviceTemplateGroup{
-			GlobalIdentifier: globalIdentifier.(string),
+		opts.BlockDeviceTemplateGroup = &datatypes.Virtual_Guest_Block_Device_Template_Group{
+			GlobalIdentifier: &globalIdentifier.(string),
 		}
 	}
 
 	if operatingSystemReferenceCode, ok := d.GetOk("image"); ok {
-		opts.OperatingSystemReferenceCode = operatingSystemReferenceCode.(string)
+		opts.OperatingSystemReferenceCode = &operatingSystemReferenceCode.(string)
 	}
 
 	// Apply frontend VLAN if provided
@@ -244,8 +246,8 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData) (datatypes.
 		if err != nil {
 			return opts, fmt.Errorf("Not a valid frontend ID, must be an integer: %s", err)
 		}
-		opts.PrimaryNetworkComponent = &datatypes.PrimaryNetworkComponent{
-			NetworkVlan: datatypes.NetworkVlan{Id: frontendVlanId},
+		opts.PrimaryNetworkComponent = &datatypes.Virtual_Guest_Network_Component{
+			NetworkVlan: &datatypes.Network_Vlan{Id: frontendVlanId},
 		}
 	}
 
@@ -255,15 +257,15 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData) (datatypes.
 		if err != nil {
 			return opts, fmt.Errorf("Not a valid backend ID, must be an integer: %s", err)
 		}
-		opts.PrimaryBackendNetworkComponent = &datatypes.PrimaryBackendNetworkComponent{
-			NetworkVlan: datatypes.NetworkVlan{Id: backendVlanId},
+		opts.PrimaryBackendNetworkComponent = &datatypes.Virtual_Guest_Network_Component{
+			NetworkVlan: datatypes.Network_Vlan{Id: &backendVlanId},
 		}
 	}
 
 	if userData, ok := d.GetOk("user_data"); ok {
-		opts.UserData = []datatypes.UserData{
-			datatypes.UserData{
-				Value: userData.(string),
+		opts.UserData = []datatypes.Virtual_Guest_Attribute{
+			{
+				Value: &userData.(string),
 			},
 		}
 	}
@@ -271,11 +273,11 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData) (datatypes.
 	// Get configured ssh_keys
 	ssh_keys := d.Get("ssh_keys.#").(int)
 	if ssh_keys > 0 {
-		opts.SshKeys = make([]datatypes.SshKey, 0, ssh_keys)
+		opts.SshKeys = make([]datatypes.Security_Ssh_Key, 0, ssh_keys)
 		for i := 0; i < ssh_keys; i++ {
 			key := fmt.Sprintf("ssh_keys.%d", i)
 			id := d.Get(key).(int)
-			sshKey := datatypes.SshKey{
+			sshKey := datatypes.Security_Ssh_Key{
 				Id: id,
 			}
 			opts.SshKeys = append(opts.SshKeys, sshKey)
@@ -286,26 +288,22 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData) (datatypes.
 }
 
 func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).virtualGuestService
-	if client == nil {
-		return fmt.Errorf("The client was nil.")
-	}
+	service := services.GetVirtualGuestService(meta.(*session.Session))
 
 	opts, err := getVirtualGuestTemplateFromResourceData(d)
-
 	if err != nil {
 		return err
 	}
 
-	log.Printf("[INFO] Creating virtual machine")
+	log.Println("[INFO] Creating virtual machine")
 
-	guest, err := client.CreateObject(opts)
+	guest, err := service.CreateObject(opts)
 
 	if err != nil {
 		return fmt.Errorf("Error creating virtual guest: %s", err)
 	}
 
-	d.SetId(fmt.Sprintf("%d", guest.Id))
+	d.SetId(fmt.Sprintf("%d", *guest.Id))
 
 	log.Printf("[INFO] Virtual Machine ID: %s", d.Id())
 
@@ -330,36 +328,37 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 }
 
 func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).virtualGuestService
+	service := services.GetVirtualGuestService(meta.(*session.Session))
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
-	result, err := client.GetObject(id)
+	result, err := service.Id(id).GetObject()
 	if err != nil {
 		return fmt.Errorf("Error retrieving virtual guest: %s", err)
 	}
 
-	d.Set("name", result.Hostname)
-	d.Set("domain", result.Domain)
+	d.Set("name", &result.Hostname)
+	d.Set("domain", &result.Domain)
 	if result.Datacenter != nil {
-		d.Set("region", result.Datacenter.Name)
+		d.Set("region", &result.Datacenter.Name)
 	}
-	d.Set("public_network_speed", result.NetworkComponents[0].MaxSpeed)
-	d.Set("cpu", result.StartCpus)
-	d.Set("ram", result.MaxMemory)
-	d.Set("dedicated_acct_host_only", result.DedicatedAccountHostOnlyFlag)
-	d.Set("has_public_ip", result.PrimaryIpAddress != "")
-	d.Set("ipv4_address", result.PrimaryIpAddress)
-	d.Set("ipv4_address_private", result.PrimaryBackendIpAddress)
-	d.Set("ip_address_id", result.PrimaryNetworkComponent.PrimaryIpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
-	d.Set("ip_address_id_private", result.PrimaryBackendNetworkComponent.PrimaryIpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
-	d.Set("private_network_only", result.PrivateNetworkOnlyFlag)
-	d.Set("hourly_billing", result.HourlyBillingFlag)
-	d.Set("local_disk", result.LocalDiskFlag)
-	d.Set("frontend_vlan_id", result.PrimaryNetworkComponent.NetworkVlan.Id)
-	d.Set("backend_vlan_id", result.PrimaryBackendNetworkComponent.NetworkVlan.Id)
+	d.Set("public_network_speed", &result.NetworkComponents[0].MaxSpeed)
+	d.Set("cpu", &result.StartCpus)
+	d.Set("ram", &result.MaxMemory)
+	d.Set("dedicated_acct_host_only", &result.DedicatedAccountHostOnlyFlag)
+	d.Set("has_public_ip", &result.PrimaryIpAddress != "")
+	d.Set("ipv4_address", &result.PrimaryIpAddress)
+	d.Set("ipv4_address_private", &result.PrimaryBackendIpAddress)
+	d.Set("ip_address_id", &result.PrimaryNetworkComponent.PrimaryIpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
+	d.Set("ip_address_id_private",
+		&result.PrimaryBackendNetworkComponent.PrimaryIpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
+	d.Set("private_network_only", &result.PrivateNetworkOnlyFlag)
+	d.Set("hourly_billing", &result.HourlyBillingFlag)
+	d.Set("local_disk", &result.LocalDiskFlag)
+	d.Set("frontend_vlan_id", &result.PrimaryNetworkComponent.NetworkVlan.Id)
+	d.Set("backend_vlan_id", &result.PrimaryBackendNetworkComponent.NetworkVlan.Id)
 
 	userData := result.UserData
 	if userData != nil && len(userData) > 0 {
@@ -376,13 +375,15 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 }
 
 func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).virtualGuestService
+	sess := meta.(*session.Session)
+	service := services.GetVirtualGuestService(sess)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
-	result, err := client.GetObject(id)
+
+	result, err := service.Id(id).GetObject()
 	if err != nil {
 		return fmt.Errorf("Error retrieving virtual guest: %s", err)
 	}
@@ -390,36 +391,39 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 	// Update "name" and "domain" fields if present and changed
 	// Those are the only fields, which could be updated
 	if d.HasChange("name") || d.HasChange("domain") {
-		result.Hostname = d.Get("name").(string)
-		result.Domain = d.Get("domain").(string)
+		result.Hostname = &d.Get("name").(string)
+		result.Domain = &d.Get("domain").(string)
 
-		_, err = client.EditObject(id, result)
+		_, err = service.Id(id).EditObject(result)
 
 		if err != nil {
 			return fmt.Errorf("Couldn't update virtual guest: %s", err)
 		}
 	}
+
 	// Set user data if provided and not empty
 	if d.HasChange("user_data") {
-		client.SetMetadata(id, d.Get("user_data").(string))
+		// TODO: Check if user metadata needs to be base64 encoded
+		service.Id(id).SetUserMetadata([]string{d.Get("user_data").(string)})
 	}
+
 	// Upgrade "cpu", "ram" and "nic_speed" if provided and changed
-	upgradeOptions := softlayer.UpgradeOptions{}
+	upgradeOptions := map[int]string{}
 	if d.HasChange("cpu") {
-		upgradeOptions.Cpus = d.Get("cpu").(int)
+		upgradeOptions[80] = string(d.Get("cpu").(int))
 	}
 	if d.HasChange("ram") {
 		memoryInMB := float64(d.Get("ram").(int))
 
 		// Convert memory to GB, as softlayer only allows to upgrade RAM in Gigs
 		// Must be already validated at this step
-		upgradeOptions.MemoryInGB = int(memoryInMB / 1024)
+		upgradeOptions[3] = string(int(memoryInMB / 1024))
 	}
 	if d.HasChange("public_network_speed") {
-		upgradeOptions.NicSpeed = d.Get("public_network_speed").(int)
+		upgradeOptions[26] = string(d.Get("public_network_speed").(int))
 	}
 
-	started, err := client.UpgradeObject(id, &upgradeOptions)
+	started, err := virtual.UpgradeVirtualGuest(sess, id, upgradeOptions, nil)
 	if err != nil {
 		return fmt.Errorf("Couldn't upgrade virtual guest: %s", err)
 	}
@@ -436,7 +440,7 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 }
 
 func resourceSoftLayerVirtualGuestDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).virtualGuestService
+	service := services.GetVirtualGuestService(meta.(*session.Session))
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -449,7 +453,7 @@ func resourceSoftLayerVirtualGuestDelete(d *schema.ResourceData, meta interface{
 		return fmt.Errorf("Error deleting virtual guest, couldn't wait for zero active transactions: %s", err)
 	}
 
-	_, err = client.DeleteObject(id)
+	_, err = service.Id(id).DeleteObject()
 
 	if err != nil {
 		return fmt.Errorf("Error deleting virtual guest: %s", err)
@@ -471,8 +475,8 @@ func WaitForUpgradeTransactionsToAppear(d *schema.ResourceData, meta interface{}
 		Pending: []string{"pending_upgrade"},
 		Target:  []string{"upgrade_started"},
 		Refresh: func() (interface{}, string, error) {
-			client := meta.(*Client).virtualGuestService
-			transactions, err := client.GetActiveTransactions(id)
+			service := services.GetVirtualGuestService(meta.(*session.Session))
+			transactions, err := service.Id(id).GetActiveTransactions()
 			if err != nil {
 				return nil, "", fmt.Errorf("Couldn't fetch active transactions: %s", err)
 			}
@@ -499,12 +503,12 @@ func WaitForPublicIpAvailable(d *schema.ResourceData, meta interface{}) (interfa
 		Target:  []string{"available"},
 		Refresh: func() (interface{}, string, error) {
 			fmt.Println("Refreshing server state...")
-			client := meta.(*Client).virtualGuestService
+			service := services.GetVirtualGuestService(meta.(*session.Session))
 			id, err := strconv.Atoi(d.Id())
 			if err != nil {
 				return nil, "", fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 			}
-			result, err := client.GetObject(id)
+			result, err := service.Id(id).GetObject()
 			if err != nil {
 				return nil, "", fmt.Errorf("Error retrieving virtual guest: %s", err)
 			}
@@ -533,8 +537,8 @@ func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (inte
 		Pending: []string{"", "active"},
 		Target:  []string{"idle"},
 		Refresh: func() (interface{}, string, error) {
-			client := meta.(*Client).virtualGuestService
-			transactions, err := client.GetActiveTransactions(id)
+			service := services.GetVirtualGuestService(meta.(*session.Session))
+			transactions, err := service.Id(id).GetActiveTransactions()
 			if err != nil {
 				return nil, "", fmt.Errorf("Couldn't get active transactions: %s", err)
 			}
@@ -553,17 +557,13 @@ func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (inte
 }
 
 func resourceSoftLayerVirtualGuestExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	client := meta.(*Client).virtualGuestService
-
-	if client == nil {
-		return false, fmt.Errorf("The client was nil.")
-	}
+	service := services.GetVirtualGuestService(meta.(*session.Session))
 
 	guestId, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
 
-	result, err := client.GetObject(guestId)
+	result, err := service.Id(guestId).GetObject()
 	return result.Id == guestId && err == nil, nil
 }
