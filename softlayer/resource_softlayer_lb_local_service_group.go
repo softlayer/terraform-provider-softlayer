@@ -17,11 +17,12 @@ import (
 
 func resourceSoftLayerLbLocalServiceGroup() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerLbLocalServiceGroupCreate,
-		Read:   resourceSoftLayerLbLocalServiceGroupRead,
-		Update: resourceSoftLayerLbLocalServiceGroupUpdate,
-		Delete: resourceSoftLayerLbLocalServiceGroupDelete,
-		Exists: resourceSoftLayerLbLocalServiceGroupExists,
+		Create:   resourceSoftLayerLbLocalServiceGroupCreate,
+		Read:     resourceSoftLayerLbLocalServiceGroupRead,
+		Update:   resourceSoftLayerLbLocalServiceGroupUpdate,
+		Delete:   resourceSoftLayerLbLocalServiceGroupDelete,
+		Exists:   resourceSoftLayerLbLocalServiceGroupExists,
+		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
 			"virtual_server_id": {

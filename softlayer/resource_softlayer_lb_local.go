@@ -31,11 +31,12 @@ const (
 
 func resourceSoftLayerLbLocal() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerLbLocalCreate,
-		Read:   resourceSoftLayerLbLocalRead,
-		Update: resourceSoftLayerLbLocalUpdate,
-		Delete: resourceSoftLayerLbLocalDelete,
-		Exists: resourceSoftLayerLbLocalExists,
+		Create:   resourceSoftLayerLbLocalCreate,
+		Read:     resourceSoftLayerLbLocalRead,
+		Update:   resourceSoftLayerLbLocalUpdate,
+		Delete:   resourceSoftLayerLbLocalDelete,
+		Exists:   resourceSoftLayerLbLocalExists,
+		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
 			"connections": {

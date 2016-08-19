@@ -47,11 +47,12 @@ var SoftLayerScaleGroupObjectMask = []string{
 
 func resourceSoftLayerScaleGroup() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerScaleGroupCreate,
-		Read:   resourceSoftLayerScaleGroupRead,
-		Update: resourceSoftLayerScaleGroupUpdate,
-		Delete: resourceSoftLayerScaleGroupDelete,
-		Exists: resourceSoftLayerScaleGroupExists,
+		Create:   resourceSoftLayerScaleGroupCreate,
+		Read:     resourceSoftLayerScaleGroupRead,
+		Update:   resourceSoftLayerScaleGroupUpdate,
+		Delete:   resourceSoftLayerScaleGroupDelete,
+		Exists:   resourceSoftLayerScaleGroupExists,
+		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
 			"id": &schema.Schema{

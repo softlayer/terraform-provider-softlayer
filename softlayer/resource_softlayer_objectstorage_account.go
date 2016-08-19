@@ -18,11 +18,12 @@ import (
 
 func resourceSoftLayerObjectStorageAccount() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerObjectStorageAccountCreate,
-		Read:   resourceSoftLayerObjectStorageAccountRead,
-		Update: resourceSoftLayerObjectStorageAccountUpdate,
-		Delete: resourceSoftLayerObjectStorageAccountDelete,
-		Exists: resourceSoftLayerObjectStorageAccountExists,
+		Create:   resourceSoftLayerObjectStorageAccountCreate,
+		Read:     resourceSoftLayerObjectStorageAccountRead,
+		Update:   resourceSoftLayerObjectStorageAccountUpdate,
+		Delete:   resourceSoftLayerObjectStorageAccountDelete,
+		Exists:   resourceSoftLayerObjectStorageAccountExists,
+		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
 			"id": &schema.Schema{
