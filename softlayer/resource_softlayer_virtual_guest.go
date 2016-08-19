@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/helpers/product"
 	"github.ibm.com/riethm/gopherlayer.git/helpers/virtual"
 	"github.ibm.com/riethm/gopherlayer.git/services"
 	"github.ibm.com/riethm/gopherlayer.git/session"
@@ -410,17 +411,19 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 	// Upgrade "cpu", "ram" and "nic_speed" if provided and changed
 	upgradeOptions := map[string]string{}
 	if d.HasChange("cpu") {
-		upgradeOptions["guest_core"] = string(d.Get("cpu").(int))
+		upgradeOptions[product.CPUCategoryCode] = string(d.Get("cpu").(int))
 	}
+
 	if d.HasChange("ram") {
 		memoryInMB := float64(d.Get("ram").(int))
 
 		// Convert memory to GB, as softlayer only allows to upgrade RAM in Gigs
 		// Must be already validated at this step
-		upgradeOptions["ram"] = string(int(memoryInMB / 1024))
+		upgradeOptions[product.MemoryCategoryCode] = string(int(memoryInMB / 1024))
 	}
+
 	if d.HasChange("public_network_speed") {
-		upgradeOptions["port_speed"] = string(d.Get("public_network_speed").(int))
+		upgradeOptions[product.NICSpeedCategoryCode] = string(d.Get("public_network_speed").(int))
 	}
 
 	started, err := virtual.UpgradeVirtualGuest(sess, id, upgradeOptions)
