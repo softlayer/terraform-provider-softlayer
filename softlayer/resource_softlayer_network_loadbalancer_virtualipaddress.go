@@ -5,19 +5,24 @@ import (
 	"log"
 
 	"bytes"
-	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
-	"github.com/TheWeatherCompany/softlayer-go/services"
-	"github.com/hashicorp/terraform/helper/schema"
+
 	"strconv"
+
+	"github.com/hashicorp/terraform/helper/schema"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/filter"
+	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/session"
+	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
 func resourceSoftLayerNetworkLoadBalancerVirtualIpAddress() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerNetworkLoadBalancerVirtualIpAddressCreate,
-		Read:   resourceSoftLayerNetworkLoadBalancerVirtualIpAddressRead,
-		Update: resourceSoftLayerNetworkLoadBalancerVirtualIpAddressUpdate,
-		Delete: resourceSoftLayerNetworkLoadBalancerVirtualIpAddressDelete,
-		Exists: resourceSoftLayerNetworkLoadBalancerVirtualIpAddressExists,
+		Create:   resourceSoftLayerNetworkLoadBalancerVirtualIpAddressCreate,
+		Read:     resourceSoftLayerNetworkLoadBalancerVirtualIpAddressRead,
+		Update:   resourceSoftLayerNetworkLoadBalancerVirtualIpAddressUpdate,
+		Delete:   resourceSoftLayerNetworkLoadBalancerVirtualIpAddressDelete,
+		Exists:   resourceSoftLayerNetworkLoadBalancerVirtualIpAddressExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
@@ -78,26 +83,24 @@ func resourceSoftLayerNetworkLoadBalancerVirtualIpAddress() *schema.Resource {
 }
 
 func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).networkApplicationDeliveryControllerService
-	if client == nil {
-		return fmt.Errorf("The client is nil.")
-	}
+	sess := meta.(*session.Session)
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	nadcId := d.Get("nad_controller_id").(int)
 
-	template := datatypes.SoftLayer_Network_LoadBalancer_VirtualIpAddress_Template{
-		ConnectionLimit:       d.Get("connection_limit").(int),
-		LoadBalancingMethod:   d.Get("load_balancing_method").(string),
-		Name:                  d.Get("name").(string),
-		SourcePort:            d.Get("source_port").(int),
-		Type:                  d.Get("type").(string),
-		VirtualIpAddress:      d.Get("virtual_ip_address").(string),
-		SecurityCertificateId: d.Get("security_certificate_id").(int),
+	template := datatypes.Network_LoadBalancer_VirtualIpAddress{
+		ConnectionLimit:       sl.Int(d.Get("connection_limit").(int)),
+		LoadBalancingMethod:   sl.String(d.Get("load_balancing_method").(string)),
+		Name:                  sl.String(d.Get("name").(string)),
+		SourcePort:            sl.Int(d.Get("source_port").(int)),
+		Type:                  sl.String(d.Get("type").(string)),
+		VirtualIpAddress:      sl.String(d.Get("virtual_ip_address").(string)),
+		SecurityCertificateId: sl.Int(d.Get("security_certificate_id").(int)),
 	}
 
 	log.Printf("[INFO] Creating Virtual Ip Address %s", template.VirtualIpAddress)
 
-	successFlag, err := client.CreateVirtualIpAddress(nadcId, template)
+	successFlag, err := service.Id(nadcId).CreateLiveLoadBalancer(&template)
 
 	if err != nil {
 		return fmt.Errorf("Error creating Virtual Ip Address: %s", err)
@@ -114,68 +117,72 @@ func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressRead(d *schema.Resource
 	nadcId := d.Get("nad_controller_id").(int)
 	vipName := d.Get("name").(string)
 
-	client := meta.(*Client).networkApplicationDeliveryControllerService
-	if client == nil {
-		return fmt.Errorf("The client is nil.")
-	}
+	sess := meta.(*session.Session)
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
-	vip, err := client.GetVirtualIpAddress(nadcId, vipName)
+	vips, err := service.
+		Id(nadcId).
+		Filter(filter.Path("name").Eq(vipName).Build()).
+		GetLoadBalancers()
 	if err != nil {
 		return fmt.Errorf("Error getting Virtual Ip Address: %s", err)
 	}
 
+	if len(vips) == 0 {
+		return fmt.Errorf("Could not find any VIPs for NADC %d matching name %s", nadcId, vipName)
+	}
+	vip := vips[0]
+
 	var vipId bytes.Buffer
-	vipId.WriteString(vip.Name)
-	vipId.WriteString(services.ID_DELIMITER)
+	vipId.WriteString(*vip.Name)
+	vipId.WriteString(";")
 	vipId.WriteString(strconv.Itoa(nadcId))
 
 	d.SetId(vipId.String())
 	d.Set("nad_controller_id", nadcId)
-	d.Set("load_balancing_method", vip.LoadBalancingMethod)
-	d.Set("load_balancing_method_name", vip.LoadBalancingMethodFullName)
-	d.Set("modify_date", vip.ModifyDate)
-	d.Set("name", vip.Name)
-	d.Set("connection_limit", vip.ConnectionLimit)
-	d.Set("security_certificate_id", vip.SecurityCertificateId)
-	d.Set("source_port", vip.SourcePort)
-	d.Set("type", vip.Type)
-	d.Set("virtual_ip_address", vip.VirtualIpAddress)
+	d.Set("load_balancing_method", *vip.LoadBalancingMethod)
+	d.Set("load_balancing_method_name", *vip.LoadBalancingMethodFullName)
+	d.Set("modify_date", *vip.ModifyDate)
+	d.Set("name", *vip.Name)
+	d.Set("connection_limit", *vip.ConnectionLimit)
+	d.Set("security_certificate_id", *vip.SecurityCertificateId)
+	d.Set("source_port", *vip.SourcePort)
+	d.Set("type", *vip.Type)
+	d.Set("virtual_ip_address", *vip.VirtualIpAddress)
 
 	return nil
 }
 
 func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressUpdate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).networkApplicationDeliveryControllerService
-	if client == nil {
-		return fmt.Errorf("The client is nil.")
-	}
+	sess := meta.(*session.Session)
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	nadcId := d.Get("nad_controller_id").(int)
-	template := datatypes.SoftLayer_Network_LoadBalancer_VirtualIpAddress_Template{
-		Name: d.Get("name").(string),
+	template := datatypes.Network_LoadBalancer_VirtualIpAddress{
+		Name: sl.String(d.Get("name").(string)),
 	}
 
 	if d.HasChange("load_balancing_method") {
-		template.LoadBalancingMethod = d.Get("load_balancing_method").(string)
+		template.LoadBalancingMethod = sl.String(d.Get("load_balancing_method").(string))
 	}
 
 	if d.HasChange("security_certificate_id") {
-		template.SecurityCertificateId = d.Get("security_certificate_id").(int)
+		template.SecurityCertificateId = sl.Int(d.Get("security_certificate_id").(int))
 	}
 
 	if d.HasChange("source_port") {
-		template.SourcePort = d.Get("source_port").(int)
+		template.SourcePort = sl.Int(d.Get("source_port").(int))
 	}
 
 	if d.HasChange("type") {
-		template.Type = d.Get("type").(string)
+		template.Type = sl.String(d.Get("type").(string))
 	}
 
 	if d.HasChange("virtual_ip_address") {
-		template.VirtualIpAddress = d.Get("virtual_ip_address").(string)
+		template.VirtualIpAddress = sl.String(d.Get("virtual_ip_address").(string))
 	}
 
-	_, err := client.EditVirtualIpAddress(nadcId, template)
+	_, err := service.Id(nadcId).UpdateLiveLoadBalancer(&template)
 
 	if err != nil {
 		return fmt.Errorf("Error updating Virtual Ip Address: %s", err)
@@ -185,15 +192,15 @@ func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressUpdate(d *schema.Resour
 }
 
 func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).networkApplicationDeliveryControllerService
-	if client == nil {
-		return fmt.Errorf("The client is nil.")
-	}
+	sess := meta.(*session.Session)
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	nadcId := d.Get("nad_controller_id").(int)
 	vipName := d.Get("name").(string)
 
-	_, err := client.DeleteVirtualIpAddress(nadcId, vipName)
+	_, err := service.Id(nadcId).DeleteLiveLoadBalancer(
+		&datatypes.Network_LoadBalancer_VirtualIpAddress{Name: sl.String(vipName)},
+	)
 	if err != nil {
 		return fmt.Errorf("Error deleting Virtual Ip Address %s: %s", vipName, err)
 	}
@@ -202,19 +209,24 @@ func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressDelete(d *schema.Resour
 }
 
 func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	client := meta.(*Client).networkApplicationDeliveryControllerService
-	if client == nil {
-		return false, fmt.Errorf("The client is nil.")
-	}
+	sess := meta.(*session.Session)
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	vipName := d.Get("name").(string)
 	nadcId := d.Get("nad_controller_id").(int)
 
-	vip, err := client.GetVirtualIpAddress(nadcId, vipName)
-
+	vips, err := service.
+		Id(nadcId).
+		Filter(filter.Path("name").Eq(vipName).Build()).
+		GetLoadBalancers()
 	if err != nil {
 		return false, fmt.Errorf("Error fetching Virtual Ip Address: %s", err)
 	}
 
-	return vip.Name == vipName && err == nil, nil
+	if len(vips) == 0 {
+		return false, fmt.Errorf("Could not find any VIPs for NADC %d matching name %s", nadcId, vipName)
+	}
+	vip := vips[0]
+
+	return *vip.Name == vipName && err == nil, nil
 }

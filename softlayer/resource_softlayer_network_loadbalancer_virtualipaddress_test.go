@@ -7,6 +7,10 @@ import (
 
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
+
+	"github.ibm.com/riethm/gopherlayer.git/filter"
+	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/session"
 )
 
 func TestAccSoftLayerVirtualIpAddress_Basic(t *testing.T) {
@@ -33,7 +37,7 @@ func TestAccSoftLayerVirtualIpAddress_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerVirtualIpAddressDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client).networkApplicationDeliveryControllerService
+	service := services.GetNetworkApplicationDeliveryControllerService(testAccProvider.Meta().(*session.Session))
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_lb_vpx_vip" {
@@ -43,14 +47,15 @@ func testAccCheckSoftLayerVirtualIpAddressDestroy(s *terraform.State) error {
 		nadcId, _ := strconv.Atoi(rs.Primary.Attributes["nad_controller_id"])
 		vipName, _ := rs.Primary.Attributes["name"]
 
-		// Try to find the vip
-		result, err := client.GetVirtualIpAddress(nadcId, vipName)
-
+		vips, err := service.
+			Id(nadcId).
+			Filter(filter.Path("name").Eq(vipName).Build()).
+			GetLoadBalancers()
 		if err != nil {
-			return fmt.Errorf("Error fetching virtual ip")
+			return fmt.Errorf("Error getting Virtual Ip Address: %s", err)
 		}
 
-		if len(result.VirtualIpAddress) != 0 {
+		if len(*vips[0].VirtualIpAddress) != 0 {
 			return fmt.Errorf("Virtual ip address still exists")
 		}
 	}
