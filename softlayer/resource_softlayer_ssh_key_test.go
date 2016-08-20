@@ -75,7 +75,7 @@ func testAccCheckSoftLayerSSHKeyDestroy(s *terraform.State) error {
 func testAccCheckSoftLayerSSHKeyAttributes(key *datatypes.Security_Ssh_Key) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 
-		if key.Label != "testacc_foobar" {
+		if *key.Label != "testacc_foobar" {
 			return fmt.Errorf("Bad name: %s", key.Label)
 		}
 

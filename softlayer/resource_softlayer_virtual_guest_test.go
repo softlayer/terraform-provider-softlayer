@@ -6,15 +6,15 @@ import (
 	"strings"
 	"testing"
 
-	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
 	"github.ibm.com/riethm/gopherlayer.git/services"
 	"github.ibm.com/riethm/gopherlayer.git/session"
 )
 
 func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
-	var guest datatypes.SoftLayer_Virtual_Guest
+	var guest datatypes.Virtual_Guest
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -99,7 +99,7 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 }
 
 func TestAccSoftLayerVirtualGuest_BlockDeviceTemplateGroup(t *testing.T) {
-	var guest datatypes.SoftLayer_Virtual_Guest
+	var guest datatypes.Virtual_Guest
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -118,7 +118,7 @@ func TestAccSoftLayerVirtualGuest_BlockDeviceTemplateGroup(t *testing.T) {
 }
 
 func TestAccSoftLayerVirtualGuest_postInstallScriptUri(t *testing.T) {
-	var guest datatypes.SoftLayer_Virtual_Guest
+	var guest datatypes.Virtual_Guest
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -161,7 +161,7 @@ func testAccCheckSoftLayerVirtualGuestDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccCheckSoftLayerVirtualGuestExists(n string, guest *datatypes.SoftLayer_Virtual_Guest) resource.TestCheckFunc {
+func testAccCheckSoftLayerVirtualGuestExists(n string, guest *datatypes.Virtual_Guest) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {

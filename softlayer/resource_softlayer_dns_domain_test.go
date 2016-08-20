@@ -110,7 +110,7 @@ func testAccCheckSoftLayerDnsDomainRecordDomainId(n string, dns_domain *datatype
 		}
 
 		id, _ := strconv.Atoi(rs.Primary.Attributes["domain_id"])
-		if dns_domain.Id != id {
+		if *dns_domain.Id != id {
 			return fmt.Errorf("Dns domain id (%d) and Dns domain record domain id (%d) should be equal", *dns_domain.Id, id)
 		}
 
@@ -210,7 +210,7 @@ func testAccCheckSoftLayerDnsDomainRecordsExists(dn string, expected_record_coun
 			return err
 		}
 
-		if *found_domain.ResourceRecordCount != expected_record_count {
+		if *found_domain.ResourceRecordCount != uint(expected_record_count) {
 			return fmt.Errorf("Wrong record count:%d, expected:%d", *found_domain.ResourceRecordCount, expected_record_count)
 		}
 

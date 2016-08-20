@@ -55,7 +55,7 @@ func resourceSoftLayerObjectStorageAccountCreate(d *schema.ResourceData, meta in
 		// Order the account
 		productOrderService := services.GetProductOrderService(sess)
 
-		receipt, err := productOrderService.PlaceOrder(datatypes.Container_Product_Order{
+		receipt, err := productOrderService.PlaceOrder(&datatypes.Container_Product_Order{
 			Quantity:  sl.Int(1),
 			PackageId: sl.Int(0),
 			Prices: []datatypes.Product_Item_Price{
@@ -96,7 +96,7 @@ func resourceSoftLayerObjectStorageAccountCreate(d *schema.ResourceData, meta in
 
 func WaitForOrderCompletion(receipt *datatypes.Container_Product_Order_Receipt, meta interface{}) (datatypes.Billing_Order_Item, error) {
 	log.Printf("Waiting for billing order %d to have zero active transactions", receipt.OrderId)
-	var billingOrderItem datatypes.Billing_Order_Item
+	var billingOrderItem *datatypes.Billing_Order_Item
 
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"", "in progress"},
@@ -123,7 +123,7 @@ func WaitForOrderCompletion(receipt *datatypes.Container_Product_Order_Receipt, 
 	}
 
 	_, err := stateConf.WaitForState()
-	return billingOrderItem, err
+	return *billingOrderItem, err
 }
 
 func resourceSoftLayerObjectStorageAccountRead(d *schema.ResourceData, meta interface{}) error {

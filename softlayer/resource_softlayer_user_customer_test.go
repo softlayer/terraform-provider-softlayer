@@ -9,8 +9,9 @@ import (
 	"encoding/hex"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
-	"github.ibm.com/riethm/gopherlayer/datatypes"
-	"github.ibm.com/riethm/gopherlayer/services"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/session"
 	"regexp"
 )
 
@@ -103,7 +104,7 @@ func TestAccSoftLayerUserCustomer_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerUserCustomerDestroy(s *terraform.State) error {
-	client := services.GetUserCustomerService(testAccProvider.Meta().(*Client).session)
+	client := services.GetUserCustomerService(testAccProvider.Meta().(*session.Session))
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_user" {
@@ -138,7 +139,7 @@ func testAccCheckSoftLayerUserCustomerExists(n string, user *datatypes.User_Cust
 
 		userID, _ := strconv.Atoi(rs.Primary.ID)
 
-		client := services.GetUserCustomerService(testAccProvider.Meta().(*Client).session)
+		client := services.GetUserCustomerService(testAccProvider.Meta().(*session.Session))
 		foundUser, err := client.Id(userID).GetObject()
 
 		if err != nil {

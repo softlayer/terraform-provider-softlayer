@@ -9,6 +9,7 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/datatypes"
 	"github.ibm.com/riethm/gopherlayer.git/services"
 	"github.ibm.com/riethm/gopherlayer.git/session"
+	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
 func resourceSoftLayerDnsDomainResourceRecord() *schema.Resource {
@@ -113,27 +114,27 @@ func resourceSoftLayerDnsDomainResourceRecordCreate(d *schema.ResourceData, meta
 	service := services.GetDnsDomainResourceRecordService(sess)
 
 	opts := datatypes.Dns_Domain_ResourceRecord{
-		Data:              &d.Get("record_data").(string),
-		DomainId:          &d.Get("domain_id").(int),
-		Expire:            &d.Get("expire").(int),
-		Host:              &d.Get("host").(string),
-		Minimum:           &d.Get("minimum_ttl").(int),
-		MxPriority:        &d.Get("mx_priority").(int),
-		Refresh:           &d.Get("refresh").(int),
-		ResponsiblePerson: &d.Get("contact_email").(string),
-		Retry:             &d.Get("retry").(int),
-		Ttl:               &d.Get("ttl").(int),
-		Type:              &d.Get("record_type").(string),
+		Data:              sl.String(d.Get("record_data").(string)),
+		DomainId:          sl.Int(d.Get("domain_id").(int)),
+		Expire:            sl.Int(d.Get("expire").(int)),
+		Host:              sl.String(d.Get("host").(string)),
+		Minimum:           sl.Int(d.Get("minimum_ttl").(int)),
+		MxPriority:        sl.Int(d.Get("mx_priority").(int)),
+		Refresh:           sl.Int(d.Get("refresh").(int)),
+		ResponsiblePerson: sl.String(d.Get("contact_email").(string)),
+		Retry:             sl.Int(d.Get("retry").(int)),
+		Ttl:               sl.Int(d.Get("ttl").(int)),
+		Type:              sl.String(d.Get("record_type").(string)),
 	}
 
 	if *opts.Type == "srv" {
 		opts_srv := datatypes.Dns_Domain_ResourceRecord_SrvType{
 			Dns_Domain_ResourceRecord: opts,
-			Service:                   &d.Get("service").(string),
-			Protocol:                  &d.Get("protocol").(string),
-			Priority:                  &d.Get("priority").(int),
-			Weight:                    &d.Get("weight").(int),
-			Port:                      &d.Get("port").(int),
+			Service:                   sl.String(d.Get("service").(string)),
+			Protocol:                  sl.String(d.Get("protocol").(string)),
+			Priority:                  sl.Int(d.Get("priority").(int)),
+			Weight:                    sl.Int(d.Get("weight").(int)),
+			Port:                      sl.Int(d.Get("port").(int)),
 		}
 
 		service_srv := services.GetDnsDomainResourceRecordSrvTypeService(sess)
@@ -189,7 +190,7 @@ func resourceSoftLayerDnsDomainResourceRecordRead(d *schema.ResourceData, meta i
 	d.Set("ttl", *result.Ttl)
 	d.Set("type", *result.Type)
 
-	if result.Type == "srv" {
+	if *result.Type == "srv" {
 		service := services.GetDnsDomainResourceRecordSrvTypeService(sess)
 		result, err := service.Id(id).GetObject()
 		if err != nil {
@@ -220,55 +221,55 @@ func resourceSoftLayerDnsDomainResourceRecordUpdate(d *schema.ResourceData, meta
 		}
 
 		if data, ok := d.GetOk("record_data"); ok {
-			record.Data = &data.(string)
+			record.Data = sl.String(data.(string))
 		}
 		if domain_id, ok := d.GetOk("domain_id"); ok {
-			record.DomainId = &domain_id.(int)
+			record.DomainId = sl.Int(domain_id.(int))
 		}
 		if expire, ok := d.GetOk("expire"); ok {
-			record.Expire = &expire.(int)
+			record.Expire = sl.Int(expire.(int))
 		}
 		if host, ok := d.GetOk("host"); ok {
-			record.Host = &host.(string)
+			record.Host = sl.String(host.(string))
 		}
 		if minimum_ttl, ok := d.GetOk("minimum_ttl"); ok {
-			record.Minimum = &minimum_ttl.(int)
+			record.Minimum = sl.Int(minimum_ttl.(int))
 		}
 		if mx_priority, ok := d.GetOk("mx_priority"); ok {
-			record.MxPriority = &mx_priority.(int)
+			record.MxPriority = sl.Int(mx_priority.(int))
 		}
 		if refresh, ok := d.GetOk("refresh"); ok {
-			record.Refresh = &refresh.(int)
+			record.Refresh = sl.Int(refresh.(int))
 		}
 		if contact_email, ok := d.GetOk("contact_email"); ok {
-			record.ResponsiblePerson = &contact_email.(string)
+			record.ResponsiblePerson = sl.String(contact_email.(string))
 		}
 		if retry, ok := d.GetOk("retry"); ok {
-			record.Retry = &retry.(int)
+			record.Retry = sl.Int(retry.(int))
 		}
 		if ttl, ok := d.GetOk("ttl"); ok {
-			record.Ttl = &ttl.(int)
+			record.Ttl = sl.Int(ttl.(int))
 		}
 		if record_type, ok := d.GetOk("record_type"); ok {
-			record.Type = &record_type.(string)
+			record.Type = sl.String(record_type.(string))
 		}
 		if service, ok := d.GetOk("service"); ok {
-			record.Service = &service.(string)
+			record.Service = sl.String(service.(string))
 		}
 		if priority, ok := d.GetOk("priority"); ok {
-			record.Priority = &priority.(int)
+			record.Priority = sl.Int(priority.(int))
 		}
 		if protocol, ok := d.GetOk("protocol"); ok {
-			record.Protocol = &protocol.(string)
+			record.Protocol = sl.String(protocol.(string))
 		}
 		if port, ok := d.GetOk("port"); ok {
-			record.Port = &port.(int)
+			record.Port = sl.Int(port.(int))
 		}
 		if weight, ok := d.GetOk("weight"); ok {
-			record.Weight = &weight.(int)
+			record.Weight = sl.Int(weight.(int))
 		}
 
-		_, err = service.Id(recordId).EditObject(record)
+		_, err = service.Id(recordId).EditObject(&record)
 		if err != nil {
 			return fmt.Errorf("Error editing DNS Resoource SRV Record: %s", err)
 		}
@@ -280,40 +281,40 @@ func resourceSoftLayerDnsDomainResourceRecordUpdate(d *schema.ResourceData, meta
 		}
 
 		if data, ok := d.GetOk("record_data"); ok {
-			record.Data = &data.(string)
+			record.Data = sl.String(data.(string))
 		}
 		if domain_id, ok := d.GetOk("domain_id"); ok {
-			record.DomainId = &domain_id.(int)
+			record.DomainId = sl.Int(domain_id.(int))
 		}
 		if expire, ok := d.GetOk("expire"); ok {
-			record.Expire = &expire.(int)
+			record.Expire = sl.Int(expire.(int))
 		}
 		if host, ok := d.GetOk("host"); ok {
-			record.Host = &host.(string)
+			record.Host = sl.String(host.(string))
 		}
 		if minimum_ttl, ok := d.GetOk("minimum_ttl"); ok {
-			record.Minimum = &minimum_ttl.(int)
+			record.Minimum = sl.Int(minimum_ttl.(int))
 		}
 		if mx_priority, ok := d.GetOk("mx_priority"); ok {
-			record.MxPriority = &mx_priority.(int)
+			record.MxPriority = sl.Int(mx_priority.(int))
 		}
 		if refresh, ok := d.GetOk("refresh"); ok {
-			record.Refresh = &refresh.(int)
+			record.Refresh = sl.Int(refresh.(int))
 		}
 		if contact_email, ok := d.GetOk("contact_email"); ok {
-			record.ResponsiblePerson = &contact_email.(string)
+			record.ResponsiblePerson = sl.String(contact_email.(string))
 		}
 		if retry, ok := d.GetOk("retry"); ok {
-			record.Retry = &retry.(int)
+			record.Retry = sl.Int(retry.(int))
 		}
 		if ttl, ok := d.GetOk("ttl"); ok {
-			record.Ttl = &ttl.(int)
+			record.Ttl = sl.Int(ttl.(int))
 		}
 		if record_type, ok := d.GetOk("record_type"); ok {
-			record.Type = &record_type.(string)
+			record.Type = sl.String(record_type.(string))
 		}
 
-		_, err = service.Id(recordId).EditObject(record)
+		_, err = service.Id(recordId).EditObject(&record)
 		if err != nil {
 			return fmt.Errorf("Error editing DNS Resoource Record: %s", err)
 		}
@@ -355,5 +356,5 @@ func resourceSoftLayerDnsDomainResourceRecordExists(d *schema.ResourceData, meta
 
 	record, err := service.Id(id).GetObject()
 
-	return record.Id == id && err == nil, nil
+	return err == nil && *record.Id == id, nil
 }

@@ -70,12 +70,12 @@ func testAccCheckSoftLayerProvisioningHookDestroy(s *terraform.State) error {
 func testAccCheckSoftLayerProvisioningHookAttributes(hook *datatypes.Provisioning_Hook) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 
-		if hook.Name != "test-sl-hook" {
-			return fmt.Errorf("Bad name: %s", hook.Name)
+		if *hook.Name != "test-sl-hook" {
+			return fmt.Errorf("Bad name: %s", *hook.Name)
 		}
 
-		if hook.Uri != "http://www.weather.com" {
-			return fmt.Errorf("Bad uri: %s", hook.Uri)
+		if *hook.Uri != "http://www.weather.com" {
+			return fmt.Errorf("Bad uri: %s", *hook.Uri)
 		}
 
 		return nil
@@ -103,7 +103,7 @@ func testAccCheckSoftLayerProvisioningHookExists(n string, hook *datatypes.Provi
 			return err
 		}
 
-		if strconv.Itoa(int(foundHook.Id)) != rs.Primary.ID {
+		if strconv.Itoa(int(*foundHook.Id)) != rs.Primary.ID {
 			return fmt.Errorf("Record not found")
 		}
 

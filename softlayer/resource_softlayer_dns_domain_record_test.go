@@ -91,7 +91,7 @@ func testAccCheckSoftLayerDnsDomainRecordExists(n string, dns_domain_record *dat
 			return err
 		}
 
-		if strconv.Itoa(int(found_domain_record.Id)) != rs.Primary.ID {
+		if strconv.Itoa(int(*found_domain_record.Id)) != rs.Primary.ID {
 			return fmt.Errorf("Record not found")
 		}
 

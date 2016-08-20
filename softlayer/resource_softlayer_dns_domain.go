@@ -9,6 +9,7 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/datatypes"
 	"github.ibm.com/riethm/gopherlayer.git/services"
 	"github.ibm.com/riethm/gopherlayer.git/session"
+	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
 func resourceSoftLayerDnsDomain() *schema.Resource {
@@ -142,7 +143,7 @@ func resourceSoftLayerDnsDomainCreate(d *schema.ResourceData, meta interface{}) 
 
 	// prepare creation parameters
 	opts := datatypes.Dns_Domain{
-		Name: &d.Get("name").(string),
+		Name: sl.String(d.Get("name").(string)),
 	}
 
 	if records, ok := d.GetOk("records"); ok {
@@ -170,17 +171,17 @@ func prepareRecords(raw_records []interface{}) []datatypes.Dns_Domain_ResourceRe
 		var sl_record datatypes.Dns_Domain_ResourceRecord
 		record := raw_record.(map[string]interface{})
 
-		sl_record.Data = &record["record_data"].(string)
-		sl_record.DomainId = &record["domain_id"].(int)
-		sl_record.Expire = &record["expire"].(int)
-		sl_record.Host = &record["host"].(string)
-		sl_record.Minimum = &record["minimum_ttl"].(int)
-		sl_record.MxPriority = &record["mx_priority"].(int)
-		sl_record.Refresh = &record["refresh"].(int)
-		sl_record.ResponsiblePerson = &record["contact_email"].(string)
-		sl_record.Retry = &record["retry"].(int)
-		sl_record.Ttl = &record["ttl"].(int)
-		sl_record.Type = &record["record_type"].(string)
+		sl_record.Data = sl.String(record["record_data"].(string))
+		sl_record.DomainId = sl.Int(record["domain_id"].(int))
+		sl_record.Expire = sl.Int(record["expire"].(int))
+		sl_record.Host = sl.String(record["host"].(string))
+		sl_record.Minimum = sl.Int(record["minimum_ttl"].(int))
+		sl_record.MxPriority = sl.Int(record["mx_priority"].(int))
+		sl_record.Refresh = sl.Int(record["refresh"].(int))
+		sl_record.ResponsiblePerson = sl.String(record["contact_email"].(string))
+		sl_record.Retry = sl.Int(record["retry"].(int))
+		sl_record.Ttl = sl.Int(record["ttl"].(int))
+		sl_record.Type = sl.String(record["record_type"].(string))
 
 		sl_records = append(sl_records, sl_record)
 	}
@@ -267,5 +268,5 @@ func resourceSoftLayerDnsDomainExists(d *schema.ResourceData, meta interface{}) 
 	}
 
 	result, err := service.Id(dnsId).GetObject()
-	return result.Id == dnsId && err == nil, nil
+	return err == nil && *result.Id == dnsId, nil
 }

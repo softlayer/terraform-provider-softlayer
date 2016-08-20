@@ -10,6 +10,7 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/datatypes"
 	"github.ibm.com/riethm/gopherlayer.git/session"
 	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
 func resourceSoftLayerSecurityCertificate() *schema.Resource {
@@ -96,9 +97,9 @@ func resourceSoftLayerSecurityCertificateCreate(d *schema.ResourceData, meta int
 	service := services.GetSecurityCertificateService(sess)
 
 	template := datatypes.Security_Certificate{
-		Certificate:             &d.Get("certificate").(string),
-		IntermediateCertificate: &d.Get("intermediate_certificate").(string),
-		PrivateKey:              &d.Get("private_key").(string),
+		Certificate:             sl.String(d.Get("certificate").(string)),
+		IntermediateCertificate: sl.String(d.Get("intermediate_certificate").(string)),
+		PrivateKey:              sl.String(d.Get("private_key").(string)),
 	}
 
 	log.Printf("[INFO] Creating Security Certificate")
@@ -173,7 +174,7 @@ func resourceSoftLayerSecurityCertificateExists(d *schema.ResourceData, meta int
 		return false, fmt.Errorf("Error fetching Security Cerfiticate: %s", err)
 	}
 
-	return cert.Id == id && err == nil, nil
+	return err == nil && *cert.Id == id, nil
 }
 
 func normalizeCert(cert interface{}) string {

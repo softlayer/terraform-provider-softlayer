@@ -10,6 +10,7 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/datatypes"
 	"github.ibm.com/riethm/gopherlayer.git/services"
 	"github.ibm.com/riethm/gopherlayer.git/session"
+	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
 func resourceSoftLayerSSHKey() *schema.Resource {
@@ -58,12 +59,12 @@ func resourceSoftLayerSSHKeyCreate(d *schema.ResourceData, meta interface{}) err
 
 	// Build up our creation options
 	opts := datatypes.Security_Ssh_Key{
-		Label: &d.Get("name").(string),
-		Key:   &d.Get("public_key").(string),
+		Label: sl.String(d.Get("name").(string)),
+		Key:   sl.String(d.Get("public_key").(string)),
 	}
 
 	if notes, ok := d.GetOk("notes"); ok {
-		opts.Notes = &(notes.(string)[:])
+		opts.Notes = sl.String(notes.(string))
 	}
 
 	res, err := service.CreateObject(&opts)
@@ -116,11 +117,11 @@ func resourceSoftLayerSSHKeyUpdate(d *schema.ResourceData, meta interface{}) err
 	}
 
 	if d.HasChange("name") {
-		key.Label = &d.Get("name").(string)
+		key.Label = sl.String(d.Get("name").(string))
 	}
 
 	if d.HasChange("notes") {
-		key.Notes = &d.Get("notes").(string)
+		key.Notes = sl.String(d.Get("notes").(string))
 	}
 
 	_, err = service.Id(keyId).EditObject(&key)
@@ -159,5 +160,5 @@ func resourceSoftLayerSSHKeyExists(d *schema.ResourceData, meta interface{}) (bo
 	}
 
 	result, err := service.Id(keyId).GetObject()
-	return result.Id == keyId && err == nil, nil
+	return err == nil && *result.Id == keyId, nil
 }

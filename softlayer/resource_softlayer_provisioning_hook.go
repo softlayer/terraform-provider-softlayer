@@ -10,6 +10,7 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/datatypes"
 	"github.ibm.com/riethm/gopherlayer.git/services"
 	"github.ibm.com/riethm/gopherlayer.git/session"
+	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
 func resourceSoftLayerProvisioningHook() *schema.Resource {
@@ -45,8 +46,8 @@ func resourceSoftLayerProvisioningHookCreate(d *schema.ResourceData, meta interf
 	service := services.GetProvisioningHookService(sess)
 
 	opts := datatypes.Provisioning_Hook{
-		Name: &d.Get("name").(string),
-		Uri:  &d.Get("uri").(string),
+		Name: sl.String(d.Get("name").(string)),
+		Uri:  sl.String(d.Get("uri").(string)),
 	}
 
 	hook, err := service.CreateObject(&opts)
@@ -54,8 +55,8 @@ func resourceSoftLayerProvisioningHookCreate(d *schema.ResourceData, meta interf
 		return fmt.Errorf("Error creating Provisioning Hook: %s", err)
 	}
 
-	d.SetId(strconv.Itoa(hook.Id))
-	log.Printf("[INFO] Provisioning Hook ID: %d", hook.Id)
+	d.SetId(strconv.Itoa(*hook.Id))
+	log.Printf("[INFO] Provisioning Hook ID: %d", *hook.Id)
 
 	return resourceSoftLayerProvisioningHookRead(d, meta)
 }
@@ -76,10 +77,10 @@ func resourceSoftLayerProvisioningHookRead(d *schema.ResourceData, meta interfac
 		return fmt.Errorf("Error retrieving Provisioning Hook: %s", err)
 	}
 
-	d.Set("id", hook.Id)
-	d.Set("name", hook.Name)
-	d.Set("typeId", hook.TypeId)
-	d.Set("uri", hook.Uri)
+	d.Set("id", *hook.Id)
+	d.Set("name", *hook.Name)
+	d.Set("typeId", *hook.TypeId)
+	d.Set("uri", *hook.Uri)
 
 	return nil
 }
@@ -93,11 +94,11 @@ func resourceSoftLayerProvisioningHookUpdate(d *schema.ResourceData, meta interf
 	opts := datatypes.Provisioning_Hook{}
 
 	if d.HasChange("name") {
-		opts.Name = &d.Get("name").(string)
+		opts.Name = sl.String(d.Get("name").(string))
 	}
 
 	if d.HasChange("uri") {
-		opts.Uri = &d.Get("uri").(string)
+		opts.Uri = sl.String(d.Get("uri").(string))
 	}
 
 	_, err := service.Id(hookId).EditObject(&opts)
@@ -132,5 +133,5 @@ func resourceSoftLayerProvisioningHookExists(d *schema.ResourceData, meta interf
 	}
 
 	result, err := service.Id(hookId).GetObject()
-	return result.Id == hookId && err == nil, nil
+	return err == nil && *result.Id == hookId, nil
 }
