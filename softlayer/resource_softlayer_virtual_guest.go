@@ -410,9 +410,9 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 	}
 
 	// Upgrade "cpu", "ram" and "nic_speed" if provided and changed
-	upgradeOptions := map[string]string{}
+	upgradeOptions := map[string]float64{}
 	if d.HasChange("cpu") {
-		upgradeOptions[product.CPUCategoryCode] = string(d.Get("cpu").(int))
+		upgradeOptions[product.CPUCategoryCode] = float64(d.Get("cpu").(int))
 	}
 
 	if d.HasChange("ram") {
@@ -420,11 +420,11 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 
 		// Convert memory to GB, as softlayer only allows to upgrade RAM in Gigs
 		// Must be already validated at this step
-		upgradeOptions[product.MemoryCategoryCode] = string(int(memoryInMB / 1024))
+		upgradeOptions[product.MemoryCategoryCode] = float64(int(memoryInMB / 1024))
 	}
 
 	if d.HasChange("public_network_speed") {
-		upgradeOptions[product.NICSpeedCategoryCode] = string(d.Get("public_network_speed").(int))
+		upgradeOptions[product.NICSpeedCategoryCode] = float64(d.Get("public_network_speed").(int))
 	}
 
 	_, err = virtual.UpgradeVirtualGuest(sess, id, upgradeOptions)
