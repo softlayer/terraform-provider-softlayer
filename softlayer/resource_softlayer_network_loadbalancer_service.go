@@ -1,14 +1,19 @@
 package softlayer
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
-	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
-	"github.com/TheWeatherCompany/softlayer-go/services"
-	"github.com/hashicorp/terraform/helper/schema"
 	"strconv"
 	"strings"
+
+	"github.com/hashicorp/terraform/helper/schema"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/session"
+	"github.ibm.com/riethm/gopherlayer.git/sl"
+	"github.ibm.com/riethm/gopherlayer.git/helpers/network"
 )
 
 func resourceSoftLayerNetworkLoadBalancerService() *schema.Resource {
@@ -69,10 +74,10 @@ func resourceSoftLayerNetworkLoadBalancerService() *schema.Resource {
 	}
 }
 
-func parseVipUniqueId(vipUniqueId string) (vipId string, nacdId int, err error) {
-	nacdId, err = strconv.Atoi(strings.Split(vipUniqueId, services.ID_DELIMITER)[1])
-	vipId = strings.Split(vipUniqueId, services.ID_DELIMITER)[0]
-
+func parseVipUniqueId(vipUniqueId string) (string, int, error) {
+	parts := strings.Split(vipUniqueId, ";")
+	vipId := parts[0]
+	nacdId, err := strconv.Atoi(parts[1])
 	if err != nil {
 		return "", -1, fmt.Errorf("Error parsing vip id: %s", err)
 	}
@@ -81,170 +86,164 @@ func parseVipUniqueId(vipUniqueId string) (vipId string, nacdId int, err error) 
 }
 
 func resourceSoftLayerNetworkLoadBalancerServiceCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).networkApplicationDeliveryControllerService
-
-	if client == nil {
-		return fmt.Errorf("The client is nil.")
-	}
+	sess := meta.(*session.Session)
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	vipUniqueId := d.Get("vip_id").(string)
 
-	vipId, nacdId, err := parseVipUniqueId(vipUniqueId)
+	vipId, nadcId, err := parseVipUniqueId(vipUniqueId)
 
 	if err != nil {
 		return fmt.Errorf("Error parsing vip id: %s", err)
 	}
 
-	template := []datatypes.SoftLayer_Network_LoadBalancer_Service_Template{datatypes.SoftLayer_Network_LoadBalancer_Service_Template{
-		Name:                 d.Get("name").(string),
-		DestinationIpAddress: d.Get("destination_ip_address").(string),
-		DestinationPort:      d.Get("destination_port").(int),
-		Weight:               d.Get("weight").(int),
-		HealthCheck:          d.Get("health_check").(string),
-		ConnectionLimit:      d.Get("connection_limit").(int),
-	}}
+	lb_services := []datatypes.Network_LoadBalancer_Service{
+		{
+			Name:                 sl.String(d.Get("name").(string)),
+			DestinationIpAddress: sl.String(d.Get("destination_ip_address").(string)),
+			DestinationPort:      sl.Int(d.Get("destination_port").(int)),
+			Weight:               sl.Int(d.Get("weight").(int)),
+			HealthCheck:          sl.String(d.Get("health_check").(string)),
+			ConnectionLimit:      sl.Int(d.Get("connection_limit").(int)),
+		},
+	}
 
-	log.Printf("[INFO] Creating LoadBalancer Service %s", template[0].Name)
+	lb_vip := &datatypes.Network_LoadBalancer_VirtualIpAddress{
+		Name:     sl.String(vipId),
+		Services: lb_services,
+	}
 
-	successFlag, err := client.CreateLoadBalancerService(vipId, nacdId, template)
+	log.Printf("[INFO] Creating LoadBalancer Service %s", lb_services[0].Name)
 
+	// TODO: This API call might return an error until the LB VIP is ready to be updated with a service.
+	// In that case, would need to inspect the api return code and use StateChangeConf to retry or a new helper.
+	// See CreateLoadBalancerService in softlayer-go as a reference.
+	successFlag, err := service.Id(nadcId).UpdateLiveLoadBalancer(lb_vip)
 	if err != nil {
 		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
 	}
 
 	if !successFlag {
-		return fmt.Errorf("Error creating LoadBalancer Service")
+		return errors.New("Error creating LoadBalancer Service")
 	}
 
 	return resourceSoftLayerNetworkLoadBalancerServiceRead(d, meta)
 }
 
 func resourceSoftLayerNetworkLoadBalancerServiceRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).networkApplicationDeliveryControllerService
-	if client == nil {
-		return fmt.Errorf("The client is nil.")
-	}
+	sess := meta.(*session.Session)
 
 	vipUniqueId := d.Get("vip_id").(string)
 
-	vipId, nadcId, err := parseVipUniqueId(vipUniqueId)
-
+	vipName, nadcId, err := parseVipUniqueId(vipUniqueId)
 	if err != nil {
 		return fmt.Errorf("Error parsing vip id: %s", err)
 	}
 
-	service, err := client.GetLoadBalancerService(nadcId, vipId, d.Get("name").(string))
-
+	lbService, err := network.GetNadcLbVipServiceByName(sess, nadcId, vipName, d.Get("name").(string))
 	if err != nil {
-		return fmt.Errorf("Unable to get LoadBalancerService: %s", err)
+		return fmt.Errorf("Unable to get load balancer service: %s", err)
 	}
 
-	d.SetId(service.Name)
-	d.Set("name", service.Name)
-	d.Set("destination_ip_address", service.DestinationIpAddress)
-	d.Set("destination_port", service.DestinationPort)
-	d.Set("weight", service.Weight)
-	d.Set("health_check", service.HealthCheck)
-	d.Set("connection_limit", service.ConnectionLimit)
+	d.SetId(*lbService.Name)
+	d.Set("name", *lbService.Name)
+	d.Set("destination_ip_address", *lbService.DestinationIpAddress)
+	d.Set("destination_port", *lbService.DestinationPort)
+	d.Set("weight", *lbService.Weight)
+	d.Set("health_check", *lbService.HealthCheck)
+	d.Set("connection_limit", *lbService.ConnectionLimit)
 
 	return nil
 }
 
 func resourceSoftLayerNetworkLoadBalancerServiceUpdate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).networkApplicationDeliveryControllerService
-
-	if client == nil {
-		return fmt.Errorf("The client was nil.")
-	}
+	sess := meta.(*session.Session)
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	vipUniqueId := d.Get("vip_id").(string)
-
-	vipId, nadcId, err := parseVipUniqueId(vipUniqueId)
-
+	vipName, nadcId, err := parseVipUniqueId(vipUniqueId)
 	if err != nil {
 		return fmt.Errorf("Error parsing vip id: %s", err)
 	}
 
-	_, err = client.GetLoadBalancerService(nadcId, vipId, d.Get("name").(string))
-
+	lbService, err := network.GetNadcLbVipServiceByName(sess, nadcId, vipName, d.Get("name").(string))
 	if err != nil {
-		return fmt.Errorf("Error retrieving LoadBalancer Service: %s", err)
+		return fmt.Errorf("Unable to get load balancer service: %s", err)
 	}
 
-	var serviceTemplate datatypes.SoftLayer_Network_LoadBalancer_Service_Template
+	// copy current service
+	template := datatypes.Network_LoadBalancer_Service(*lbService)
 
 	if data, ok := d.GetOk("name"); ok {
-		serviceTemplate.Name = data.(string)
+		template.Name = sl.String(data.(string))
 	}
 	if data, ok := d.GetOk("destination_ip_address"); ok {
-		serviceTemplate.DestinationIpAddress = data.(string)
+		template.DestinationIpAddress = sl.String(data.(string))
 	}
 	if data, ok := d.GetOk("destination_port"); ok {
-		serviceTemplate.DestinationPort = data.(int)
+		template.DestinationPort = sl.Int(data.(int))
 	}
 	if data, ok := d.GetOk("weight"); ok {
-		serviceTemplate.Weight = data.(int)
+		template.Weight = sl.Int(data.(int))
 	}
 	if data, ok := d.GetOk("health_check"); ok {
-		serviceTemplate.HealthCheck = data.(string)
+		template.HealthCheck = sl.String(data.(string))
 	}
 	if data, ok := d.GetOk("connection_limit"); ok {
-		serviceTemplate.ConnectionLimit = data.(int)
+		template.ConnectionLimit = sl.Int(data.(int))
 	}
 
-	_, err = client.CreateLoadBalancerService(vipId, nadcId, []datatypes.SoftLayer_Network_LoadBalancer_Service_Template{serviceTemplate})
+	// TODO: This API call might return an error until the LB VIP is ready to be updated with a service.
+	// In that case, would need to inspect the api return code and use StateChangeConf to retry or a new helper.
+	// See CreateLoadBalancerService in softlayer-go as a reference.
+	_, err = service.Id(nadcId).UpdateLiveLoadBalancer(&datatypes.Network_LoadBalancer_VirtualIpAddress{
+		Name:     sl.String(vipName),
+		Services: []datatypes.Network_LoadBalancer_Service{template},
+	})
 	if err != nil {
-		return fmt.Errorf("Error editing LoadBalancer Service: %s", err)
+		return fmt.Errorf("Error updating LoadBalancer Service: %s", err)
 	}
 
 	return nil
 }
 
 func resourceSoftLayerNetworkLoadBalancerServiceDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).networkApplicationDeliveryControllerService
-	if client == nil {
-		return fmt.Errorf("The client is nil.")
-	}
-
-	vipUniqueId := d.Get("vip_id").(string)
-
-	vipId, nadcId, err := parseVipUniqueId(vipUniqueId)
-
+	vipName, nadcId, err := parseVipUniqueId(d.Get("vip_id").(string))
 	if err != nil {
 		return fmt.Errorf("Error parsing vip id: %s", err)
 	}
 
-	serviceId := d.Get("name").(string)
+	sess := meta.(*session.Session)
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
+	serviceName := d.Get("name").(string)
 
-	_, err = client.DeleteLoadBalancerService(nadcId, vipId, serviceId)
+	_, err = service.Id(nadcId).DeleteLiveLoadBalancerService(&datatypes.Network_LoadBalancer_Service{
+		Name: sl.String(serviceName),
+		Vip: &datatypes.Network_LoadBalancer_VirtualIpAddress{
+			Name: sl.String(vipName),
+		},
+	})
+
 	if err != nil {
-		return fmt.Errorf("Error deleting Load Balancer Service %s: %s", serviceId, err)
+		return fmt.Errorf("Error deleting Load Balancer Service %s: %s", serviceName, err)
 	}
 
 	return nil
 }
 
 func resourceSoftLayerNetworkLoadBalancerServiceExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	client := meta.(*Client).networkApplicationDeliveryControllerService
-	if client == nil {
-		return false, fmt.Errorf("The client is nil.")
-	}
-
 	vipUniqueId := d.Get("vip_id").(string)
-
-	vipId, nadcId, err := parseVipUniqueId(vipUniqueId)
-
+	vipName, nadcId, err := parseVipUniqueId(vipUniqueId)
 	if err != nil {
 		return false, fmt.Errorf("Error parsing vip id: %s", err)
 	}
 
-	serviceId := d.Get("name").(string)
-
-	service, err := client.GetLoadBalancerService(nadcId, vipId, serviceId)
-
+	serviceName := d.Get("name").(string)
+	sess := meta.(*session.Session)
+	lbService, err := network.GetNadcLbVipServiceByName(sess, nadcId, vipName, serviceName)
 	if err != nil {
-		return false, fmt.Errorf("Error fetching Load Balancer Service: %s", err)
+		return false, fmt.Errorf("Unable to get load balancer service: %s", err)
 	}
 
-	return service.Name == serviceId && err == nil, nil
+	return err == nil && *lbService.Name == serviceName , nil
 }
