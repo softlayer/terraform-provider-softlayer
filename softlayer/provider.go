@@ -57,5 +57,5 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		UserName: d.Get("username").(string),
 		APIKey:   d.Get("api_key").(string),
 		Endpoint: d.Get("endpoint_url").(string),
-	}
+	}, nil
 }
