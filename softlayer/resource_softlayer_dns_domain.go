@@ -196,7 +196,10 @@ func resourceSoftLayerDnsDomainRead(d *schema.ResourceData, meta interface{}) er
 	dnsId, _ := strconv.Atoi(d.Id())
 
 	// retrieve remote object state
-	dns_domain, err := service.Id(dnsId).GetObject()
+	dns_domain, err := service.Id(dnsId).Mask(
+		"id,name,serial,updateDate," +
+		"resourceRecords[data,domainId,expire,host,minimum,mxPriority,refresh,retry,ttl,type]",
+	).GetObject()
 	if err != nil {
 		return fmt.Errorf("Error retrieving Dns Domain %d: %s", dnsId, err)
 	}
