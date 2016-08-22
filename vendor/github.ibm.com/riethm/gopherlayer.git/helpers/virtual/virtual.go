@@ -34,17 +34,24 @@ import (
 func UpgradeVirtualGuest(
 	sess *session.Session,
 	id int,
-	options map[string]string,
+	options map[string]float64,
 	when ...time.Time,
 ) (datatypes.Container_Product_Order_Receipt, error) {
 
-	prices, err := product.GetProductPrices(sess, "VIRTUAL_SERVER_INSTANCE", options)
+	pkg, err := product.GetPackageByType(sess, "VIRTUAL_SERVER_INSTANCE")
 	if err != nil {
 		return datatypes.Container_Product_Order_Receipt{}, err
 	}
 
+	productItems, err := product.GetPackageProducts(sess, *pkg.Id)
+	if err != nil {
+		return datatypes.Container_Product_Order_Receipt{}, err
+	}
+
+	prices := product.SelectProductPricesByCategory(productItems, options)
+
 	upgradeTime := time.Now().UTC().Format(time.RFC3339)
-	if len(when) > 0  {
+	if len(when) > 0 {
 		upgradeTime = when[0].UTC().Format(time.RFC3339)
 	}
 
