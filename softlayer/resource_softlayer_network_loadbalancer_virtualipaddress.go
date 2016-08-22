@@ -4,13 +4,9 @@ import (
 	"fmt"
 	"log"
 
-	"bytes"
-
-	"strconv"
-
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.ibm.com/riethm/gopherlayer.git/datatypes"
-	"github.ibm.com/riethm/gopherlayer.git/filter"
+	"github.ibm.com/riethm/gopherlayer.git/helpers/network"
 	"github.ibm.com/riethm/gopherlayer.git/services"
 	"github.ibm.com/riethm/gopherlayer.git/session"
 	"github.ibm.com/riethm/gopherlayer.git/sl"
@@ -118,20 +114,11 @@ func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressRead(d *schema.Resource
 	vipName := d.Get("name").(string)
 
 	sess := meta.(*session.Session)
-	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
-	vips, err := service.
-		Id(nadcId).
-		Filter(filter.Path("name").Eq(vipName).Build()).
-		GetLoadBalancers()
+	vip, err := network.GetNadcLbVipByName(sess, nadcId, vipName)
 	if err != nil {
-		return fmt.Errorf("Error getting Virtual Ip Address: %s", err)
+		return fmt.Errorf("softlayer_lb_vpx : while looking up a virtual ip address : %s", err)
 	}
-
-	if len(vips) == 0 {
-		return fmt.Errorf("Could not find any VIPs for NADC %d matching name %s", nadcId, vipName)
-	}
-	vip := vips[0]
 
 	d.SetId(fmt.Sprintf("%s;%d", *vip.Name, nadcId))
 	d.Set("nad_controller_id", nadcId)
@@ -205,23 +192,11 @@ func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressDelete(d *schema.Resour
 
 func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	sess := meta.(*session.Session)
-	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	vipName := d.Get("name").(string)
 	nadcId := d.Get("nad_controller_id").(int)
 
-	vips, err := service.
-		Id(nadcId).
-		Filter(filter.Path("name").Eq(vipName).Build()).
-		GetLoadBalancers()
-	if err != nil {
-		return false, fmt.Errorf("Error fetching Virtual Ip Address: %s", err)
-	}
+	vip, err := network.GetNadcLbVipByName(sess, nadcId, vipName)
 
-	if len(vips) == 0 {
-		return false, fmt.Errorf("Could not find any VIPs for NADC %d matching name %s", nadcId, vipName)
-	}
-	vip := vips[0]
-
-	return *vip.Name == vipName && err == nil, nil
+	return err == nil && *vip.Name == vipName, nil
 }
