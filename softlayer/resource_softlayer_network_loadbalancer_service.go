@@ -13,11 +13,11 @@ import (
 
 func resourceSoftLayerNetworkLoadBalancerService() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerNetworkLoadBalancerServiceCreate,
-		Read:   resourceSoftLayerNetworkLoadBalancerServiceRead,
-		Update: resourceSoftLayerNetworkLoadBalancerServiceUpdate,
-		Delete: resourceSoftLayerNetworkLoadBalancerServiceDelete,
-		Exists: resourceSoftLayerNetworkLoadBalancerServiceExists,
+		Create:   resourceSoftLayerNetworkLoadBalancerServiceCreate,
+		Read:     resourceSoftLayerNetworkLoadBalancerServiceRead,
+		Update:   resourceSoftLayerNetworkLoadBalancerServiceUpdate,
+		Delete:   resourceSoftLayerNetworkLoadBalancerServiceDelete,
+		Exists:   resourceSoftLayerNetworkLoadBalancerServiceExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
