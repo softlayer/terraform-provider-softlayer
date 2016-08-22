@@ -1,6 +1,8 @@
 package softlayer
 
 import (
+	"os"
+
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 	"github.ibm.com/riethm/gopherlayer.git/session"
@@ -53,9 +55,15 @@ func Provider() terraform.ResourceProvider {
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	return &session.Session{
+	sess := session.Session{
 		UserName: d.Get("username").(string),
 		APIKey:   d.Get("api_key").(string),
 		Endpoint: d.Get("endpoint_url").(string),
-	}, nil
+	}
+
+	if os.Getenv("TF_LOG") != "" {
+		sess.Debug = true
+	}
+
+	return &sess, nil
 }
