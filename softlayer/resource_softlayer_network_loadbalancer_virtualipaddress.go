@@ -133,12 +133,7 @@ func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressRead(d *schema.Resource
 	}
 	vip := vips[0]
 
-	var vipId bytes.Buffer
-	vipId.WriteString(*vip.Name)
-	vipId.WriteString(";")
-	vipId.WriteString(strconv.Itoa(nadcId))
-
-	d.SetId(vipId.String())
+	d.SetId(fmt.Sprintf("%s;%d", *vip.Name, nadcId))
 	d.Set("nad_controller_id", nadcId)
 	d.Set("load_balancing_method", *vip.LoadBalancingMethod)
 	d.Set("load_balancing_method_name", *vip.LoadBalancingMethodFullName)
