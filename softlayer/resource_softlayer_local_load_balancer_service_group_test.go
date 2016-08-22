@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestAccSoftLayerLoadBalancerLocalServiceGroup_Basic(t *testing.T) {
+func TestAccSoftLayerLocalLoadBalancerServiceGroup_Basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProviders,
