@@ -195,16 +195,21 @@ func resourceSoftLayerLocalLoadBalancerServiceGroupDelete(d *schema.ResourceData
 
 	vsID, _ := strconv.Atoi(d.Id())
 
-	success, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualServerService(sess).
-		Id(vsID).
-		DeleteObject()
+	// There is a bug in the SoftLayer API metadata.  For some services
+	// DeleteObject actually returns null on a successful delete, which
+	// causes a parse error (since the metadata says that a boolean is
+	// returned). Work around this by calling the API method more
+	// directly, and avoid return value parsing.
+	var pResult *datatypes.Void
+	err := sess.DoRequest(
+		"SoftLayer_Network_Application_Delivery_Controller_LoadBalancer_VirtualServer",
+		"deleteObject",
+		nil,
+		&sl.Options{Id: &vsID},
+		pResult)
 
 	if err != nil {
-		return fmt.Errorf("Error deleting service group: %s", err)
-	}
-
-	if !success {
-		return fmt.Errorf("Error deleting service group")
+		return fmt.Errorf("Error deleting service: %s", err)
 	}
 
 	return nil
