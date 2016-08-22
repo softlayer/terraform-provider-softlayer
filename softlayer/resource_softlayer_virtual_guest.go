@@ -336,7 +336,16 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	if err != nil {
 		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
-	result, err := service.Id(id).GetObject()
+	result, err := service.Id(id).Mask(
+		"hostname,domain,startCpus,maxMemory,dedicatedAccountHostOnlyFlag," +
+		"primaryIpAddress,primaryBackendIpAddress,privateNetworkOnlyFlag," +
+		"hourlyBillingFlag,localDiskFlag," +
+		"userData[value]," +
+		"datacenter[id,name,longName]," +
+		"networkComponents[maxSpeed]," +
+		"primaryNetworkComponent[networkVlan[id],primaryIpAddressRecord[guestNetworkComponentBinding[ipAddressId]]]," +
+		"primaryBackendNetworkComponent[networkVlan[id],primaryIpAddressRecord[guestNetworkComponentBinding[ipAddressId]]]",
+	).GetObject()
 	if err != nil {
 		return fmt.Errorf("Error retrieving virtual guest: %s", err)
 	}
