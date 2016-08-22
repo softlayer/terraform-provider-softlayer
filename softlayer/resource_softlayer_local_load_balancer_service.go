@@ -129,7 +129,7 @@ func resourceSoftLayerLocalLoadBalancerServiceCreate(d *schema.ResourceData, met
 	// Retrieve the newly created object, to obtain its ID
 	svcs, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerServiceGroupService(sess).
 		Id(sgID).
-		Mask("services[id],port,ipAddressId]").
+		Mask("mask[id,port,ipAddressId]").
 		Filter(filter.New(
 			filter.Path("port").Eq(d.Get("port")),
 			filter.Path("ipAddressId").Eq(d.Get("ip_address_id"))).Build()).
