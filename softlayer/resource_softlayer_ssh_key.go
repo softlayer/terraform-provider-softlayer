@@ -15,11 +15,11 @@ import (
 
 func resourceSoftLayerSSHKey() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerSSHKeyCreate,
-		Read:   resourceSoftLayerSSHKeyRead,
-		Update: resourceSoftLayerSSHKeyUpdate,
-		Delete: resourceSoftLayerSSHKeyDelete,
-		Exists: resourceSoftLayerSSHKeyExists,
+		Create:   resourceSoftLayerSSHKeyCreate,
+		Read:     resourceSoftLayerSSHKeyRead,
+		Update:   resourceSoftLayerSSHKeyUpdate,
+		Delete:   resourceSoftLayerSSHKeyDelete,
+		Exists:   resourceSoftLayerSSHKeyExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{

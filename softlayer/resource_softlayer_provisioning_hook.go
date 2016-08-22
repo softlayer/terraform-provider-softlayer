@@ -15,11 +15,11 @@ import (
 
 func resourceSoftLayerProvisioningHook() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerProvisioningHookCreate,
-		Read:   resourceSoftLayerProvisioningHookRead,
-		Update: resourceSoftLayerProvisioningHookUpdate,
-		Delete: resourceSoftLayerProvisioningHookDelete,
-		Exists: resourceSoftLayerProvisioningHookExists,
+		Create:   resourceSoftLayerProvisioningHookCreate,
+		Read:     resourceSoftLayerProvisioningHookRead,
+		Update:   resourceSoftLayerProvisioningHookUpdate,
+		Delete:   resourceSoftLayerProvisioningHookDelete,
+		Exists:   resourceSoftLayerProvisioningHookExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{

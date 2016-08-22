@@ -15,10 +15,10 @@ const (
 
 func resourceSoftLayerNetworkApplicationDeliveryController() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerNetworkApplicationDeliveryControllerCreate,
-		Read:   resourceSoftLayerNetworkApplicationDeliveryControllerRead,
-		Delete: resourceSoftLayerNetworkApplicationDeliveryControllerDelete,
-		Exists: resourceSoftLayerNetworkApplicationDeliveryControllerExists,
+		Create:   resourceSoftLayerNetworkApplicationDeliveryControllerCreate,
+		Read:     resourceSoftLayerNetworkApplicationDeliveryControllerRead,
+		Delete:   resourceSoftLayerNetworkApplicationDeliveryControllerDelete,
+		Exists:   resourceSoftLayerNetworkApplicationDeliveryControllerExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{

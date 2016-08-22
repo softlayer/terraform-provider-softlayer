@@ -10,12 +10,12 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/helpers/virtual"
 	"github.ibm.com/riethm/gopherlayer.git/services"
 	"github.ibm.com/riethm/gopherlayer.git/session"
+	"github.ibm.com/riethm/gopherlayer.git/sl"
 	"log"
 	"math"
 	"strconv"
 	"strings"
 	"time"
-	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
 func resourceSoftLayerVirtualGuest() *schema.Resource {

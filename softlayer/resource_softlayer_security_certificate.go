@@ -5,20 +5,20 @@ import (
 	"log"
 
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/session"
+	"github.ibm.com/riethm/gopherlayer.git/sl"
 	"strconv"
 	"strings"
-	"github.ibm.com/riethm/gopherlayer.git/datatypes"
-	"github.ibm.com/riethm/gopherlayer.git/session"
-	"github.ibm.com/riethm/gopherlayer.git/services"
-	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
 func resourceSoftLayerSecurityCertificate() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerSecurityCertificateCreate,
-		Read:   resourceSoftLayerSecurityCertificateRead,
-		Delete: resourceSoftLayerSecurityCertificateDelete,
-		Exists: resourceSoftLayerSecurityCertificateExists,
+		Create:   resourceSoftLayerSecurityCertificateCreate,
+		Read:     resourceSoftLayerSecurityCertificateRead,
+		Delete:   resourceSoftLayerSecurityCertificateDelete,
+		Exists:   resourceSoftLayerSecurityCertificateExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
