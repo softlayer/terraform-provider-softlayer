@@ -94,7 +94,9 @@ func resourceSoftLayerObjectStorageAccountCreate(d *schema.ResourceData, meta in
 	return nil
 }
 
-func WaitForOrderCompletion(receipt *datatypes.Container_Product_Order_Receipt, meta interface{}) (datatypes.Billing_Order_Item, error) {
+func WaitForOrderCompletion(
+	receipt *datatypes.Container_Product_Order_Receipt, meta interface{}) (datatypes.Billing_Order_Item, error) {
+
 	log.Printf("Waiting for billing order %d to have zero active transactions", receipt.OrderId)
 	var billingOrderItem *datatypes.Billing_Order_Item
 
