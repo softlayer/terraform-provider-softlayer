@@ -8,12 +8,15 @@ import (
 	"strconv"
 	"strings"
 
+	"time"
+
+	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/helpers/network"
 	"github.ibm.com/riethm/gopherlayer.git/services"
 	"github.ibm.com/riethm/gopherlayer.git/session"
 	"github.ibm.com/riethm/gopherlayer.git/sl"
-	"github.ibm.com/riethm/gopherlayer.git/helpers/network"
 )
 
 func resourceSoftLayerNetworkLoadBalancerService() *schema.Resource {
@@ -87,11 +90,10 @@ func parseVipUniqueId(vipUniqueId string) (string, int, error) {
 
 func resourceSoftLayerNetworkLoadBalancerServiceCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
-	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	vipUniqueId := d.Get("vip_id").(string)
 
-	vipId, nadcId, err := parseVipUniqueId(vipUniqueId)
+	vipName, nadcId, err := parseVipUniqueId(vipUniqueId)
 
 	if err != nil {
 		return fmt.Errorf("Error parsing vip id: %s", err)
@@ -108,17 +110,14 @@ func resourceSoftLayerNetworkLoadBalancerServiceCreate(d *schema.ResourceData, m
 		},
 	}
 
-	lb_vip := &datatypes.Network_LoadBalancer_VirtualIpAddress{
-		Name:     sl.String(vipId),
+	lbVip := &datatypes.Network_LoadBalancer_VirtualIpAddress{
+		Name:     sl.String(vipName),
 		Services: lb_services,
 	}
 
 	log.Printf("[INFO] Creating LoadBalancer Service %s", lb_services[0].Name)
 
-	// TODO: This API call might return an error until the LB VIP is ready to be updated with a service.
-	// In that case, would need to inspect the api return code and use StateChangeConf to retry or a new helper.
-	// See CreateLoadBalancerService in softlayer-go as a reference.
-	successFlag, err := service.Id(nadcId).UpdateLiveLoadBalancer(lb_vip)
+	successFlag, err := waitForNadcLbServiceUpdateCompletion(sess, nadcId, lbVip)
 	if err != nil {
 		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
 	}
@@ -128,6 +127,35 @@ func resourceSoftLayerNetworkLoadBalancerServiceCreate(d *schema.ResourceData, m
 	}
 
 	return resourceSoftLayerNetworkLoadBalancerServiceRead(d, meta)
+}
+
+func waitForNadcLbServiceUpdateCompletion(
+	sess *session.Session, nadcId int, lbVip *datatypes.Network_LoadBalancer_VirtualIpAddress) (bool, error) {
+
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
+	log.Printf("Waiting for NADC %d LB service %s update to complete", nadcId, lbVip.Services[0].Name)
+	var successFlag bool
+
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"", "in progress"},
+		Target:  []string{"complete"},
+		Refresh: func() (interface{}, string, error) {
+			var err error
+			successFlag, err = service.Id(nadcId).UpdateLiveLoadBalancer(lbVip)
+
+			if err == nil {
+				return successFlag, "complete", nil
+			} else {
+				return successFlag, "in progress", nil
+			}
+		},
+		Timeout:    5 * time.Minute,
+		Delay:      10 * time.Second,
+		MinTimeout: 10 * time.Second,
+	}
+
+	_, err := stateConf.WaitForState()
+	return successFlag, err
 }
 
 func resourceSoftLayerNetworkLoadBalancerServiceRead(d *schema.ResourceData, meta interface{}) error {
@@ -158,7 +186,6 @@ func resourceSoftLayerNetworkLoadBalancerServiceRead(d *schema.ResourceData, met
 
 func resourceSoftLayerNetworkLoadBalancerServiceUpdate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
-	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	vipUniqueId := d.Get("vip_id").(string)
 	vipName, nadcId, err := parseVipUniqueId(vipUniqueId)
@@ -193,10 +220,7 @@ func resourceSoftLayerNetworkLoadBalancerServiceUpdate(d *schema.ResourceData, m
 		template.ConnectionLimit = sl.Int(data.(int))
 	}
 
-	// TODO: This API call might return an error until the LB VIP is ready to be updated with a service.
-	// In that case, would need to inspect the api return code and use StateChangeConf to retry or a new helper.
-	// See CreateLoadBalancerService in softlayer-go as a reference.
-	_, err = service.Id(nadcId).UpdateLiveLoadBalancer(&datatypes.Network_LoadBalancer_VirtualIpAddress{
+	_, err = waitForNadcLbServiceUpdateCompletion(sess, nadcId, &datatypes.Network_LoadBalancer_VirtualIpAddress{
 		Name:     sl.String(vipName),
 		Services: []datatypes.Network_LoadBalancer_Service{template},
 	})
@@ -245,5 +269,5 @@ func resourceSoftLayerNetworkLoadBalancerServiceExists(d *schema.ResourceData, m
 		return false, fmt.Errorf("Unable to get load balancer service: %s", err)
 	}
 
-	return err == nil && *lbService.Name == serviceName , nil
+	return err == nil && *lbService.Name == serviceName, nil
 }
