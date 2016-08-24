@@ -57,7 +57,7 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"region": &schema.Schema{
+			"datacenter": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
@@ -96,16 +96,58 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"frontend_vlan_id": &schema.Schema{
-				Type:     schema.TypeString,
+			"front_end_vlan": &schema.Schema{
+				Type:     schema.TypeMap,
 				Optional: true,
 				ForceNew: true,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"vlan_number": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+
+						"primary_router_hostname": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+					},
+				},
 			},
 
-			"backend_vlan_id": &schema.Schema{
+			"front_end_subnet": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
+				Computed: true,
+			},
+
+			"back_end_vlan": &schema.Schema{
+				Type:     schema.TypeMap,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"vlan_number": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+
+						"primary_router_hostname": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+					},
+				},
+			},
+
+			"back_end_subnet": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
 			},
 
 			"disks": &schema.Schema{
@@ -204,10 +246,10 @@ func getBlockDevices(d *schema.ResourceData) []datatypes.Virtual_Guest_Block_Dev
 		return blocks
 	}
 }
-func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData) (datatypes.Virtual_Guest, error) {
+func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interface{}) (datatypes.Virtual_Guest, error) {
 
 	dc := datatypes.Location{
-		Name: sl.String(d.Get("region").(string)),
+		Name: sl.String(d.Get("datacenter").(string)),
 	}
 
 	networkComponent := datatypes.Virtual_Guest_Network_Component{
@@ -242,26 +284,65 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData) (datatypes.
 		opts.OperatingSystemReferenceCode = sl.String(operatingSystemReferenceCode.(string))
 	}
 
-	// Apply frontend VLAN if provided
-	if param, ok := d.GetOk("frontend_vlan_id"); ok {
-		frontendVlanId, err := strconv.Atoi(param.(string))
-		if err != nil {
-			return opts, fmt.Errorf("Not a valid frontend ID, must be an integer: %s", err)
-		}
+	frontEndVlanNumber := d.Get("front_end_vlan.vlan_number").(string)
+	frontEndSubnet := d.Get("front_end_subnet").(string)
+	backEndVlanNumber := d.Get("back_end_vlan.vlan_number").(string)
+	backEndVlanSubnet := d.Get("back_end_subnet").(string)
+
+	if len(frontEndVlanNumber) > 0 || len(frontEndSubnet) > 0 {
 		opts.PrimaryNetworkComponent = &datatypes.Virtual_Guest_Network_Component{
-			NetworkVlan: &datatypes.Network_Vlan{Id: &frontendVlanId},
+			NetworkVlan: &datatypes.Network_Vlan{},
+		}
+	}
+
+	// Apply frontend VLAN if provided
+	if len(frontEndVlanNumber) > 0 {
+		vlanNumber, err := strconv.Atoi(frontEndVlanNumber)
+		if err != nil {
+			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
+		}
+		frontendVlanId, err := getVlanId(vlanNumber, d.Get("front_end_vlan.primary_router_hostname").(string), meta)
+		if err != nil {
+			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
+		}
+		opts.PrimaryNetworkComponent.NetworkVlan.Id = sl.Int(frontendVlanId)
+	}
+
+	// Apply frontend subnet if provided
+	if len(frontEndSubnet) > 0 {
+		primarySubnetId, err := getSubnetId(frontEndSubnet, meta)
+		if err != nil {
+			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
+		}
+		opts.PrimaryNetworkComponent.NetworkVlan.PrimarySubnetId = sl.Int(primarySubnetId)
+	}
+
+	if len(backEndVlanNumber) > 0 || len(backEndVlanSubnet) > 0 {
+		opts.PrimaryBackendNetworkComponent = &datatypes.Virtual_Guest_Network_Component{
+			NetworkVlan: &datatypes.Network_Vlan{},
 		}
 	}
 
 	// Apply backend VLAN if provided
-	if param, ok := d.GetOk("backend_vlan_id"); ok {
-		backendVlanId, err := strconv.Atoi(param.(string))
+	if len(d.Get("back_end_vlan.vlan_number").(string)) > 0 {
+		vlanNumber, err := strconv.Atoi(d.Get("back_end_vlan.vlan_number").(string))
 		if err != nil {
-			return opts, fmt.Errorf("Not a valid backend ID, must be an integer: %s", err)
+			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
 		}
-		opts.PrimaryBackendNetworkComponent = &datatypes.Virtual_Guest_Network_Component{
-			NetworkVlan: &datatypes.Network_Vlan{Id: &backendVlanId},
+		backendVlanId, err := getVlanId(vlanNumber, d.Get("back_end_vlan.primary_router_hostname").(string), meta)
+		if err != nil {
+			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
 		}
+		opts.PrimaryBackendNetworkComponent.NetworkVlan.Id = sl.Int(backendVlanId)
+	}
+
+	// Apply backend subnet if provided
+	if len(backEndVlanSubnet) > 0 {
+		primarySubnetId, err := getSubnetId(backEndVlanSubnet, meta)
+		if err != nil {
+			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
+		}
+		opts.PrimaryBackendNetworkComponent.NetworkVlan.PrimarySubnetId = sl.Int(primarySubnetId)
 	}
 
 	if userData, ok := d.GetOk("user_data"); ok {
@@ -292,7 +373,7 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData) (datatypes.
 func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{}) error {
 	service := services.GetVirtualGuestService(meta.(*session.Session))
 
-	opts, err := getVirtualGuestTemplateFromResourceData(d)
+	opts, err := getVirtualGuestTemplateFromResourceData(d, meta)
 	if err != nil {
 		return err
 	}
@@ -336,26 +417,29 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	if err != nil {
 		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
+
 	result, err := service.Id(id).Mask(
 		"hostname,domain,startCpus,maxMemory,dedicatedAccountHostOnlyFlag," +
 			"primaryIpAddress,primaryBackendIpAddress,privateNetworkOnlyFlag," +
 			"hourlyBillingFlag,localDiskFlag," +
 			"userData[value]," +
 			"datacenter[id,name,longName]," +
-			"networkComponents[maxSpeed]," +
-			"primaryNetworkComponent[networkVlan[id],primaryIpAddressRecord[guestNetworkComponentBinding[ipAddressId]]]," +
-			"primaryBackendNetworkComponent[networkVlan[id],primaryIpAddressRecord[guestNetworkComponentBinding[ipAddressId]]]",
+			"primaryNetworkComponent[networkVlan[id,primaryRouter,primarySubnet,vlanNumber],primaryIpAddressRecord[guestNetworkComponentBinding[ipAddressId]]]," +
+			"primaryBackendNetworkComponent[networkVlan[id,primaryRouter,primarySubnet,vlanNumber],primaryIpAddressRecord[guestNetworkComponentBinding[ipAddressId]]]",
 	).GetObject()
+
 	if err != nil {
 		return fmt.Errorf("Error retrieving virtual guest: %s", err)
 	}
 
 	d.Set("name", *result.Hostname)
 	d.Set("domain", *result.Domain)
+
 	if result.Datacenter != nil {
-		d.Set("region", *result.Datacenter.Name)
+		d.Set("datacenter", *result.Datacenter.Name)
 	}
-	d.Set("public_network_speed", *result.NetworkComponents[0].MaxSpeed)
+
+	d.Set("public_network_speed", *result.PrimaryNetworkComponent.MaxSpeed)
 	d.Set("cpu", *result.StartCpus)
 	d.Set("ram", *result.MaxMemory)
 	d.Set("dedicated_acct_host_only", *result.DedicatedAccountHostOnlyFlag)
@@ -368,8 +452,24 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	d.Set("private_network_only", *result.PrivateNetworkOnlyFlag)
 	d.Set("hourly_billing", *result.HourlyBillingFlag)
 	d.Set("local_disk", *result.LocalDiskFlag)
-	d.Set("frontend_vlan_id", *result.PrimaryNetworkComponent.NetworkVlan.Id)
-	d.Set("backend_vlan_id", *result.PrimaryBackendNetworkComponent.NetworkVlan.Id)
+
+	frontEndVlan := d.Get("front_end_vlan").(map[string]interface{})
+	resultFrontEndVlan := result.PrimaryNetworkComponent.NetworkVlan
+	frontEndVlan["primary_router_hostname"] = *resultFrontEndVlan.PrimaryRouter.Hostname
+	frontEndVlan["vlan_number"] = strconv.Itoa(*resultFrontEndVlan.VlanNumber)
+	d.Set("front_end_vlan", frontEndVlan)
+
+	backEndVlan := d.Get("back_end_vlan").(map[string]interface{})
+	resultBackEndVlan := result.PrimaryBackendNetworkComponent.NetworkVlan
+	backEndVlan["primary_router_hostname"] = *resultBackEndVlan.PrimaryRouter.Hostname
+	backEndVlan["vlan_number"] = strconv.Itoa(*resultBackEndVlan.VlanNumber)
+	d.Set("back_end_vlan", backEndVlan)
+
+	d.Set("front_end_subnet", *resultFrontEndVlan.PrimarySubnet.NetworkIdentifier+"/"+
+		strconv.Itoa(*resultFrontEndVlan.PrimarySubnet.Cidr))
+
+	d.Set("back_end_subnet", *resultBackEndVlan.PrimarySubnet.NetworkIdentifier+"/"+
+		strconv.Itoa(*resultBackEndVlan.PrimarySubnet.Cidr))
 
 	userData := result.UserData
 	if userData != nil && len(userData) > 0 {
