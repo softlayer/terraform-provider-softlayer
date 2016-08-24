@@ -220,7 +220,7 @@ resource "softlayer_scale_group" "sample-http-cluster" {
         image = "DEBIAN_7_64"
         local_disk = false
         disks = [25,100]
-        region = "sng01"
+        datacenter = "sng01"
         post_install_script_uri = ""
         ssh_keys = [383111]
         user_data = "#!/bin/bash"
@@ -258,7 +258,7 @@ resource "softlayer_scale_group" "sample-http-cluster" {
         image = "CENTOS_7_64"
         local_disk = false
         disks = [25,100]
-        region = "sng01"
+        datacenter = "sng01"
         post_install_script_uri = "http://localhost/index.html"
         ssh_keys = [383111]
         user_data = "#!/bin/bash"
