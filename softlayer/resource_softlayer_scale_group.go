@@ -269,7 +269,7 @@ func buildScaleVlansFromResourceData(d *schema.Set, meta interface{}) ([]datatyp
 	return scaleNetworkVlans, nil
 }
 
-func getVirtualGuestTemplate(vGuestTemplateList []interface{}) (datatypes.Virtual_Guest, error) {
+func getVirtualGuestTemplate(vGuestTemplateList []interface{}, meta interface{}) (datatypes.Virtual_Guest, error) {
 	if len(vGuestTemplateList) != 1 {
 		return datatypes.Virtual_Guest{},
 			fmt.Errorf("Only one virtual_guest_member_template can be provided")
@@ -293,14 +293,14 @@ func getVirtualGuestTemplate(vGuestTemplateList []interface{}) (datatypes.Virtua
 	}
 
 	// Get the virtual guest creation template from the completed resource data object
-	return getVirtualGuestTemplateFromResourceData(vGuestResourceData)
+	return getVirtualGuestTemplateFromResourceData(vGuestResourceData, meta)
 }
 
 func resourceSoftLayerScaleGroupCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetScaleGroupService(sess)
 
-	virtualGuestTemplateOpts, err := getVirtualGuestTemplate(d.Get("virtual_guest_member_template").([]interface{}))
+	virtualGuestTemplateOpts, err := getVirtualGuestTemplate(d.Get("virtual_guest_member_template").([]interface{}), meta)
 	if err != nil {
 		return fmt.Errorf("Error while parsing virtual_guest_member_template values: %s", err)
 	}
@@ -434,7 +434,7 @@ func populateMemberTemplateResourceData(template datatypes.Virtual_Guest) map[st
 
 	d["name"] = *template.Hostname
 	d["domain"] = *template.Domain
-	d["region"] = *template.Datacenter.Name
+	d["datacenter"] = *template.Datacenter.Name
 	d["public_network_speed"] = *template.NetworkComponents[0].MaxSpeed
 	d["cpu"] = *template.StartCpus
 	d["ram"] = *template.MaxMemory
@@ -569,7 +569,7 @@ func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{})
 	}
 
 	if d.HasChange("virtual_guest_member_template") {
-		virtualGuestTemplateOpts, err := getVirtualGuestTemplate(d.Get("virtual_guest_member_template").([]interface{}))
+		virtualGuestTemplateOpts, err := getVirtualGuestTemplate(d.Get("virtual_guest_member_template").([]interface{}), meta)
 		if err != nil {
 			return fmt.Errorf("Unable to parse virtual guest member template options: %s", err)
 		}
