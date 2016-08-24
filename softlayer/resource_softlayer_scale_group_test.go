@@ -1,18 +1,22 @@
 package softlayer
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"testing"
 
-	datatypes "github.com/TheWeatherCompany/softlayer-go/data_types"
+	"strings"
+
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
-	"strings"
+	"github.ibm.com/riethm/gopherlayer.git/datatypes"
+	"github.ibm.com/riethm/gopherlayer.git/services"
+	"github.ibm.com/riethm/gopherlayer.git/session"
 )
 
 func TestAccSoftLayerScaleGroup_Basic(t *testing.T) {
-	var scalegroup datatypes.SoftLayer_Scale_Group
+	var scalegroup datatypes.Scale_Group
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -118,7 +122,7 @@ func TestAccSoftLayerScaleGroup_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerScaleGroupDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*Client).scaleGroupService
+	service := services.GetScaleGroupService(testAccProvider.Meta().(*session.Session))
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_scale_group" {
@@ -128,8 +132,7 @@ func testAccCheckSoftLayerScaleGroupDestroy(s *terraform.State) error {
 		scalegroupId, _ := strconv.Atoi(rs.Primary.ID)
 
 		// Try to find the key
-		mask := []string{"id"}
-		_, err := client.GetObject(scalegroupId, mask)
+		_, err := service.Id(scalegroupId).Mask("id").GetObject()
 
 		if err != nil && !strings.Contains(err.Error(), "404") {
 			return fmt.Errorf("Error waiting for Auto Scale (%s) to be destroyed: %s", rs.Primary.ID, err)
@@ -139,14 +142,14 @@ func testAccCheckSoftLayerScaleGroupDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccCheckSoftLayerScaleGroupContainsNetworkVlan(scaleGroup *datatypes.SoftLayer_Scale_Group, vlanNumber int, primaryRouterHostname string) resource.TestCheckFunc {
+func testAccCheckSoftLayerScaleGroupContainsNetworkVlan(scaleGroup *datatypes.Scale_Group, vlanNumber int, primaryRouterHostname string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		found := false
 
 		for _, scaleVlan := range scaleGroup.NetworkVlans {
-			vlan := scaleVlan.NetworkVlan
+			vlan := *scaleVlan.NetworkVlan
 
-			if vlan.VlanNumber == vlanNumber && vlan.PrimaryRouter.Hostname == primaryRouterHostname {
+			if *vlan.VlanNumber == vlanNumber && *vlan.PrimaryRouter.Hostname == primaryRouterHostname {
 				found = true
 				break
 			}
@@ -163,7 +166,7 @@ func testAccCheckSoftLayerScaleGroupContainsNetworkVlan(scaleGroup *datatypes.So
 	}
 }
 
-func testAccCheckSoftLayerScaleGroupExists(n string, scalegroup *datatypes.SoftLayer_Scale_Group) resource.TestCheckFunc {
+func testAccCheckSoftLayerScaleGroupExists(n string, scalegroup *datatypes.Scale_Group) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 
@@ -172,20 +175,20 @@ func testAccCheckSoftLayerScaleGroupExists(n string, scalegroup *datatypes.SoftL
 		}
 
 		if rs.Primary.ID == "" {
-			return fmt.Errorf("No Record ID is set")
+			return errors.New("No Record ID is set")
 		}
 
 		scalegroupId, _ := strconv.Atoi(rs.Primary.ID)
 
-		client := testAccProvider.Meta().(*Client).scaleGroupService
-		foundScaleGroup, err := client.GetObject(scalegroupId, SoftLayerScaleGroupObjectMask)
+		service := services.GetScaleGroupService(testAccProvider.Meta().(*session.Session))
+		foundScaleGroup, err := service.Id(scalegroupId).Mask(strings.Join(SoftLayerScaleGroupObjectMask, ";")).GetObject()
 
 		if err != nil {
 			return err
 		}
 
-		if strconv.Itoa(int(foundScaleGroup.Id)) != rs.Primary.ID {
-			return fmt.Errorf("Record not found")
+		if strconv.Itoa(int(*foundScaleGroup.Id)) != rs.Primary.ID {
+			return fmt.Errorf("Record %s not found", rs.Primary.ID)
 		}
 
 		*scalegroup = foundScaleGroup
