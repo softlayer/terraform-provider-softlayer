@@ -5,13 +5,13 @@ import (
 	"testing"
 )
 
-func TestAccSoftLayerLocalLoadBalancer_Basic(t *testing.T) {
+func TestAccSoftLayerLbLocal_Basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			resource.TestStep{
-				Config: testAccCheckSoftLayerLoadBalancerConfig_basic,
+				Config: testAccCheckSoftLayerLbLocalConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						"softlayer_lb_local.testacc_foobar_lb", "connections", "15000"),
@@ -25,7 +25,7 @@ func TestAccSoftLayerLocalLoadBalancer_Basic(t *testing.T) {
 	})
 }
 
-const testAccCheckSoftLayerLoadBalancerConfig_basic = `
+const testAccCheckSoftLayerLbLocalConfig_basic = `
 resource "softlayer_lb_local" "testacc_foobar_lb" {
     connections = 15000
     location    = "tok02"

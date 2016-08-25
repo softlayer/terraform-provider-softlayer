@@ -19,57 +19,57 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
-func resourceSoftLayerNetworkLoadBalancerService() *schema.Resource {
+func resourceSoftLayerLbVpxService() *schema.Resource {
 	return &schema.Resource{
-		Create:   resourceSoftLayerNetworkLoadBalancerServiceCreate,
-		Read:     resourceSoftLayerNetworkLoadBalancerServiceRead,
-		Update:   resourceSoftLayerNetworkLoadBalancerServiceUpdate,
-		Delete:   resourceSoftLayerNetworkLoadBalancerServiceDelete,
-		Exists:   resourceSoftLayerNetworkLoadBalancerServiceExists,
+		Create:   resourceSoftLayerLbVpxServiceCreate,
+		Read:     resourceSoftLayerLbVpxServiceRead,
+		Update:   resourceSoftLayerLbVpxServiceUpdate,
+		Delete:   resourceSoftLayerLbVpxServiceDelete,
+		Exists:   resourceSoftLayerLbVpxServiceExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
+			"id": {
 				Type:     schema.TypeString,
 				Computed: true,
 				ForceNew: true,
 			},
 
-			"vip_id": &schema.Schema{
+			"vip_id": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"name": &schema.Schema{
+			"name": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"destination_ip_address": &schema.Schema{
+			"destination_ip_address": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"destination_port": &schema.Schema{
+			"destination_port": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"weight": &schema.Schema{
+			"weight": {
 				Type:     schema.TypeInt,
 				Required: true,
 			},
 
-			"connection_limit": &schema.Schema{
+			"connection_limit": {
 				Type:     schema.TypeInt,
 				Required: true,
 			},
 
-			"health_check": &schema.Schema{
+			"health_check": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
@@ -88,7 +88,7 @@ func parseVipUniqueId(vipUniqueId string) (string, int, error) {
 	return vipId, nacdId, nil
 }
 
-func resourceSoftLayerNetworkLoadBalancerServiceCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxServiceCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	vipUniqueId := d.Get("vip_id").(string)
@@ -126,7 +126,7 @@ func resourceSoftLayerNetworkLoadBalancerServiceCreate(d *schema.ResourceData, m
 		return errors.New("Error creating LoadBalancer Service")
 	}
 
-	return resourceSoftLayerNetworkLoadBalancerServiceRead(d, meta)
+	return resourceSoftLayerLbVpxServiceRead(d, meta)
 }
 
 func waitForNadcLbServiceUpdateCompletion(
@@ -158,7 +158,7 @@ func waitForNadcLbServiceUpdateCompletion(
 	return successFlag, err
 }
 
-func resourceSoftLayerNetworkLoadBalancerServiceRead(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxServiceRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	vipUniqueId := d.Get("vip_id").(string)
@@ -184,7 +184,7 @@ func resourceSoftLayerNetworkLoadBalancerServiceRead(d *schema.ResourceData, met
 	return nil
 }
 
-func resourceSoftLayerNetworkLoadBalancerServiceUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxServiceUpdate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	vipUniqueId := d.Get("vip_id").(string)
@@ -231,7 +231,7 @@ func resourceSoftLayerNetworkLoadBalancerServiceUpdate(d *schema.ResourceData, m
 	return nil
 }
 
-func resourceSoftLayerNetworkLoadBalancerServiceDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxServiceDelete(d *schema.ResourceData, meta interface{}) error {
 	vipName, nadcId, err := parseVipUniqueId(d.Get("vip_id").(string))
 	if err != nil {
 		return fmt.Errorf("Error parsing vip id: %s", err)
@@ -255,7 +255,7 @@ func resourceSoftLayerNetworkLoadBalancerServiceDelete(d *schema.ResourceData, m
 	return nil
 }
 
-func resourceSoftLayerNetworkLoadBalancerServiceExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceSoftLayerLbVpxServiceExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	vipUniqueId := d.Get("vip_id").(string)
 	vipName, nadcId, err := parseVipUniqueId(vipUniqueId)
 	if err != nil {

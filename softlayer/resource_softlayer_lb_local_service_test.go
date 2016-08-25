@@ -5,13 +5,13 @@ import (
 	"testing"
 )
 
-func TestAccSoftLayerLocalLoadBalancerService_Basic(t *testing.T) {
+func TestAccSoftLayerLbLocalService_Basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			resource.TestStep{
-				Config: testAccCheckSoftLayerLoadBalancerLocalServiceConfig_basic,
+				Config: testAccCheckSoftLayerLbLocalServiceConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						"softlayer_lb_local_service.test_service", "port", "80"),
@@ -27,7 +27,7 @@ func TestAccSoftLayerLocalLoadBalancerService_Basic(t *testing.T) {
 	})
 }
 
-const testAccCheckSoftLayerLoadBalancerLocalServiceConfig_basic = `
+const testAccCheckSoftLayerLbLocalServiceConfig_basic = `
 resource "softlayer_virtual_guest" "test_server_1" {
     name = "terraform-test"
     domain = "bar.example.com"

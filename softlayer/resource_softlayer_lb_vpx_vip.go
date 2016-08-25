@@ -1,6 +1,7 @@
 package softlayer
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
@@ -12,64 +13,64 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
-func resourceSoftLayerNetworkLoadBalancerVirtualIpAddress() *schema.Resource {
+func resourceSoftLayerLbVpxVip() *schema.Resource {
 	return &schema.Resource{
-		Create:   resourceSoftLayerNetworkLoadBalancerVirtualIpAddressCreate,
-		Read:     resourceSoftLayerNetworkLoadBalancerVirtualIpAddressRead,
-		Update:   resourceSoftLayerNetworkLoadBalancerVirtualIpAddressUpdate,
-		Delete:   resourceSoftLayerNetworkLoadBalancerVirtualIpAddressDelete,
-		Exists:   resourceSoftLayerNetworkLoadBalancerVirtualIpAddressExists,
+		Create:   resourceSoftLayerLbVpxVipCreate,
+		Read:     resourceSoftLayerLbVpxVipRead,
+		Update:   resourceSoftLayerLbVpxVipUpdate,
+		Delete:   resourceSoftLayerLbVpxVipDelete,
+		Exists:   resourceSoftLayerLbVpxVipExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"nad_controller_id": &schema.Schema{
+			"nad_controller_id": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"connection_limit": &schema.Schema{
+			"connection_limit": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
 
-			"load_balancing_method": &schema.Schema{
+			"load_balancing_method": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"modify_date": &schema.Schema{
+			"modify_date": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
 
 			// name field is actually used as an ID in SoftLayer
 			// http://sldn.softlayer.com/reference/services/SoftLayer_Network_Application_Delivery_Controller/updateLiveLoadBalancer
-			"name": &schema.Schema{
+			"name": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"security_certificate_id": &schema.Schema{
+			"security_certificate_id": {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
 
-			"source_port": &schema.Schema{
+			"source_port": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"type": &schema.Schema{
+			"type": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"virtual_ip_address": &schema.Schema{
+			"virtual_ip_address": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
@@ -78,7 +79,7 @@ func resourceSoftLayerNetworkLoadBalancerVirtualIpAddress() *schema.Resource {
 	}
 }
 
-func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxVipCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
@@ -103,13 +104,13 @@ func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressCreate(d *schema.Resour
 	}
 
 	if !successFlag {
-		return fmt.Errorf("Error creating Virtual Ip Address")
+		return errors.New("Error creating Virtual Ip Address")
 	}
 
-	return resourceSoftLayerNetworkLoadBalancerVirtualIpAddressRead(d, meta)
+	return resourceSoftLayerLbVpxVipRead(d, meta)
 }
 
-func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressRead(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxVipRead(d *schema.ResourceData, meta interface{}) error {
 	nadcId := d.Get("nad_controller_id").(int)
 	vipName := d.Get("name").(string)
 
@@ -135,7 +136,7 @@ func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressRead(d *schema.Resource
 	return nil
 }
 
-func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxVipUpdate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
@@ -173,7 +174,7 @@ func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressUpdate(d *schema.Resour
 	return nil
 }
 
-func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxVipDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
@@ -190,7 +191,7 @@ func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressDelete(d *schema.Resour
 	return nil
 }
 
-func resourceSoftLayerNetworkLoadBalancerVirtualIpAddressExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceSoftLayerLbVpxVipExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	sess := meta.(*session.Session)
 
 	vipName := d.Get("name").(string)

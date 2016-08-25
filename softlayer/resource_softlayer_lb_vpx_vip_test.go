@@ -13,14 +13,14 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/session"
 )
 
-func TestAccSoftLayerVirtualIpAddress_Basic(t *testing.T) {
+func TestAccSoftLayerLbVpxVip_Basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckSoftLayerVirtualIpAddressDestroy,
+		CheckDestroy: testAccCheckSoftLayerLbVpxVipDestroy,
 		Steps: []resource.TestStep{
-			resource.TestStep{
-				Config: testAccCheckSoftLayerVirtualIpAddressConfig_basic,
+			{
+				Config: testAccCheckSoftLayerLbVpxVipConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						"softlayer_lb_vpx_vip.testacc_vip", "load_balancing_method", "lc"),
@@ -36,7 +36,7 @@ func TestAccSoftLayerVirtualIpAddress_Basic(t *testing.T) {
 	})
 }
 
-func testAccCheckSoftLayerVirtualIpAddressDestroy(s *terraform.State) error {
+func testAccCheckSoftLayerLbVpxVipDestroy(s *terraform.State) error {
 	service := services.GetNetworkApplicationDeliveryControllerService(testAccProvider.Meta().(*session.Session))
 
 	for _, rs := range s.RootModule().Resources {
@@ -55,15 +55,16 @@ func testAccCheckSoftLayerVirtualIpAddressDestroy(s *terraform.State) error {
 			return fmt.Errorf("Error getting Virtual Ip Address: %s", err)
 		}
 
-		if len(*vips[0].VirtualIpAddress) != 0 {
-			return fmt.Errorf("Virtual ip address still exists")
+		vip := *vips[0].VirtualIpAddress
+		if len(vip) != 0 {
+			return fmt.Errorf("Virtual ip address still exists: %s", vip)
 		}
 	}
 
 	return nil
 }
 
-var testAccCheckSoftLayerVirtualIpAddressConfig_basic = `
+var testAccCheckSoftLayerLbVpxVipConfig_basic = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     name = "terraform-test"
     domain = "bar.example.com"

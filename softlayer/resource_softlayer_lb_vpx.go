@@ -25,12 +25,12 @@ const (
 	DELIMITER                                  = "_"
 )
 
-func resourceSoftLayerNetworkApplicationDeliveryController() *schema.Resource {
+func resourceSoftLayerLbVpx() *schema.Resource {
 	return &schema.Resource{
-		Create:   resourceSoftLayerNetworkApplicationDeliveryControllerCreate,
-		Read:     resourceSoftLayerNetworkApplicationDeliveryControllerRead,
-		Delete:   resourceSoftLayerNetworkApplicationDeliveryControllerDelete,
-		Exists:   resourceSoftLayerNetworkApplicationDeliveryControllerExists,
+		Create:   resourceSoftLayerLbVpxCreate,
+		Read:     resourceSoftLayerLbVpxRead,
+		Delete:   resourceSoftLayerLbVpxDelete,
+		Exists:   resourceSoftLayerLbVpxExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
@@ -316,7 +316,7 @@ func findVPXByOrderId(orderId int, meta interface{}) (datatypes.Network_Applicat
 		fmt.Errorf("Cannot find Application Delivery Controller with order id '%d'", orderId)
 }
 
-func resourceSoftLayerNetworkApplicationDeliveryControllerCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	productOrderService := services.GetProductOrderService(sess)
@@ -448,10 +448,10 @@ func resourceSoftLayerNetworkApplicationDeliveryControllerCreate(d *schema.Resou
 	if !IsVipReady {
 		return fmt.Errorf("Failed to create VIPs for Netscaler VPX ID: %d", id)
 	}
-	return resourceSoftLayerNetworkApplicationDeliveryControllerRead(d, meta)
+	return resourceSoftLayerLbVpxRead(d, meta)
 }
 
-func resourceSoftLayerNetworkApplicationDeliveryControllerRead(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
@@ -555,7 +555,7 @@ func resourceSoftLayerNetworkApplicationDeliveryControllerRead(d *schema.Resourc
 	return nil
 }
 
-func resourceSoftLayerNetworkApplicationDeliveryControllerDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
@@ -584,7 +584,7 @@ func resourceSoftLayerNetworkApplicationDeliveryControllerDelete(d *schema.Resou
 	return nil
 }
 
-func resourceSoftLayerNetworkApplicationDeliveryControllerExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceSoftLayerLbVpxExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	service := services.GetNetworkApplicationDeliveryControllerService(meta.(*session.Session))
 
 	id, err := strconv.Atoi(d.Id())

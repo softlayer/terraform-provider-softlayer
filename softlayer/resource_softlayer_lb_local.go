@@ -1,6 +1,7 @@
 package softlayer
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -22,45 +23,45 @@ const (
 	LB_LARGE_150000_CONNECTIONS = 150000
 	LB_SMALL_15000_CONNECTIONS  = 15000
 
-	LocalLoadBalancerPackageType = "ADDITIONAL_SERVICES_LOAD_BALANCER"
+	LbLocalPackageType = "ADDITIONAL_SERVICES_LOAD_BALANCER"
 
 	lbMask = "id,connectionLimit,ipAddressId,securityCertificateId,highAvailabilityFlag," +
 		"sslEnabledFlag,loadBalancerHardware[datacenter[name]],ipAddress[ipAddress,subnetId]"
 )
 
-func resourceSoftLayerLocalLoadBalancer() *schema.Resource {
+func resourceSoftLayerLbLocal() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerLocalLoadBalancerCreate,
-		Read:   resourceSoftLayerLocalLoadBalancerRead,
-		Update: resourceSoftLayerLocalLoadBalancerUpdate,
-		Delete: resourceSoftLayerLocalLoadBalancerDelete,
-		Exists: resourceSoftLayerLocalLoadBalancerExists,
+		Create: resourceSoftLayerLbLocalCreate,
+		Read:   resourceSoftLayerLbLocalRead,
+		Update: resourceSoftLayerLbLocalUpdate,
+		Delete: resourceSoftLayerLbLocalDelete,
+		Exists: resourceSoftLayerLbLocalExists,
 
 		Schema: map[string]*schema.Schema{
-			"connections": &schema.Schema{
+			"connections": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: true,
 			},
-			"location": &schema.Schema{
+			"location": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
-			"ha_enabled": &schema.Schema{
+			"ha_enabled": {
 				Type:     schema.TypeBool,
 				Required: true,
 				ForceNew: true,
 			},
-			"security_certificate_id": &schema.Schema{
+			"security_certificate_id": {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
-			"ip_address": &schema.Schema{
+			"ip_address": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"subnet_id": &schema.Schema{
+			"subnet_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
@@ -68,7 +69,7 @@ func resourceSoftLayerLocalLoadBalancer() *schema.Resource {
 	}
 }
 
-func resourceSoftLayerLocalLoadBalancerCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbLocalCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	connections := d.Get("connections").(int)
@@ -99,7 +100,7 @@ func resourceSoftLayerLocalLoadBalancerCreate(d *schema.ResourceData, meta inter
 
 	keyname = strings.Join([]string{keyname, strconv.Itoa(connections), "CONNECTIONS"}, "_")
 
-	pkg, err := product.GetPackageByType(sess, LocalLoadBalancerPackageType)
+	pkg, err := product.GetPackageByType(sess, LbLocalPackageType)
 	if err != nil {
 		return err
 	}
@@ -133,24 +134,16 @@ func resourceSoftLayerLocalLoadBalancerCreate(d *schema.ResourceData, meta inter
 	// Lookup the datacenter ID
 	dc, err := location.GetDatacenterByName(sess, d.Get("location").(string))
 
-	// TODO Reinstate this code once placeOrder is changed to accept interface{} parameter
-	/*productOrderContainer := datatypes.Container_Product_Order_Network_LoadBalancer{
+	productOrderContainer := datatypes.Container_Product_Order_Network_LoadBalancer{
 		Container_Product_Order: datatypes.Container_Product_Order{
 			PackageId: pkg.Id,
-			Location: sl.String(strconv.Itoa(*dc.Id)),
-			Prices:   prices[:1],
-			Quantity: sl.Int(1),
+			Location:  sl.String(strconv.Itoa(*dc.Id)),
+			Prices:    prices[:1],
+			Quantity:  sl.Int(1),
 		},
-	}*/
-
-	productOrderContainer := datatypes.Container_Product_Order{
-		PackageId: pkg.Id,
-		Location:  sl.String(strconv.Itoa(*dc.Id)),
-		Prices:    prices[:1],
-		Quantity:  sl.Int(1),
 	}
 
-	log.Printf("[INFO] Creating load balancer")
+	log.Println("[INFO] Creating load balancer")
 
 	receipt, err := services.GetProductOrderService(sess).
 		PlaceOrder(&productOrderContainer, sl.Bool(false))
@@ -169,14 +162,10 @@ func resourceSoftLayerLocalLoadBalancerCreate(d *schema.ResourceData, meta inter
 
 	log.Printf("[INFO] Load Balancer ID: %s", d.Id())
 
-	return resourceSoftLayerLocalLoadBalancerUpdate(d, meta)
+	return resourceSoftLayerLbLocalUpdate(d, meta)
 }
 
-func intToPointer(test int) *int {
-	return &test
-}
-
-func resourceSoftLayerLocalLoadBalancerUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbLocalUpdate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	vipID, _ := strconv.Atoi(d.Id())
@@ -197,10 +186,10 @@ func resourceSoftLayerLocalLoadBalancerUpdate(d *schema.ResourceData, meta inter
 		return fmt.Errorf("Update load balancer failed: %s", err)
 	}
 
-	return resourceSoftLayerLocalLoadBalancerRead(d, meta)
+	return resourceSoftLayerLbLocalRead(d, meta)
 }
 
-func resourceSoftLayerLocalLoadBalancerRead(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbLocalRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	vipID, _ := strconv.Atoi(d.Id())
@@ -230,7 +219,7 @@ func resourceSoftLayerLocalLoadBalancerRead(d *schema.ResourceData, meta interfa
 	return nil
 }
 
-func resourceSoftLayerLocalLoadBalancerDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbLocalDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	vipID, _ := strconv.Atoi(d.Id())
@@ -247,7 +236,7 @@ func resourceSoftLayerLocalLoadBalancerDelete(d *schema.ResourceData, meta inter
 	return cancelService(sess, *bi.Id)
 }
 
-func resourceSoftLayerLocalLoadBalancerExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceSoftLayerLbLocalExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	sess := meta.(*session.Session)
 
 	vipID, _ := strconv.Atoi(d.Id())
@@ -309,7 +298,7 @@ func cancelService(sess *session.Session, billingId int) error {
 	}
 
 	if pendingResult != nil && !(pendingResult.(bool)) {
-		return fmt.Errorf("SoftLayer reported an unsuccessful cancellation, but did not provide a reason.")
+		return errors.New("SoftLayer reported an unsuccessful cancellation, but did not provide a reason.")
 	}
 
 	return nil

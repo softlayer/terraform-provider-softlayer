@@ -6,13 +6,13 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 )
 
-func TestAccSoftLayerLoadBalancerService_Basic(t *testing.T) {
+func TestAccSoftLayerLbVpxService_Basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
-			resource.TestStep{
-				Config: testAccCheckSoftLayerLoadBalancerServiceConfig_basic,
+			{
+				Config: testAccCheckSoftLayerLbVpxServiceConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						"softlayer_lb_vpx.testacc_service", "name", "test_load_balancer_service"),
@@ -26,7 +26,7 @@ func TestAccSoftLayerLoadBalancerService_Basic(t *testing.T) {
 	})
 }
 
-var testAccCheckSoftLayerLoadBalancerServiceConfig_basic = `
+var testAccCheckSoftLayerLbVpxServiceConfig_basic = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     name = "terraform-test"
     domain = "bar.example.com"

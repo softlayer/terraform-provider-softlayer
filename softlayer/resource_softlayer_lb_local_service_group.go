@@ -1,6 +1,7 @@
 package softlayer
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
@@ -14,42 +15,42 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
-func resourceSoftLayerLocalLoadBalancerServiceGroup() *schema.Resource {
+func resourceSoftLayerLbLocalServiceGroup() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerLocalLoadBalancerServiceGroupCreate,
-		Read:   resourceSoftLayerLocalLoadBalancerServiceGroupRead,
-		Update: resourceSoftLayerLocalLoadBalancerServiceGroupUpdate,
-		Delete: resourceSoftLayerLocalLoadBalancerServiceGroupDelete,
-		Exists: resourceSoftLayerLocalLoadBalancerServiceGroupExists,
+		Create: resourceSoftLayerLbLocalServiceGroupCreate,
+		Read:   resourceSoftLayerLbLocalServiceGroupRead,
+		Update: resourceSoftLayerLbLocalServiceGroupUpdate,
+		Delete: resourceSoftLayerLbLocalServiceGroupDelete,
+		Exists: resourceSoftLayerLbLocalServiceGroupExists,
 
 		Schema: map[string]*schema.Schema{
-			"virtual_server_id": &schema.Schema{
+			"virtual_server_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
-			"service_group_id": &schema.Schema{
+			"service_group_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
-			"load_balancer_id": &schema.Schema{
+			"load_balancer_id": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: true,
 			},
-			"allocation": &schema.Schema{
+			"allocation": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: true,
 			},
-			"port": &schema.Schema{
+			"port": {
 				Type:     schema.TypeInt,
 				Required: true,
 			},
-			"routing_method": &schema.Schema{
+			"routing_method": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"routing_type": &schema.Schema{
+			"routing_type": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
@@ -57,7 +58,7 @@ func resourceSoftLayerLocalLoadBalancerServiceGroup() *schema.Resource {
 	}
 }
 
-func resourceSoftLayerLocalLoadBalancerServiceGroupCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbLocalServiceGroupCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	vipID := d.Get("load_balancer_id").(int)
@@ -85,7 +86,7 @@ func resourceSoftLayerLocalLoadBalancerServiceGroupCreate(d *schema.ResourceData
 		}},
 	}
 
-	log.Printf("[INFO] Creating load balancer service group")
+	log.Println("[INFO] Creating load balancer service group")
 
 	success, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
 		Id(vipID).
@@ -96,7 +97,7 @@ func resourceSoftLayerLocalLoadBalancerServiceGroupCreate(d *schema.ResourceData
 	}
 
 	if !success {
-		return fmt.Errorf("Error creating load balancer service group")
+		return errors.New("Error creating load balancer service group")
 	}
 
 	// Retrieve the newly created object, to obtain its ID
@@ -115,10 +116,10 @@ func resourceSoftLayerLocalLoadBalancerServiceGroupCreate(d *schema.ResourceData
 
 	log.Printf("[INFO] Load Balancer Service Group ID: %s", d.Id())
 
-	return resourceSoftLayerLocalLoadBalancerServiceGroupRead(d, meta)
+	return resourceSoftLayerLbLocalServiceGroupRead(d, meta)
 }
 
-func resourceSoftLayerLocalLoadBalancerServiceGroupUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbLocalServiceGroupUpdate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	vipID := d.Get("load_balancer_id").(int)
@@ -150,7 +151,7 @@ func resourceSoftLayerLocalLoadBalancerServiceGroupUpdate(d *schema.ResourceData
 		}},
 	}
 
-	log.Printf("[INFO] Updating load balancer service group")
+	log.Println("[INFO] Updating load balancer service group")
 
 	success, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
 		Id(vipID).
@@ -161,13 +162,13 @@ func resourceSoftLayerLocalLoadBalancerServiceGroupUpdate(d *schema.ResourceData
 	}
 
 	if !success {
-		return fmt.Errorf("Error updating load balancer service group")
+		return errors.New("Error updating load balancer service group")
 	}
 
-	return resourceSoftLayerLocalLoadBalancerServiceGroupRead(d, meta)
+	return resourceSoftLayerLbLocalServiceGroupRead(d, meta)
 }
 
-func resourceSoftLayerLocalLoadBalancerServiceGroupRead(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbLocalServiceGroupRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	vsID, _ := strconv.Atoi(d.Id())
@@ -190,7 +191,7 @@ func resourceSoftLayerLocalLoadBalancerServiceGroupRead(d *schema.ResourceData, 
 	return nil
 }
 
-func resourceSoftLayerLocalLoadBalancerServiceGroupDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbLocalServiceGroupDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	vsID, _ := strconv.Atoi(d.Id())
@@ -215,7 +216,7 @@ func resourceSoftLayerLocalLoadBalancerServiceGroupDelete(d *schema.ResourceData
 	return nil
 }
 
-func resourceSoftLayerLocalLoadBalancerServiceGroupExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceSoftLayerLbLocalServiceGroupExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	sess := meta.(*session.Session)
 
 	vsID, _ := strconv.Atoi(d.Id())

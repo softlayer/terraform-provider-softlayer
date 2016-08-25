@@ -12,7 +12,7 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/session"
 )
 
-func TestAccSoftLayerNetworkApplicationDeliveryController_Basic(t *testing.T) {
+func TestAccSoftLayerLbVpx_Basic(t *testing.T) {
 	var nadc datatypes.Network_Application_Delivery_Controller
 
 	resource.Test(t, resource.TestCase{
@@ -20,9 +20,9 @@ func TestAccSoftLayerNetworkApplicationDeliveryController_Basic(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			resource.TestStep{
-				Config: testAccCheckSoftLayerNetworkApplicationDeliveryControllerConfig_basic,
+				Config: testAccCheckSoftLayerLbVpxConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckSoftLayerNetworkApplicationDeliveryControllerExists("softlayer_lb_vpx.testacc_foobar_vpx", &nadc),
+					testAccCheckSoftLayerLbVpxExists("softlayer_lb_vpx.testacc_foobar_vpx", &nadc),
 					resource.TestCheckResourceAttr(
 						"softlayer_lb_vpx.testacc_foobar_vpx", "type", "NetScaler VPX"),
 					resource.TestCheckResourceAttr(
@@ -55,7 +55,7 @@ func TestAccSoftLayerNetworkApplicationDeliveryController_Basic(t *testing.T) {
 	})
 }
 
-func testAccCheckSoftLayerNetworkApplicationDeliveryControllerExists(n string, nadc *datatypes.Network_Application_Delivery_Controller) resource.TestCheckFunc {
+func testAccCheckSoftLayerLbVpxExists(n string, nadc *datatypes.Network_Application_Delivery_Controller) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 
@@ -85,7 +85,7 @@ func testAccCheckSoftLayerNetworkApplicationDeliveryControllerExists(n string, n
 	}
 }
 
-const testAccCheckSoftLayerNetworkApplicationDeliveryControllerConfig_basic = `
+const testAccCheckSoftLayerLbVpxConfig_basic = `
 resource "softlayer_lb_vpx" "testacc_foobar_vpx" {
     datacenter = "dal06"
     speed = 10

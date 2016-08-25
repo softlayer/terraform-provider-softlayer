@@ -12,13 +12,13 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
-func resourceSoftLayerDnsDomainResourceRecord() *schema.Resource {
+func resourceSoftLayerDnsDomainRecord() *schema.Resource {
 	return &schema.Resource{
-		Exists:   resourceSoftLayerDnsDomainResourceRecordExists,
-		Create:   resourceSoftLayerDnsDomainResourceRecordCreate,
-		Read:     resourceSoftLayerDnsDomainResourceRecordRead,
-		Update:   resourceSoftLayerDnsDomainResourceRecordUpdate,
-		Delete:   resourceSoftLayerDnsDomainResourceRecordDelete,
+		Exists:   resourceSoftLayerDnsDomainRecordExists,
+		Create:   resourceSoftLayerDnsDomainRecordCreate,
+		Read:     resourceSoftLayerDnsDomainRecordRead,
+		Update:   resourceSoftLayerDnsDomainRecordUpdate,
+		Delete:   resourceSoftLayerDnsDomainRecordDelete,
 		Importer: &schema.ResourceImporter{},
 		Schema: map[string]*schema.Schema{
 			"record_data": &schema.Schema{
@@ -109,7 +109,7 @@ func resourceSoftLayerDnsDomainResourceRecord() *schema.Resource {
 
 //  Creates DNS Domain Resource Record
 //  https://sldn.softlayer.com/reference/services/SoftLayer_Dns_Domain_ResourceRecord/createObject
-func resourceSoftLayerDnsDomainResourceRecordCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerDnsDomainRecordCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetDnsDomainResourceRecordService(sess)
 
@@ -159,12 +159,12 @@ func resourceSoftLayerDnsDomainResourceRecordCreate(d *schema.ResourceData, meta
 		log.Printf("[INFO] Dns Resource Record ID: %s", d.Id())
 	}
 
-	return resourceSoftLayerDnsDomainResourceRecordRead(d, meta)
+	return resourceSoftLayerDnsDomainRecordRead(d, meta)
 }
 
 //  Reads DNS Domain Resource Record from SL system
 //  https://sldn.softlayer.com/reference/services/SoftLayer_Dns_Domain_ResourceRecord/getObject
-func resourceSoftLayerDnsDomainResourceRecordRead(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerDnsDomainRecordRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetDnsDomainResourceRecordService(sess)
 
@@ -209,7 +209,7 @@ func resourceSoftLayerDnsDomainResourceRecordRead(d *schema.ResourceData, meta i
 
 //  Updates DNS Domain Resource Record in SL system
 //  https://sldn.softlayer.com/reference/services/SoftLayer_Dns_Domain_ResourceRecord/editObject
-func resourceSoftLayerDnsDomainResourceRecordUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerDnsDomainRecordUpdate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	recordId, _ := strconv.Atoi(d.Id())
 
@@ -325,7 +325,7 @@ func resourceSoftLayerDnsDomainResourceRecordUpdate(d *schema.ResourceData, meta
 
 //  Deletes DNS Domain Resource Record in SL system
 //  https://sldn.softlayer.com/reference/services/SoftLayer_Dns_Domain_ResourceRecord/deleteObject
-func resourceSoftLayerDnsDomainResourceRecordDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerDnsDomainRecordDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetDnsDomainResourceRecordService(sess)
 
@@ -345,7 +345,7 @@ func resourceSoftLayerDnsDomainResourceRecordDelete(d *schema.ResourceData, meta
 
 // Exists function is called by refresh
 // if the entity is absent - it is deleted from the .tfstate file
-func resourceSoftLayerDnsDomainResourceRecordExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceSoftLayerDnsDomainRecordExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	sess := meta.(*session.Session)
 	service := services.GetDnsDomainResourceRecordService(sess)
 

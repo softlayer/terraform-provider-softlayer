@@ -11,19 +11,19 @@ import (
 func Provider() terraform.ResourceProvider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
-			"username": &schema.Schema{
+			"username": {
 				Type:        schema.TypeString,
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("SOFTLAYER_USERNAME", nil),
 				Description: "The user name for SoftLayer API operations.",
 			},
-			"api_key": &schema.Schema{
+			"api_key": {
 				Type:        schema.TypeString,
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("SOFTLAYER_API_KEY", nil),
 				Description: "The API key for SoftLayer API operations.",
 			},
-			"endpoint_url": &schema.Schema{
+			"endpoint_url": {
 				Type:        schema.TypeString,
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("SOFTLAYER_ENDPOINT_URL", session.DefaultEndpoint),
@@ -34,14 +34,14 @@ func Provider() terraform.ResourceProvider {
 		ResourcesMap: map[string]*schema.Resource{
 			"softlayer_virtual_guest":          resourceSoftLayerVirtualGuest(),
 			"softlayer_ssh_key":                resourceSoftLayerSSHKey(),
-			"softlayer_dns_domain_record":      resourceSoftLayerDnsDomainResourceRecord(),
+			"softlayer_dns_domain_record":      resourceSoftLayerDnsDomainRecord(),
 			"softlayer_dns_domain":             resourceSoftLayerDnsDomain(),
-			"softlayer_lb_vpx":                 resourceSoftLayerNetworkApplicationDeliveryController(),
-			"softlayer_lb_vpx_vip":             resourceSoftLayerNetworkLoadBalancerVirtualIpAddress(),
-			"softlayer_lb_vpx_service":         resourceSoftLayerNetworkLoadBalancerService(),
-			"softlayer_lb_local":               resourceSoftLayerLocalLoadBalancer(),
-			"softlayer_lb_local_service_group": resourceSoftLayerLocalLoadBalancerServiceGroup(),
-			"softlayer_lb_local_service":       resourceSoftLayerLocalLoadBalancerService(),
+			"softlayer_lb_vpx":                 resourceSoftLayerLbVpx(),
+			"softlayer_lb_vpx_vip":             resourceSoftLayerLbVpxVip(),
+			"softlayer_lb_vpx_service":         resourceSoftLayerLbVpxService(),
+			"softlayer_lb_local":               resourceSoftLayerLbLocal(),
+			"softlayer_lb_local_service_group": resourceSoftLayerLbLocalServiceGroup(),
+			"softlayer_lb_local_service":       resourceSoftLayerLbLocalService(),
 			"softlayer_security_certificate":   resourceSoftLayerSecurityCertificate(),
 			"softlayer_user":                   resourceSoftLayerUserCustomer(),
 			"softlayer_objectstorage_account":  resourceSoftLayerObjectStorageAccount(),
