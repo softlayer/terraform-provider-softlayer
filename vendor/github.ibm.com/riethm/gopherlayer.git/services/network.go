@@ -909,7 +909,8 @@ func (r Network_Application_Delivery_Controller_LoadBalancer_Service) Offset(off
 }
 
 // no documentation yet
-func (r Network_Application_Delivery_Controller_LoadBalancer_Service) DeleteObject() (resp bool, err error) {
+func (r Network_Application_Delivery_Controller_LoadBalancer_Service) DeleteObject() (err error) {
+	var resp datatypes.Void
 	err = r.Session.DoRequest("SoftLayer_Network_Application_Delivery_Controller_LoadBalancer_Service", "deleteObject", nil, &r.Options, &resp)
 	return
 }
@@ -9064,6 +9065,12 @@ func (r Network_Storage_Hub_Cleversafe_Account) GetCancelledBillingItem() (resp 
 // no documentation yet
 func (r Network_Storage_Hub_Cleversafe_Account) GetCapacityUsage() (resp int, err error) {
 	err = r.Session.DoRequest("SoftLayer_Network_Storage_Hub_Cleversafe_Account", "getCapacityUsage", nil, &r.Options, &resp)
+	return
+}
+
+// no documentation yet
+func (r Network_Storage_Hub_Cleversafe_Account) GetCloudObjectStoragePolicy() (resp []datatypes.Container_Network_Storage_Hub_ObjectStorage_Policy, err error) {
+	err = r.Session.DoRequest("SoftLayer_Network_Storage_Hub_Cleversafe_Account", "getCloudObjectStoragePolicy", nil, &r.Options, &resp)
 	return
 }
 
