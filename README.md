@@ -443,7 +443,7 @@ No additional arguments needed.
 
 #### `softlayer_dns_domain`
 
-The `softLayer_dns_domain` data type represents a single DNS domain record hosted on the SoftLayer nameservers. Domains contain general information about the domain name such as name and serial. Individual records such as `A`, `AAAA`, `CTYPE`, and `MX` records are stored in the domain's associated resource records using the  [`softlayer_dns_domain_resourcerecord`](/docs/providers/softlayer/r/dns_records.html) resource.
+The `softLayer_dns_domain` data type represents a single DNS domain record hosted on the SoftLayer nameservers. Domains contain general information about the domain name such as name and serial. Individual records such as `A`, `AAAA`, `CTYPE`, and `MX` records are stored in the domain's associated resource records using the  [`softlayer_dns_domain_record`](/docs/providers/softlayer/r/dns_records.html) resource.
 
 ```hcl
 resource "softlayer_dns_domain" "dns-domain-test" {
@@ -466,9 +466,9 @@ The following attributes are exported
 * `serial` - A unique number denoting the latest revision of a domain.
 * `update_date` - The date that this domain record was last updated.
 
-#### `softlayer_dns_domain_resourcerecord`
+#### `softlayer_dns_domain_record`
 
-The `softlayer_dns_domain_resourcerecord` data type represents a single resource record entry in a [`softlayer_dns_domain`](/docs/providers/softlayer/r/dns.html). Each resource record contains a `host` and `record_data` property, defining a resource's name and it's target data.
+The `softlayer_dns_domain_record` data type represents a single resource record entry in a [`softlayer_dns_domain`](/docs/providers/softlayer/r/dns.html). Each resource record contains a `host` and `record_data` property, defining a resource's name and it's target data.
 
 We are using [SoftLayer_Dns_Domain_ResourceRecord](https://sldn.softlayer.com/reference/datatypes/SoftLayer_Dns_Domain_ResourceRecord)
 SL's object for most of CRUD operations. Only for SRV record type we are using [SoftLayer_Dns_Domain_ResourceRecord_SrvType](https://sldn.softlayer.com/reference/services/SoftLayer_Dns_Domain_ResourceRecord_SrvType) SL's object.
