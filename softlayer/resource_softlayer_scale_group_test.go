@@ -66,7 +66,7 @@ func TestAccSoftLayerScaleGroup_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.disks.1", "100"),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.region", "sng01"),
+						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.datacenter", "sng01"),
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.post_install_script_uri", ""),
 					resource.TestCheckResourceAttr(
@@ -112,7 +112,7 @@ func TestAccSoftLayerScaleGroup_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.image", "CENTOS_7_64"),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.region", "sng01"),
+						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.datacenter", "sng01"),
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.post_install_script_uri", "http://localhost/index.html"),
 				),
