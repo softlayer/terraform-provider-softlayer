@@ -44,7 +44,7 @@ func resourceSoftLayerLbLocal() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
-			"location": {
+			"datacenter": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
@@ -133,7 +133,7 @@ func resourceSoftLayerLbLocalCreate(d *schema.ResourceData, meta interface{}) er
 	)
 
 	// Lookup the datacenter ID
-	dc, err := location.GetDatacenterByName(sess, d.Get("location").(string))
+	dc, err := location.GetDatacenterByName(sess, d.Get("datacenter").(string))
 
 	productOrderContainer := datatypes.Container_Product_Order_Network_LoadBalancer{
 		Container_Product_Order: datatypes.Container_Product_Order{
@@ -156,7 +156,7 @@ func resourceSoftLayerLbLocalCreate(d *schema.ResourceData, meta interface{}) er
 
 	d.SetId(fmt.Sprintf("%d", *loadBalancer.Id))
 	d.Set("connections", getConnectionLimit(*loadBalancer.ConnectionLimit))
-	d.Set("location", *loadBalancer.LoadBalancerHardware[0].Datacenter.Name)
+	d.Set("datacenter", *loadBalancer.LoadBalancerHardware[0].Datacenter.Name)
 	d.Set("ip_address", *loadBalancer.IpAddress.IpAddress)
 	d.Set("subnet_id", *loadBalancer.IpAddress.SubnetId)
 	d.Set("ha_enabled", *loadBalancer.HighAvailabilityFlag)
@@ -205,7 +205,7 @@ func resourceSoftLayerLbLocalRead(d *schema.ResourceData, meta interface{}) erro
 	}
 
 	d.Set("connections", getConnectionLimit(*vip.ConnectionLimit))
-	d.Set("location", *vip.LoadBalancerHardware[0].Datacenter.Name)
+	d.Set("datacenter", *vip.LoadBalancerHardware[0].Datacenter.Name)
 	d.Set("ip_address", *vip.IpAddress.IpAddress)
 	d.Set("subnet_id", *vip.IpAddress.SubnetId)
 	d.Set("ha_enabled", *vip.HighAvailabilityFlag)
