@@ -15,18 +15,18 @@ import (
 	"regexp"
 )
 
-func TestAccSoftLayerUserCustomer_Basic(t *testing.T) {
+func TestAccSoftLayerUser_Basic(t *testing.T) {
 	var user datatypes.User_Customer
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckSoftLayerUserCustomerDestroy,
+		CheckDestroy: testAccCheckSoftLayerUserDestroy,
 		Steps: []resource.TestStep{
 			resource.TestStep{
-				Config: testAccCheckSoftLayerUserCustomerConfig_basic,
+				Config: testAccCheckSoftLayerUserConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckSoftLayerUserCustomerExists("softlayer_user.testuser", &user),
+					testAccCheckSoftLayerUserExists("softlayer_user.testuser", &user),
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "username", testAccRandomUserName),
 					resource.TestCheckResourceAttr(
@@ -63,7 +63,7 @@ func TestAccSoftLayerUserCustomer_Basic(t *testing.T) {
 			},
 
 			resource.TestStep{
-				Config: testAccCheckSoftLayerUserCustomerConfig_updated,
+				Config: testAccCheckSoftLayerUserConfig_updated,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "username", testAccRandomUserName),
@@ -103,7 +103,7 @@ func TestAccSoftLayerUserCustomer_Basic(t *testing.T) {
 	})
 }
 
-func testAccCheckSoftLayerUserCustomerDestroy(s *terraform.State) error {
+func testAccCheckSoftLayerUserDestroy(s *terraform.State) error {
 	client := services.GetUserCustomerService(testAccProvider.Meta().(*session.Session))
 
 	for _, rs := range s.RootModule().Resources {
@@ -125,7 +125,7 @@ func testAccCheckSoftLayerUserCustomerDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccCheckSoftLayerUserCustomerExists(n string, user *datatypes.User_Customer) resource.TestCheckFunc {
+func testAccCheckSoftLayerUserExists(n string, user *datatypes.User_Customer) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 
@@ -156,7 +156,7 @@ func testAccCheckSoftLayerUserCustomerExists(n string, user *datatypes.User_Cust
 	}
 }
 
-var testAccCheckSoftLayerUserCustomerConfig_basic = fmt.Sprintf(`
+var testAccCheckSoftLayerUserConfig_basic = fmt.Sprintf(`
 resource "softlayer_user" "testuser" {
     username = "%s"
     first_name = "first_name"
@@ -177,7 +177,7 @@ resource "softlayer_user" "testuser" {
     has_api_key = true
 }`, testAccRandomUserName, testAccUserPassword)
 
-var testAccCheckSoftLayerUserCustomerConfig_updated = fmt.Sprintf(`
+var testAccCheckSoftLayerUserConfig_updated = fmt.Sprintf(`
 resource "softlayer_user" "testuser" {
     username = "%s"
     first_name = "new_first_name"

@@ -43,7 +43,7 @@ func Provider() terraform.ResourceProvider {
 			"softlayer_lb_local_service_group": resourceSoftLayerLbLocalServiceGroup(),
 			"softlayer_lb_local_service":       resourceSoftLayerLbLocalService(),
 			"softlayer_security_certificate":   resourceSoftLayerSecurityCertificate(),
-			"softlayer_user":                   resourceSoftLayerUserCustomer(),
+			"softlayer_user":                   resourceSoftLayerUser(),
 			"softlayer_objectstorage_account":  resourceSoftLayerObjectStorageAccount(),
 			"softlayer_provisioning_hook":      resourceSoftLayerProvisioningHook(),
 			"softlayer_scale_policy":           resourceSoftLayerScalePolicy(),

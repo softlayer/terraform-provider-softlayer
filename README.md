@@ -222,7 +222,7 @@ The following attributes are exported:
 
 * `id` - id of the virtual guest.
 
-#### `softlayer_user_customer`
+#### `softlayer_user`
 
 Represents the SoftLayer's user login resource. You can get, create,
 update and delete this resource. For additional details please refer to

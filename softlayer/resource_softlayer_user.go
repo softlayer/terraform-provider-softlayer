@@ -15,13 +15,13 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/sl"
 )
 
-func resourceSoftLayerUserCustomer() *schema.Resource {
+func resourceSoftLayerUser() *schema.Resource {
 	return &schema.Resource{
-		Create:   resourceSoftLayerUserCustomerCreate,
-		Read:     resourceSoftLayerUserCustomerRead,
-		Update:   resourceSoftLayerUserCustomerUpdate,
-		Delete:   resourceSoftLayerUserCustomerDelete,
-		Exists:   resourceSoftLayerUserCustomerExists,
+		Create:   resourceSoftLayerUserCreate,
+		Read:     resourceSoftLayerUserRead,
+		Update:   resourceSoftLayerUserUpdate,
+		Delete:   resourceSoftLayerUserDelete,
+		Exists:   resourceSoftLayerUserExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
@@ -137,7 +137,7 @@ func getPermissions(d *schema.ResourceData) []datatypes.User_Customer_CustomerPe
 	return permissions
 }
 
-func resourceSoftLayerUserCustomerCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerUserCreate(d *schema.ResourceData, meta interface{}) error {
 	service := services.GetUserCustomerService(meta.(*session.Session))
 
 	// Build up our creation options
@@ -202,10 +202,10 @@ func resourceSoftLayerUserCustomerCreate(d *schema.ResourceData, meta interface{
 		}
 	}
 
-	return resourceSoftLayerUserCustomerRead(d, meta)
+	return resourceSoftLayerUserRead(d, meta)
 }
 
-func resourceSoftLayerUserCustomerRead(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerUserRead(d *schema.ResourceData, meta interface{}) error {
 	service := services.GetUserCustomerService(meta.(*session.Session))
 
 	userID, _ := strconv.Atoi(d.Id())
@@ -272,7 +272,7 @@ func resourceSoftLayerUserCustomerRead(d *schema.ResourceData, meta interface{})
 	return nil
 }
 
-func resourceSoftLayerUserCustomerUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error {
 	service := services.GetUserCustomerService(meta.(*session.Session))
 
 	sluid, _ := strconv.Atoi(d.Id())
@@ -403,7 +403,7 @@ func resourceSoftLayerUserCustomerUpdate(d *schema.ResourceData, meta interface{
 	return nil
 }
 
-func resourceSoftLayerUserCustomerDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerUserDelete(d *schema.ResourceData, meta interface{}) error {
 	service := services.GetUserCustomerService(meta.(*session.Session))
 
 	id, _ := strconv.Atoi(d.Id())
@@ -422,7 +422,7 @@ func resourceSoftLayerUserCustomerDelete(d *schema.ResourceData, meta interface{
 	return nil
 }
 
-func resourceSoftLayerUserCustomerExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceSoftLayerUserExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	service := services.GetUserCustomerService(meta.(*session.Session))
 
 	id, err := strconv.Atoi(d.Id())
