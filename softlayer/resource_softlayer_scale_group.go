@@ -655,7 +655,7 @@ func resourceSoftLayerScaleGroupExists(d *schema.ResourceData, meta interface{})
 	}
 
 	result, err := scaleGroupService.Id(groupId).Mask("id").GetObject()
-	return err == nil && *result.Id == groupId, nil
+	return result.Id != nil && err == nil && *result.Id == groupId, nil
 }
 
 func resourceSoftLayerScaleGroupNetworkVlanHash(v interface{}) int {

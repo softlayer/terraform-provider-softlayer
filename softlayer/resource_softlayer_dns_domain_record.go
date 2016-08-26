@@ -356,5 +356,5 @@ func resourceSoftLayerDnsDomainRecordExists(d *schema.ResourceData, meta interfa
 
 	record, err := service.Id(id).GetObject()
 
-	return err == nil && *record.Id == id, nil
+	return record.Id != nil && err == nil && *record.Id == id, nil
 }

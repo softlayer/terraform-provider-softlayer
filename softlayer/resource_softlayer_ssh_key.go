@@ -160,5 +160,5 @@ func resourceSoftLayerSSHKeyExists(d *schema.ResourceData, meta interface{}) (bo
 	}
 
 	result, err := service.Id(keyId).GetObject()
-	return err == nil && *result.Id == keyId, nil
+	return result.Id != nil && err == nil && *result.Id == keyId, nil
 }

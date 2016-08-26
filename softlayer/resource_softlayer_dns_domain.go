@@ -271,5 +271,5 @@ func resourceSoftLayerDnsDomainExists(d *schema.ResourceData, meta interface{}) 
 	}
 
 	result, err := service.Id(dnsId).GetObject()
-	return err == nil && *result.Id == dnsId, nil
+	return result.Id != nil && err == nil && *result.Id == dnsId, nil
 }

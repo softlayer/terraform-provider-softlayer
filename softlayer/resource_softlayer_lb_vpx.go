@@ -594,9 +594,5 @@ func resourceSoftLayerLbVpxExists(d *schema.ResourceData, meta interface{}) (boo
 
 	nadc, err := service.Mask("id").Id(id).GetObject()
 
-	if err != nil {
-		return false, fmt.Errorf("Error fetching network application delivery controller: %s", err)
-	}
-
-	return *nadc.Id == id && err == nil, nil
+	return nadc.Id != nil && *nadc.Id == id && err == nil, nil
 }

@@ -170,11 +170,7 @@ func resourceSoftLayerSecurityCertificateExists(d *schema.ResourceData, meta int
 
 	cert, err := service.Id(id).GetObject()
 
-	if err != nil {
-		return false, fmt.Errorf("Error fetching Security Cerfiticate: %s", err)
-	}
-
-	return err == nil && *cert.Id == id, nil
+	return cert.Id != nil && err == nil && *cert.Id == id, nil
 }
 
 func normalizeCert(cert interface{}) string {

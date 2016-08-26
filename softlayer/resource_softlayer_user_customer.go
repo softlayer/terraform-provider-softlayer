@@ -428,7 +428,6 @@ func resourceSoftLayerUserCustomerExists(d *schema.ResourceData, meta interface{
 	id, err := strconv.Atoi(d.Id())
 
 	result, err := service.Id(id).GetObject()
-	log.Println(*result.Id)
 
-	return *result.Id == id && err == nil, nil
+	return result.Id != nil && *result.Id == id && err == nil, nil
 }

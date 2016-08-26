@@ -199,5 +199,5 @@ func resourceSoftLayerLbVpxVipExists(d *schema.ResourceData, meta interface{}) (
 
 	vip, err := network.GetNadcLbVipByName(sess, nadcId, vipName)
 
-	return err == nil && *vip.Name == vipName, nil
+	return vip != nil && err == nil && *vip.Name == vipName, nil
 }

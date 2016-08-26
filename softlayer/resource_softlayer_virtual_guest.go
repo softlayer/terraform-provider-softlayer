@@ -676,5 +676,5 @@ func resourceSoftLayerVirtualGuestExists(d *schema.ResourceData, meta interface{
 	}
 
 	result, err := service.Id(guestId).GetObject()
-	return err == nil && *result.Id == guestId, nil
+	return result.Id != nil && err == nil && *result.Id == guestId, nil
 }

@@ -133,5 +133,5 @@ func resourceSoftLayerProvisioningHookExists(d *schema.ResourceData, meta interf
 	}
 
 	result, err := service.Id(hookId).GetObject()
-	return err == nil && *result.Id == hookId, nil
+	return result.Id != nil && err == nil && *result.Id == hookId, nil
 }
