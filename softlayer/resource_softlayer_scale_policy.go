@@ -165,20 +165,20 @@ func resourceSoftLayerScalePolicyCreate(d *schema.ResourceData, meta interface{}
 
 	if _, ok := d.GetOk("triggers"); ok {
 		err = validateTriggerTypes(d)
-		/*		if err != nil {
-					return fmt.Errorf("Error retrieving scalePolicy: %s", err)
-				}
+		if err != nil {
+			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
+		}
 
-				opts.OneTimeTriggers, err = prepareOneTimeTriggers(d, meta.(*session.Session))
-				if err != nil {
-					return fmt.Errorf("Error retrieving scalePolicy: %s", err)
-				}
+		opts.OneTimeTriggers, err = prepareOneTimeTriggers(d)
+		if err != nil {
+			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
+		}
 
-				opts.RepeatingTriggers, err = prepareRepeatingTriggers(d)
-				if err != nil {
-					return fmt.Errorf("Error retrieving scalePolicy: %s", err)
-				}
-		*/
+		opts.RepeatingTriggers, err = prepareRepeatingTriggers(d)
+		if err != nil {
+			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
+		}
+
 		opts.ResourceUseTriggers, err = prepareResourceUseTriggers(d)
 		if err != nil {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
@@ -219,8 +219,8 @@ func resourceSoftLayerScalePolicyRead(d *schema.ResourceData, meta interface{}) 
 	d.Set("scale_amount", *scalePolicy.ScaleActions[0].Amount)
 
 	triggers := make([]map[string]interface{}, 0)
-	//triggers = append(triggers, readOneTimeTriggers(scalePolicy.OneTimeTriggers)...)
-	//triggers = append(triggers, readRepeatingTriggers(scalePolicy.RepeatingTriggers)...)
+	triggers = append(triggers, readOneTimeTriggers(scalePolicy.OneTimeTriggers)...)
+	triggers = append(triggers, readRepeatingTriggers(scalePolicy.RepeatingTriggers)...)
 	triggers = append(triggers, readResourceUseTriggers(scalePolicy.ResourceUseTriggers)...)
 
 	d.Set("triggers", triggers)
@@ -238,7 +238,7 @@ func resourceSoftLayerScalePolicyUpdate(d *schema.ResourceData, meta interface{}
 		return fmt.Errorf("Not a valid scale policy ID, must be an integer: %s", err)
 	}
 
-	scalePolicy, err := scalePolicyService.Id(scalePolicyId).GetObject()
+	scalePolicy, err := scalePolicyService.Id(scalePolicyId).Mask(strings.Join(SoftLayerScalePolicyObjectMask, ";")).GetObject()
 	if err != nil {
 		return fmt.Errorf("Error retrieving scalePolicy: %s", err)
 	}
@@ -279,7 +279,7 @@ func resourceSoftLayerScalePolicyUpdate(d *schema.ResourceData, meta interface{}
 	}
 
 	if _, ok := d.GetOk("triggers"); ok {
-		template.OneTimeTriggers, err = prepareOneTimeTriggers(d, meta.(*session.Session))
+		template.OneTimeTriggers, err = prepareOneTimeTriggers(d)
 		if err != nil {
 			return fmt.Errorf("Error retrieving scalePolicy: %s", err)
 		}
@@ -294,6 +294,7 @@ func resourceSoftLayerScalePolicyUpdate(d *schema.ResourceData, meta interface{}
 	}
 
 	for _, triggerList := range scalePolicy.Triggers {
+		log.Printf("[INFO] DELETE TRIGGERS %d", *triggerList.Id)
 		scalePolicyTriggerService.Id(*triggerList.Id).DeleteObject()
 	}
 
@@ -353,33 +354,12 @@ func validateTriggerTypes(d *schema.ResourceData) error {
 	return nil
 }
 
-func getCurrentTimeZone(sess *session.Session) (*time.Location, error) {
-	accountService := services.GetAccountService(sess)
-	currentUser, err := accountService.GetCurrentUser()
-	if err != nil {
-		return nil, fmt.Errorf("Error getting current user information: %s", err)
-	}
-	offsetHour, err := strconv.Atoi((*currentUser.Timezone.Offset)[:3])
-	if err != nil {
-		return nil, fmt.Errorf("Error getting current timezone: %s", err)
-	}
-	offsetMinute, err := strconv.Atoi((*currentUser.Timezone.Offset)[3:5])
-	if err != nil {
-		return nil, fmt.Errorf("Error getting current timezone: %s", err)
-	}
-	log.Printf("***** Offset %s", *currentUser.Timezone.Offset)
-	currentZone := time.FixedZone("currentZone", offsetHour*60*60+offsetMinute*60)
-	return currentZone, nil
-}
-
-func prepareOneTimeTriggers(d *schema.ResourceData, sess *session.Session) ([]datatypes.Scale_Policy_Trigger_OneTime, error) {
+func prepareOneTimeTriggers(d *schema.ResourceData) ([]datatypes.Scale_Policy_Trigger_OneTime, error) {
 	triggerLists := d.Get("triggers").(*schema.Set).List()
 	triggers := make([]datatypes.Scale_Policy_Trigger_OneTime, 0)
-	currentZone, err := getCurrentTimeZone(sess)
-	if err != nil {
-		return nil, fmt.Errorf("Error in prepareOneTimeTrigger %s", err)
-	}
-	log.Printf("**** Current Zone : %s", currentZone.String())
+
+	portalTimeZone := time.FixedZone("PortalTimeZone", -5*60*60)
+
 	for _, triggerList := range triggerLists {
 		trigger := triggerList.(map[string]interface{})
 
@@ -395,12 +375,10 @@ func prepareOneTimeTriggers(d *schema.ResourceData, sess *session.Session) ([]da
 			}
 
 			timeStamp, err := time.Parse(SoftLayerTimeFormat, timeStampString)
-			//timeStamp, err := time.Parse(time.RFC3339, timeStampString)
 			if err != nil {
 				return nil, err
 			}
-			currentZone := time.FixedZone("currentZone", -5*60*60)
-			oneTimeTrigger.Date = &datatypes.Time{timeStamp.In(currentZone)}
+			oneTimeTrigger.Date = &datatypes.Time{timeStamp.In(portalTimeZone)}
 			triggers = append(triggers, oneTimeTrigger)
 		}
 	}
@@ -505,31 +483,26 @@ func readResourceUseTriggers(list []datatypes.Scale_Policy_Trigger_ResourceUse) 
 	triggers := make([]map[string]interface{}, 0, len(list))
 	for _, trigger := range list {
 		t := make(map[string]interface{})
-		t["id"] = trigger.Id
+		t["id"] = *trigger.Id
 		t["type"] = "RESOURCE_USE"
-		//		t["watches"] = readResourceUseWatches(trigger.Watches)
+		t["watches"] = schema.NewSet(resourceSoftLayerScalePolicyHandlerHash,
+			readResourceUseWatches(trigger.Watches))
 		triggers = append(triggers, t)
 	}
 	return triggers
 }
 
-func readResourceUseWatches(list []datatypes.Scale_Policy_Trigger_ResourceUse_Watch) []map[string]interface{} {
-	watches := make([]map[string]interface{}, 0, len(list))
-	//	for _, watch := range list {
-	//		w := make(map[string]interface{})
-	/*		w["id"] = *watch.Id
-			w["metric"] = *watch.Metric
-			w["operator"] = *watch.Operator
-			w["period"] = *watch.Period
-			w["value"] = *watch.Value*/
-	//		log.Printf("****WATCH : %+V", watch)
-	//		w["id"] = "1234"
-	//		w["metric"] = "1234"
-	//		w["operator"] = "1234"
-	//		w["period"] = "1234"
-	//		w["value"] = "1234"
-	//		watches = append(watches, w)
-	//	}
+func readResourceUseWatches(list []datatypes.Scale_Policy_Trigger_ResourceUse_Watch) []interface{} {
+	watches := make([]interface{}, 0, len(list))
+	for _, watch := range list {
+		w := make(map[string]interface{})
+		w["id"] = *watch.Id
+		w["metric"] = *watch.Metric
+		w["operator"] = *watch.Operator
+		w["period"] = *watch.Period
+		w["value"] = *watch.Value
+		watches = append(watches, w)
+	}
 	return watches
 }
 
