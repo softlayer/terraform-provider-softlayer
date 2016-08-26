@@ -48,7 +48,7 @@ resource "softlayer_virtual_guest" "host-a" {
     domain = "example.com"
     ssh_keys = ["123456"]
     image = "DEBIAN_7_64"
-    region = "ams01"
+    datacenter = "ams01"
     public_network_speed = 10
     cpu = 1
     ram = 1024
@@ -61,7 +61,7 @@ resource "softlayer_virtual_guest" "host-b" {
     domain = "example.com"
     ssh_keys = ["123456", "${softlayer_ssh_key.test_key_1.id}"]
     image = "CENTOS_6_64"
-    region = "ams01"
+    datacenter = "ams01"
     public_network_speed = 10
     cpu = 1
     ram = 1024
@@ -94,7 +94,7 @@ resource "softlayer_virtual_guest" "twc_terraform_sample" {
     name = "twc-terraform-sample-name"
     domain = "bar.example.com"
     image = "DEBIAN_7_64"
-    region = "ams01"
+    datacenter = "wdc01"
     public_network_speed = 10
     hourly_billing = true
     private_network_only = false
@@ -104,8 +104,16 @@ resource "softlayer_virtual_guest" "twc_terraform_sample" {
     user_data = "{\"value\":\"newvalue\"}"
     dedicated_acct_host_only = true
     local_disk = false
-    frontend_vlan_id = 1085155
-    backend_vlan_id = 1085157
+    front_end_vlan {
+       vlan_number = 1144
+       primary_router_hostname = "fcr03a.wdc01"
+    }
+    back_end_vlan {
+       vlan_number = 978
+       primary_router_hostname = "bcr03a.wdc01"
+    }
+    front_end_subnet = "50.97.46.160/28"
+    back_end_subnet = "10.56.109.128/26"
 }
 ```
 
@@ -114,7 +122,7 @@ resource "softlayer_virtual_guest" "twc_terraform_sample" {
 resource "softlayer_virtual_guest" "terraform-sample-BDTGroup" {
    name = "terraform-sample-blockDeviceTemplateGroup"
    domain = "bar.example.com"
-   region = "ams01"
+   datacenter = "ams01"
    public_network_speed = 10
    hourly_billing = false
    cpu = 1
@@ -140,7 +148,7 @@ The following arguments are supported:
 * `ram` | *int*
     * The amount of memory to allocate in megabytes.
     * **Required**
-* `region` | *string*
+* `datacenter` | *string*
     * Specifies which datacenter the instance is to be provisioned in.
     * **Required**
 * `hourly_billing` | *boolean*
@@ -167,12 +175,20 @@ The following arguments are supported:
     * Specifies whether or not the instance only has access to the private network. When true this flag specifies that a compute instance is to only have access to the private network.
     * *Default*: False
     * *Optional*
-* `frontend_vlan_id` | *int*
-    * Specifies the network vlan which is to be used for the frontend interface of the computing instance.
+* `front_end_vlan` | *map*
+    * Public VLAN which is to be used for the public network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans).
     * *Default*: nil
     * *Optional*
-* `backend_vlan_id` | *int*
-    * Specifies the network vlan which is to be used for the backend interface of the computing instance.
+* `back_end_vlan` | *map*
+    * Private VLAN which is to be used for the private network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans).
+    * *Default*: nil
+    * *Optional*
+* `front_end_subnet` | *string*
+    * Public subnet which is to be used for the public network interface of the instance. Accepted values are primary public networks and can be found [here](https://control.softlayer.com/network/subnets).
+    * *Default*: nil
+    * *Optional*
+* `back_end_subnet` | *string*
+    * Public subnet which is to be used for the private network interface of the instance. Accepted values are primary private networks and can be found [here](https://control.softlayer.com/network/subnets).
     * *Default*: nil
     * *Optional*
 * `disks` | *array*
@@ -670,11 +686,21 @@ https://{{userName}}:{{apiKey}}@api.softlayer.com/rest/v3/SoftLayer_Product_Pack
 
 ```hcl
 resource "softlayer_lb_vpx" "test_vpx" {
-    datacenter = "DALLAS06"
+    datacenter = "dal06"
     speed = 10
     version = "10.1"
     plan = "Standard"
     ip_count = 2
+    front_end_vlan {
+      vlan_number = 1251
+      primary_router_hostname = "fcr01a.dal06"
+    }
+    back_end_vlan {
+       vlan_number = 1540
+       primary_router_hostname = "bcr01a.dal06"
+    }
+    front_end_subnet = "23.246.226.248/29"
+    back_end_subnet = "10.107.180.0/26"
 }
 ```
 
@@ -690,11 +716,20 @@ resource "softlayer_lb_vpx" "test_vpx" {
     * (Required) The VPX Load Balancer plan. Accepted values are `Standard` and `Platinum`.
 * `ip_count` | *int*
     * (Required) The number of static public IP addresses assigned to the VPX Load Balancer. Accepted values are `2`, `4`, `8`, and `16`.
+* `front_end_vlan` | *map*
+    * (Optional) Public VLAN which is to be used for the public network interface of the VPX Load Balancer. Accepted values can be found [here](https://control.softlayer.com/network/vlans).
+* `back_end_vlan` | *map*
+    * (Optional) Private VLAN which is to be used for the private network interface of the VPX Load Balancer. Accepted values can be found [here](https://control.softlayer.com/network/vlans).
+* `front_end_subnet` | *string*
+    * (Optional) Public subnet which is to be used for the public network interface of the VPX Load Balancer. Accepted values are primary public networks and can be found [here](https://control.softlayer.com/network/subnets).
+* `back_end_subnet` | *string*
+    * (Optional) Public subnet which is to be used for the private network interface of the VPX Load Balancer. Accepted values are primary private networks and can be found [here](https://control.softlayer.com/network/subnets).
 
 ##### Attributes Reference
 
 * `id` - A VPX Load Balancer's internal identifier.
 * `name` - A VPX Load Balancer's internal name.
+* `vip_pool` - List of virtual ip addresses for the VPX Load Balancer. 
 
 #### `softlayer_lb_vpx_service`
 
