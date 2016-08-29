@@ -79,7 +79,6 @@ func resourceSoftLayerProvisioningHookRead(d *schema.ResourceData, meta interfac
 
 	d.Set("id", *hook.Id)
 	d.Set("name", *hook.Name)
-	d.Set("typeId", *hook.TypeId)
 	d.Set("uri", *hook.Uri)
 
 	return nil
