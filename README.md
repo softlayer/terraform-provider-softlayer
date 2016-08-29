@@ -82,6 +82,8 @@ provider "softlayer" {}
 - **SOFTLAYER_USERNAME**: Your SoftLayer username
 - **SOFTLAYER_API_KEY**: Your API key
 
+You can also put credentials in _~/.softlayer_. See the [softlayer api python client docs](http://softlayer-python.readthedocs.io/en/latest/config_file.html) for details on this configuration file.
+
 ### Resources
 
 #### `softlayer_virtual_guest`
@@ -729,7 +731,7 @@ resource "softlayer_lb_vpx" "test_vpx" {
 
 * `id` - A VPX Load Balancer's internal identifier.
 * `name` - A VPX Load Balancer's internal name.
-* `vip_pool` - List of virtual ip addresses for the VPX Load Balancer. 
+* `vip_pool` - List of virtual ip addresses for the VPX Load Balancer.
 
 #### `softlayer_lb_vpx_service`
 
