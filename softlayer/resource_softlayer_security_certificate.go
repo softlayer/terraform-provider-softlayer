@@ -132,8 +132,12 @@ func resourceSoftLayerSecurityCertificateRead(d *schema.ResourceData, meta inter
 
 	d.SetId(fmt.Sprintf("%d", *cert.Id))
 	d.Set("certificate", *cert.Certificate)
-	d.Set("intermediate_certificate", *cert.IntermediateCertificate)
-	d.Set("private_key", *cert.PrivateKey)
+	if cert.IntermediateCertificate != nil {
+		d.Set("intermediate_certificate", *cert.IntermediateCertificate)
+	}
+	if cert.PrivateKey != nil {
+		d.Set("private_key", *cert.PrivateKey)
+	}
 	d.Set("common_name", *cert.CommonName)
 	d.Set("organization_name", *cert.OrganizationName)
 	d.Set("validity_begin", *cert.ValidityBegin)
@@ -170,7 +174,7 @@ func resourceSoftLayerSecurityCertificateExists(d *schema.ResourceData, meta int
 
 	cert, err := service.Id(id).GetObject()
 
-	return cert.Id != nil && err == nil && *cert.Id == id, nil
+	return err == nil && cert.Id != nil && *cert.Id == id, nil
 }
 
 func normalizeCert(cert interface{}) string {
