@@ -9,24 +9,31 @@ import (
 )
 
 func Provider() terraform.ResourceProvider {
+	defaultSoftLayerSession := session.New()
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"username": {
-				Type:        schema.TypeString,
-				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("SOFTLAYER_USERNAME", nil),
+				Type:     schema.TypeString,
+				Required: true,
+				DefaultFunc: func() (interface{}, error) {
+					return defaultSoftLayerSession.UserName, nil
+				},
 				Description: "The user name for SoftLayer API operations.",
 			},
 			"api_key": {
-				Type:        schema.TypeString,
-				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("SOFTLAYER_API_KEY", nil),
+				Type:     schema.TypeString,
+				Required: true,
+				DefaultFunc: func() (interface{}, error) {
+					return defaultSoftLayerSession.APIKey, nil
+				},
 				Description: "The API key for SoftLayer API operations.",
 			},
 			"endpoint_url": {
-				Type:        schema.TypeString,
-				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("SOFTLAYER_ENDPOINT_URL", session.DefaultEndpoint),
+				Type:     schema.TypeString,
+				Required: true,
+				DefaultFunc: func() (interface{}, error) {
+					return defaultSoftLayerSession.Endpoint, nil
+				},
 				Description: "The endpoint url for the SoftLayer API.",
 			},
 		},
