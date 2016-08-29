@@ -100,7 +100,10 @@ func resourceSoftLayerSSHKeyRead(d *schema.ResourceData, meta interface{}) error
 	d.Set("name", *key.Label)
 	d.Set("public_key", strings.TrimSpace(*key.Key))
 	d.Set("fingerprint", *key.Fingerprint)
-	d.Set("notes", *key.Notes)
+
+	if key.Notes != nil {
+		d.Set("notes", *key.Notes)
+	}
 
 	return nil
 }
