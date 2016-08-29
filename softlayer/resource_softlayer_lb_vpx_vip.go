@@ -11,6 +11,8 @@ import (
 	"github.ibm.com/riethm/gopherlayer.git/services"
 	"github.ibm.com/riethm/gopherlayer.git/session"
 	"github.ibm.com/riethm/gopherlayer.git/sl"
+	"strconv"
+	"strings"
 )
 
 func resourceSoftLayerLbVpxVip() *schema.Resource {
@@ -29,20 +31,9 @@ func resourceSoftLayerLbVpxVip() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"connection_limit": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-
 			"load_balancing_method": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
-			},
-
-			"modify_date": {
-				Type:     schema.TypeString,
-				Computed: true,
 			},
 
 			// name field is actually used as an ID in SoftLayer
@@ -51,11 +42,6 @@ func resourceSoftLayerLbVpxVip() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-			},
-
-			"security_certificate_id": {
-				Type:     schema.TypeInt,
-				Optional: true,
 			},
 
 			"source_port": {
@@ -73,10 +59,28 @@ func resourceSoftLayerLbVpxVip() *schema.Resource {
 			"virtual_ip_address": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 		},
 	}
+}
+
+func parseId(id string) (int, string, error) {
+	if len(id) < 1 {
+		return 0, "", fmt.Errorf("Failed to parse id : Unable to get a VIP ID")
+	}
+
+	idList := strings.Split(id, ":")
+	if len(idList) != 2 || len(idList[0]) < 1 || len(idList[1]) < 1 {
+		return 0, "", fmt.Errorf("Failed to parse id : Invalid VIP ID")
+	}
+
+	nadcId, err := strconv.Atoi(idList[0])
+	if err != nil {
+		return 0, "", fmt.Errorf("Failed to parse id : Unable to get a VIP ID %s", err)
+	}
+
+	vipName := idList[1]
+	return nadcId, vipName, nil
 }
 
 func resourceSoftLayerLbVpxVipCreate(d *schema.ResourceData, meta interface{}) error {
@@ -84,15 +88,14 @@ func resourceSoftLayerLbVpxVipCreate(d *schema.ResourceData, meta interface{}) e
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	nadcId := d.Get("nad_controller_id").(int)
+	vipName := d.Get("name").(string)
 
 	template := datatypes.Network_LoadBalancer_VirtualIpAddress{
-		ConnectionLimit:       sl.Int(d.Get("connection_limit").(int)),
-		LoadBalancingMethod:   sl.String(d.Get("load_balancing_method").(string)),
-		Name:                  sl.String(d.Get("name").(string)),
-		SourcePort:            sl.Int(d.Get("source_port").(int)),
-		Type:                  sl.String(d.Get("type").(string)),
-		VirtualIpAddress:      sl.String(d.Get("virtual_ip_address").(string)),
-		SecurityCertificateId: sl.Int(d.Get("security_certificate_id").(int)),
+		LoadBalancingMethod: sl.String(d.Get("load_balancing_method").(string)),
+		Name:                sl.String(vipName),
+		SourcePort:          sl.Int(d.Get("source_port").(int)),
+		Type:                sl.String(d.Get("type").(string)),
+		VirtualIpAddress:    sl.String(d.Get("virtual_ip_address").(string)),
 	}
 
 	log.Printf("[INFO] Creating Virtual Ip Address %s", template.VirtualIpAddress)
@@ -107,31 +110,46 @@ func resourceSoftLayerLbVpxVipCreate(d *schema.ResourceData, meta interface{}) e
 		return errors.New("Error creating Virtual Ip Address")
 	}
 
+	d.SetId(fmt.Sprintf("%d:%s", nadcId, vipName))
+
+	log.Printf("[INFO] Netscaler VPX VIP ID: %s", d.Id())
+
 	return resourceSoftLayerLbVpxVipRead(d, meta)
 }
 
 func resourceSoftLayerLbVpxVipRead(d *schema.ResourceData, meta interface{}) error {
-	nadcId := d.Get("nad_controller_id").(int)
-	vipName := d.Get("name").(string)
-
 	sess := meta.(*session.Session)
+
+	nadcId, vipName, err := parseId(d.Id())
+	if err != nil {
+		return fmt.Errorf("softlayer_lb_vpx : %s", err)
+	}
 
 	vip, err := network.GetNadcLbVipByName(sess, nadcId, vipName)
 	if err != nil {
 		return fmt.Errorf("softlayer_lb_vpx : while looking up a virtual ip address : %s", err)
 	}
 
-	d.SetId(fmt.Sprintf("%s;%d", *vip.Name, nadcId))
 	d.Set("nad_controller_id", nadcId)
-	d.Set("load_balancing_method", *vip.LoadBalancingMethod)
-	d.Set("load_balancing_method_name", *vip.LoadBalancingMethodFullName)
-	d.Set("modify_date", *vip.ModifyDate)
-	d.Set("name", *vip.Name)
-	d.Set("connection_limit", *vip.ConnectionLimit)
-	d.Set("security_certificate_id", *vip.SecurityCertificateId)
-	d.Set("source_port", *vip.SourcePort)
-	d.Set("type", *vip.Type)
-	d.Set("virtual_ip_address", *vip.VirtualIpAddress)
+	if vip.LoadBalancingMethod != nil {
+		d.Set("load_balancing_method", *vip.LoadBalancingMethod)
+	}
+
+	if vip.Name != nil {
+		d.Set("name", *vip.Name)
+	}
+
+	if vip.SourcePort != nil {
+		d.Set("source_port", *vip.SourcePort)
+	}
+
+	if vip.Type != nil {
+		d.Set("type", *vip.Type)
+	}
+
+	if vip.VirtualIpAddress != nil {
+		d.Set("virtual_ip_address", *vip.VirtualIpAddress)
+	}
 
 	return nil
 }
@@ -149,18 +167,6 @@ func resourceSoftLayerLbVpxVipUpdate(d *schema.ResourceData, meta interface{}) e
 		template.LoadBalancingMethod = sl.String(d.Get("load_balancing_method").(string))
 	}
 
-	if d.HasChange("security_certificate_id") {
-		template.SecurityCertificateId = sl.Int(d.Get("security_certificate_id").(int))
-	}
-
-	if d.HasChange("source_port") {
-		template.SourcePort = sl.Int(d.Get("source_port").(int))
-	}
-
-	if d.HasChange("type") {
-		template.Type = sl.String(d.Get("type").(string))
-	}
-
 	if d.HasChange("virtual_ip_address") {
 		template.VirtualIpAddress = sl.String(d.Get("virtual_ip_address").(string))
 	}
@@ -171,17 +177,19 @@ func resourceSoftLayerLbVpxVipUpdate(d *schema.ResourceData, meta interface{}) e
 		return fmt.Errorf("Error updating Virtual Ip Address: %s", err)
 	}
 
-	return nil
+	return resourceSoftLayerLbVpxVipRead(d, meta)
 }
 
 func resourceSoftLayerLbVpxVipDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
-	nadcId := d.Get("nad_controller_id").(int)
-	vipName := d.Get("name").(string)
+	nadcId, vipName, err := parseId(d.Id())
+	if err != nil {
+		return fmt.Errorf("softlayer_lb_vpx : %s", err)
+	}
 
-	_, err := service.Id(nadcId).DeleteLiveLoadBalancer(
+	_, err = service.Id(nadcId).DeleteLiveLoadBalancer(
 		&datatypes.Network_LoadBalancer_VirtualIpAddress{Name: sl.String(vipName)},
 	)
 	if err != nil {
@@ -194,8 +202,10 @@ func resourceSoftLayerLbVpxVipDelete(d *schema.ResourceData, meta interface{}) e
 func resourceSoftLayerLbVpxVipExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	sess := meta.(*session.Session)
 
-	vipName := d.Get("name").(string)
-	nadcId := d.Get("nad_controller_id").(int)
+	nadcId, vipName, err := parseId(d.Id())
+	if err != nil {
+		return false, fmt.Errorf("softlayer_lb_vpx : %s", err)
+	}
 
 	vip, err := network.GetNadcLbVipByName(sess, nadcId, vipName)
 
