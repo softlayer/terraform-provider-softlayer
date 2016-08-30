@@ -47,17 +47,13 @@ func testAccCheckSoftLayerLbVpxVipDestroy(s *terraform.State) error {
 		nadcId, _ := strconv.Atoi(rs.Primary.Attributes["nad_controller_id"])
 		vipName, _ := rs.Primary.Attributes["name"]
 
-		vips, err := service.
+		vips, _ := service.
 			Id(nadcId).
 			Filter(filter.Path("name").Eq(vipName).Build()).
 			GetLoadBalancers()
-		if err != nil {
-			return fmt.Errorf("Error getting Virtual Ip Address: %s", err)
-		}
 
-		vip := *vips[0].VirtualIpAddress
-		if len(vip) != 0 {
-			return fmt.Errorf("Virtual ip address still exists: %s", vip)
+		if len(vips) > 0 {
+			return fmt.Errorf("Netscaler VPX VIP still exists")
 		}
 	}
 
@@ -65,24 +61,10 @@ func testAccCheckSoftLayerLbVpxVipDestroy(s *terraform.State) error {
 }
 
 var testAccCheckSoftLayerLbVpxVipConfig_basic = `
-resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
-    name = "terraform-test"
-    domain = "bar.example.com"
-    image = "DEBIAN_7_64"
-    region = "ams01"
-    public_network_speed = 10
-    hourly_billing = true
-    private_network_only = false
-    cpu = 1
-    ram = 1024
-    disks = [25, 10, 20]
-    user_data = "{\"value\":\"newvalue\"}"
-    dedicated_acct_host_only = true
-    local_disk = false
-}
+
 
 resource "softlayer_lb_vpx" "testacc_foobar_nadc" {
-    datacenter = "DALLAS05"
+    datacenter = "dal09"
     speed = 10
     version = "10.1"
     plan = "Standard"
@@ -95,6 +77,6 @@ resource "softlayer_lb_vpx_vip" "testacc_vip" {
     load_balancing_method = "lc"
     source_port = 80
     type = "HTTP"
-    virtual_ip_address = "${softlayer_virtual_guest.terraform-acceptance-test-1.ipv4_address}"
+    virtual_ip_address = "${softlayer_lb_vpx.testacc_foobar_nadc.vip_pool[0]}"
 }
 `

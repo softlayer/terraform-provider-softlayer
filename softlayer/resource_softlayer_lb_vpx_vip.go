@@ -98,7 +98,7 @@ func resourceSoftLayerLbVpxVipCreate(d *schema.ResourceData, meta interface{}) e
 		VirtualIpAddress:    sl.String(d.Get("virtual_ip_address").(string)),
 	}
 
-	log.Printf("[INFO] Creating Virtual Ip Address %s", template.VirtualIpAddress)
+	log.Printf("[INFO] Creating Virtual Ip Address %s", *template.VirtualIpAddress)
 
 	successFlag, err := service.Id(nadcId).CreateLiveLoadBalancer(&template)
 
