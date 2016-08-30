@@ -5,68 +5,68 @@
 		{
 			"checksumSHA1": "Df5CMPynUno2d3/G+9v5BoGtr8Y=",
 			"path": "github.ibm.com/riethm/gopherlayer.git/config",
-			"revision": "b50003ddf672e4bb08f35503ae9028dd48f737d6",
-			"revisionTime": "2016-08-30T18:12:28Z"
+			"revision": "74713a4015912c860ae40e4ed65b0800db072f6d",
+			"revisionTime": "2016-08-30T18:37:58Z"
 		},
 		{
-			"checksumSHA1": "FSUSYUjNftsbot3YT0w6HrgeuZc=",
+			"checksumSHA1": "5kCFVB15UIaqnBvhnJMD5f9bvEc=",
 			"path": "github.ibm.com/riethm/gopherlayer.git/datatypes",
-			"revision": "b50003ddf672e4bb08f35503ae9028dd48f737d6",
-			"revisionTime": "2016-08-30T18:12:28Z"
+			"revision": "74713a4015912c860ae40e4ed65b0800db072f6d",
+			"revisionTime": "2016-08-30T18:37:58Z"
 		},
 		{
 			"checksumSHA1": "pD7lh9wtCooExbrNIP6YnGcsILU=",
 			"path": "github.ibm.com/riethm/gopherlayer.git/filter",
-			"revision": "b50003ddf672e4bb08f35503ae9028dd48f737d6",
-			"revisionTime": "2016-08-30T18:12:28Z"
+			"revision": "74713a4015912c860ae40e4ed65b0800db072f6d",
+			"revisionTime": "2016-08-30T18:37:58Z"
 		},
 		{
 			"checksumSHA1": "IltUyNNc5ekL/NYk5R4a2HSx3RA=",
 			"path": "github.ibm.com/riethm/gopherlayer.git/helpers/location",
-			"revision": "b50003ddf672e4bb08f35503ae9028dd48f737d6",
-			"revisionTime": "2016-08-30T18:12:28Z"
+			"revision": "74713a4015912c860ae40e4ed65b0800db072f6d",
+			"revisionTime": "2016-08-30T18:37:58Z"
 		},
 		{
 			"checksumSHA1": "9JeAAu77UNJ99tHBuJ3e00O0RrY=",
 			"path": "github.ibm.com/riethm/gopherlayer.git/helpers/network",
-			"revision": "b50003ddf672e4bb08f35503ae9028dd48f737d6",
-			"revisionTime": "2016-08-30T18:12:28Z"
+			"revision": "74713a4015912c860ae40e4ed65b0800db072f6d",
+			"revisionTime": "2016-08-30T18:37:58Z"
 		},
 		{
 			"checksumSHA1": "we4KM9PmXHJdoSxYNDODb75zqpw=",
 			"path": "github.ibm.com/riethm/gopherlayer.git/helpers/order",
-			"revision": "b50003ddf672e4bb08f35503ae9028dd48f737d6",
-			"revisionTime": "2016-08-30T18:12:28Z"
+			"revision": "74713a4015912c860ae40e4ed65b0800db072f6d",
+			"revisionTime": "2016-08-30T18:37:58Z"
 		},
 		{
 			"checksumSHA1": "MbGetxKI4lSArJ4lB2h+MwqoILw=",
 			"path": "github.ibm.com/riethm/gopherlayer.git/helpers/product",
-			"revision": "b50003ddf672e4bb08f35503ae9028dd48f737d6",
-			"revisionTime": "2016-08-30T18:12:28Z"
+			"revision": "74713a4015912c860ae40e4ed65b0800db072f6d",
+			"revisionTime": "2016-08-30T18:37:58Z"
 		},
 		{
 			"checksumSHA1": "Jes2WmX9dJnqi1HD3N9WnD5vadw=",
 			"path": "github.ibm.com/riethm/gopherlayer.git/helpers/virtual",
-			"revision": "b50003ddf672e4bb08f35503ae9028dd48f737d6",
-			"revisionTime": "2016-08-30T18:12:28Z"
+			"revision": "74713a4015912c860ae40e4ed65b0800db072f6d",
+			"revisionTime": "2016-08-30T18:37:58Z"
 		},
 		{
-			"checksumSHA1": "M4bN6ZZRQFrvz2tT9ijQjVnjLYk=",
+			"checksumSHA1": "JQ8oOtggI/MHjJYeh9/AJAK8WMM=",
 			"path": "github.ibm.com/riethm/gopherlayer.git/services",
-			"revision": "b50003ddf672e4bb08f35503ae9028dd48f737d6",
-			"revisionTime": "2016-08-30T18:12:28Z"
+			"revision": "74713a4015912c860ae40e4ed65b0800db072f6d",
+			"revisionTime": "2016-08-30T18:37:58Z"
 		},
 		{
 			"checksumSHA1": "oDAIQ1CKGRm9DKFzF/YCQ0psrcY=",
 			"path": "github.ibm.com/riethm/gopherlayer.git/session",
-			"revision": "b50003ddf672e4bb08f35503ae9028dd48f737d6",
-			"revisionTime": "2016-08-30T18:12:28Z"
+			"revision": "74713a4015912c860ae40e4ed65b0800db072f6d",
+			"revisionTime": "2016-08-30T18:37:58Z"
 		},
 		{
 			"checksumSHA1": "VEs3NSt76YhboxqnCzmXFUEaZtI=",
 			"path": "github.ibm.com/riethm/gopherlayer.git/sl",
-			"revision": "b50003ddf672e4bb08f35503ae9028dd48f737d6",
-			"revisionTime": "2016-08-30T18:12:28Z"
+			"revision": "74713a4015912c860ae40e4ed65b0800db072f6d",
+			"revisionTime": "2016-08-30T18:37:58Z"
 		}
 	],
 	"rootPath": "github.ibm.com/emerging-tech/terraform-provider-softlayer.git"
