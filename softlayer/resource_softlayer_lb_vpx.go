@@ -339,8 +339,10 @@ func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) erro
 		return fmt.Errorf("Error Cannot find Application Delivery Controller prices '%s'.", err)
 	}
 
-	if len(d.Get("datacenter").(string)) > 0 {
-		datacenter, err := location.GetDatacenterByName(sess, "dal06", "id")
+	datacenter := d.Get("datacenter").(string)
+
+	if len(datacenter) > 0 {
+		datacenter, err := location.GetDatacenterByName(sess, datacenter, "id")
 		if err != nil {
 			return fmt.Errorf("Error creating network application delivery controller: %s", err)
 		}
@@ -448,6 +450,8 @@ func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) erro
 	if !IsVipReady {
 		return fmt.Errorf("Failed to create VIPs for Netscaler VPX ID: %d", id)
 	}
+
+	time.Sleep(time.Second * 180)
 	return resourceSoftLayerLbVpxRead(d, meta)
 }
 
