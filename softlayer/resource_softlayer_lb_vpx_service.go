@@ -8,9 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"time"
-
-	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.ibm.com/riethm/gopherlayer.git/datatypes"
 	"github.ibm.com/riethm/gopherlayer.git/helpers/network"
@@ -77,23 +74,29 @@ func resourceSoftLayerLbVpxService() *schema.Resource {
 	}
 }
 
-func parseVipUniqueId(vipUniqueId string) (string, int, error) {
-	parts := strings.Split(vipUniqueId, ";")
-	vipId := parts[0]
-	nacdId, err := strconv.Atoi(parts[1])
+func parseServiceId(id string) (string, int, string, error) {
+	parts := strings.Split(id, ":")
+	vipId := parts[1]
+	nacdId, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return "", -1, fmt.Errorf("Error parsing vip id: %s", err)
+		return "", -1, "", fmt.Errorf("Error parsing vip id: %s", err)
 	}
 
-	return vipId, nacdId, nil
+	serviceName := ""
+	if len(parts) > 2 {
+		serviceName = parts[2]
+	}
+
+	return vipId, nacdId, serviceName, nil
 }
 
 func resourceSoftLayerLbVpxServiceCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
-	vipUniqueId := d.Get("vip_id").(string)
-
-	vipName, nadcId, err := parseVipUniqueId(vipUniqueId)
+	vipId := d.Get("vip_id").(string)
+	vipName, nadcId, _, err := parseServiceId(vipId)
+	serviceName := d.Get("name").(string)
 
 	if err != nil {
 		return fmt.Errorf("Error parsing vip id: %s", err)
@@ -115,9 +118,18 @@ func resourceSoftLayerLbVpxServiceCreate(d *schema.ResourceData, meta interface{
 		Services: lb_services,
 	}
 
-	log.Printf("[INFO] Creating LoadBalancer Service %s", lb_services[0].Name)
+	// Check if there is an existed loadbalancer service which has same name.
+	log.Printf("[INFO] Validating LoadBalancer Service Name %s", *lb_services[0].Name)
 
-	successFlag, err := waitForNadcLbServiceUpdateCompletion(sess, nadcId, lbVip)
+	_, err = network.GetNadcLbVipServiceByName(sess, nadcId, vipName, serviceName)
+	if err == nil {
+		return fmt.Errorf("Error creating LoadBalancer Service: The service name '%s' is already used.",
+			*lb_services[0].Name)
+	}
+
+	log.Printf("[INFO] Creating LoadBalancer Service %s", *lb_services[0].Name)
+
+	successFlag, err := service.Id(nadcId).UpdateLiveLoadBalancer(lbVip)
 	if err != nil {
 		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
 	}
@@ -126,54 +138,24 @@ func resourceSoftLayerLbVpxServiceCreate(d *schema.ResourceData, meta interface{
 		return errors.New("Error creating LoadBalancer Service")
 	}
 
+	d.SetId(fmt.Sprintf("%s:%s", vipId, serviceName))
+
 	return resourceSoftLayerLbVpxServiceRead(d, meta)
-}
-
-func waitForNadcLbServiceUpdateCompletion(
-	sess *session.Session, nadcId int, lbVip *datatypes.Network_LoadBalancer_VirtualIpAddress) (bool, error) {
-
-	service := services.GetNetworkApplicationDeliveryControllerService(sess)
-	log.Printf("Waiting for NADC %d LB service %s update to complete", nadcId, lbVip.Services[0].Name)
-	var successFlag bool
-
-	stateConf := &resource.StateChangeConf{
-		Pending: []string{"", "in progress"},
-		Target:  []string{"complete"},
-		Refresh: func() (interface{}, string, error) {
-			var err error
-			successFlag, err = service.Id(nadcId).UpdateLiveLoadBalancer(lbVip)
-
-			if err == nil {
-				return successFlag, "complete", nil
-			} else {
-				return successFlag, "in progress", nil
-			}
-		},
-		Timeout:    5 * time.Minute,
-		Delay:      10 * time.Second,
-		MinTimeout: 10 * time.Second,
-	}
-
-	_, err := stateConf.WaitForState()
-	return successFlag, err
 }
 
 func resourceSoftLayerLbVpxServiceRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
-	vipUniqueId := d.Get("vip_id").(string)
-
-	vipName, nadcId, err := parseVipUniqueId(vipUniqueId)
+	vipName, nadcId, serviceName, err := parseServiceId(d.Id())
 	if err != nil {
 		return fmt.Errorf("Error parsing vip id: %s", err)
 	}
 
-	lbService, err := network.GetNadcLbVipServiceByName(sess, nadcId, vipName, d.Get("name").(string))
+	lbService, err := network.GetNadcLbVipServiceByName(sess, nadcId, vipName, serviceName)
 	if err != nil {
 		return fmt.Errorf("Unable to get load balancer service: %s", err)
 	}
 
-	d.SetId(*lbService.Name)
 	d.Set("name", *lbService.Name)
 	d.Set("destination_ip_address", *lbService.DestinationIpAddress)
 	d.Set("destination_port", *lbService.DestinationPort)
@@ -186,9 +168,9 @@ func resourceSoftLayerLbVpxServiceRead(d *schema.ResourceData, meta interface{})
 
 func resourceSoftLayerLbVpxServiceUpdate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
-	vipUniqueId := d.Get("vip_id").(string)
-	vipName, nadcId, err := parseVipUniqueId(vipUniqueId)
+	vipName, nadcId, _, err := parseServiceId(d.Id())
 	if err != nil {
 		return fmt.Errorf("Error parsing vip id: %s", err)
 	}
@@ -220,7 +202,7 @@ func resourceSoftLayerLbVpxServiceUpdate(d *schema.ResourceData, meta interface{
 		template.ConnectionLimit = sl.Int(data.(int))
 	}
 
-	_, err = waitForNadcLbServiceUpdateCompletion(sess, nadcId, &datatypes.Network_LoadBalancer_VirtualIpAddress{
+	_, err = service.Id(nadcId).UpdateLiveLoadBalancer(&datatypes.Network_LoadBalancer_VirtualIpAddress{
 		Name:     sl.String(vipName),
 		Services: []datatypes.Network_LoadBalancer_Service{template},
 	})
@@ -232,14 +214,13 @@ func resourceSoftLayerLbVpxServiceUpdate(d *schema.ResourceData, meta interface{
 }
 
 func resourceSoftLayerLbVpxServiceDelete(d *schema.ResourceData, meta interface{}) error {
-	vipName, nadcId, err := parseVipUniqueId(d.Get("vip_id").(string))
+	vipName, nadcId, serviceName, err := parseServiceId(d.Id())
 	if err != nil {
 		return fmt.Errorf("Error parsing vip id: %s", err)
 	}
 
 	sess := meta.(*session.Session)
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
-	serviceName := d.Get("name").(string)
 
 	_, err = service.Id(nadcId).DeleteLiveLoadBalancerService(&datatypes.Network_LoadBalancer_Service{
 		Name: sl.String(serviceName),
@@ -256,13 +237,11 @@ func resourceSoftLayerLbVpxServiceDelete(d *schema.ResourceData, meta interface{
 }
 
 func resourceSoftLayerLbVpxServiceExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	vipUniqueId := d.Get("vip_id").(string)
-	vipName, nadcId, err := parseVipUniqueId(vipUniqueId)
+	vipName, nadcId, serviceName, err := parseServiceId(d.Id())
 	if err != nil {
 		return false, fmt.Errorf("Error parsing vip id: %s", err)
 	}
 
-	serviceName := d.Get("name").(string)
 	sess := meta.(*session.Session)
 	lbService, err := network.GetNadcLbVipServiceByName(sess, nadcId, vipName, serviceName)
 	if err != nil {
