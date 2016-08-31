@@ -316,6 +316,63 @@ func findVPXByOrderId(orderId int, meta interface{}) (datatypes.Network_Applicat
 		fmt.Errorf("Cannot find Application Delivery Controller with order id '%d'", orderId)
 }
 
+func prepareHardwareOptions(d *schema.ResourceData, meta interface{}) ([]datatypes.Hardware, error) {
+	hardwareOpts := make([]datatypes.Hardware, 1)
+
+	if len(d.Get("front_end_vlan.vlan_number").(string)) > 0 || len(d.Get("front_end_subnet").(string)) > 0 {
+		hardwareOpts[0].PrimaryNetworkComponent = &datatypes.Network_Component{}
+	}
+
+	if len(d.Get("front_end_vlan.vlan_number").(string)) > 0 {
+		vlanNumber, err := strconv.Atoi(d.Get("front_end_vlan.vlan_number").(string))
+		if err != nil {
+			return nil, fmt.Errorf("Error creating network application delivery controller: %s", err)
+		}
+		networkVlanId, err := getVlanId(vlanNumber, d.Get("front_end_vlan.primary_router_hostname").(string), meta)
+		if err != nil {
+			return nil, fmt.Errorf("Error creating network application delivery controller: %s", err)
+		}
+		hardwareOpts[0].PrimaryNetworkComponent.NetworkVlanId = sl.Int(networkVlanId)
+	}
+
+	if len(d.Get("front_end_subnet").(string)) > 0 {
+		primarySubnetId, err := getSubnetId(d.Get("front_end_subnet").(string), meta)
+		if err != nil {
+			return nil, fmt.Errorf("Error creating network application delivery controller: %s", err)
+		}
+		hardwareOpts[0].PrimaryNetworkComponent.NetworkVlan = &datatypes.Network_Vlan{
+			PrimarySubnetId: sl.Int(primarySubnetId),
+		}
+	}
+
+	if len(d.Get("back_end_vlan.vlan_number").(string)) > 0 || len(d.Get("back_end_subnet").(string)) > 0 {
+		hardwareOpts[0].PrimaryBackendNetworkComponent = &datatypes.Network_Component{}
+	}
+
+	if len(d.Get("back_end_vlan.vlan_number").(string)) > 0 {
+		vlanNumber, err := strconv.Atoi(d.Get("back_end_vlan.vlan_number").(string))
+		if err != nil {
+			return nil, fmt.Errorf("Error creating network application delivery controller: %s", err)
+		}
+		networkVlanId, err := getVlanId(vlanNumber, d.Get("back_end_vlan.primary_router_hostname").(string), meta)
+		if err != nil {
+			return nil, fmt.Errorf("Error creating network application delivery controller: %s", err)
+		}
+		hardwareOpts[0].PrimaryBackendNetworkComponent.NetworkVlanId = sl.Int(networkVlanId)
+	}
+
+	if len(d.Get("back_end_subnet").(string)) > 0 {
+		primarySubnetId, err := getSubnetId(d.Get("back_end_subnet").(string), meta)
+		if err != nil {
+			return nil, fmt.Errorf("Error creating network application delivery controller: %s", err)
+		}
+		hardwareOpts[0].PrimaryBackendNetworkComponent.NetworkVlan = &datatypes.Network_Vlan{
+			PrimarySubnetId: sl.Int(primarySubnetId),
+		}
+	}
+	return hardwareOpts, nil
+}
+
 func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
@@ -349,58 +406,9 @@ func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) erro
 		opts.Location = sl.String(strconv.Itoa(*datacenter.Id))
 	}
 
-	opts.Hardware = make([]datatypes.Hardware, 1)
-
-	if len(d.Get("front_end_vlan.vlan_number").(string)) > 0 || len(d.Get("front_end_subnet").(string)) > 0 {
-		opts.Hardware[0].PrimaryNetworkComponent = &datatypes.Network_Component{}
-	}
-
-	if len(d.Get("front_end_vlan.vlan_number").(string)) > 0 {
-		vlanNumber, err := strconv.Atoi(d.Get("front_end_vlan.vlan_number").(string))
-		if err != nil {
-			return fmt.Errorf("Error creating network application delivery controller: %s", err)
-		}
-		networkVlanId, err := getVlanId(vlanNumber, d.Get("front_end_vlan.primary_router_hostname").(string), meta)
-		if err != nil {
-			return fmt.Errorf("Error creating network application delivery controller: %s", err)
-		}
-		opts.Hardware[0].PrimaryNetworkComponent.NetworkVlanId = sl.Int(networkVlanId)
-	}
-
-	if len(d.Get("front_end_subnet").(string)) > 0 {
-		primarySubnetId, err := getSubnetId(d.Get("front_end_subnet").(string), meta)
-		if err != nil {
-			return fmt.Errorf("Error creating network application delivery controller: %s", err)
-		}
-		opts.Hardware[0].PrimaryNetworkComponent.NetworkVlan = &datatypes.Network_Vlan{
-			PrimarySubnetId: sl.Int(primarySubnetId),
-		}
-	}
-
-	if len(d.Get("back_end_vlan.vlan_number").(string)) > 0 || len(d.Get("back_end_subnet").(string)) > 0 {
-		opts.Hardware[0].PrimaryBackendNetworkComponent = &datatypes.Network_Component{}
-	}
-
-	if len(d.Get("back_end_vlan.vlan_number").(string)) > 0 {
-		vlanNumber, err := strconv.Atoi(d.Get("back_end_vlan.vlan_number").(string))
-		if err != nil {
-			return fmt.Errorf("Error creating network application delivery controller: %s", err)
-		}
-		networkVlanId, err := getVlanId(vlanNumber, d.Get("back_end_vlan.primary_router_hostname").(string), meta)
-		if err != nil {
-			return fmt.Errorf("Error creating network application delivery controller: %s", err)
-		}
-		opts.Hardware[0].PrimaryBackendNetworkComponent.NetworkVlanId = sl.Int(networkVlanId)
-	}
-
-	if len(d.Get("back_end_subnet").(string)) > 0 {
-		primarySubnetId, err := getSubnetId(d.Get("back_end_subnet").(string), meta)
-		if err != nil {
-			return fmt.Errorf("Error creating network application delivery controller: %s", err)
-		}
-		opts.Hardware[0].PrimaryBackendNetworkComponent.NetworkVlan = &datatypes.Network_Vlan{
-			PrimarySubnetId: sl.Int(primarySubnetId),
-		}
+	opts.Hardware, err = prepareHardwareOptions(d, meta)
+	if err != nil {
+		return fmt.Errorf("Error Cannot get hardware options '%s'.", err)
 	}
 
 	log.Printf("[INFO] Creating network application delivery controller")
@@ -411,6 +419,7 @@ func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) erro
 		return fmt.Errorf("Error creating network application delivery controller: %s", err)
 	}
 
+	// Wait VPX provisioning
 	VPX, err := findVPXByOrderId(*receipt.OrderId, meta)
 
 	if err != nil {
@@ -451,7 +460,27 @@ func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) erro
 		return fmt.Errorf("Failed to create VIPs for Netscaler VPX ID: %d", id)
 	}
 
-	time.Sleep(time.Second * 180)
+	// Wait VPX service initializing. GetLoadBalancers() internally calls REST API of VPX and returns an error
+	// if the REST API is not available.
+	IsRESTReady := false
+
+	for restWaitCount := 0; restWaitCount < 60; restWaitCount++ {
+		_, err := NADCService.Id(id).GetLoadBalancers()
+		if err == nil {
+			IsRESTReady = true
+			break
+		}
+		log.Printf("[INFO] Wait 10 seconds for VPX(%d) REST Service ID", id)
+		time.Sleep(time.Second * 10)
+	}
+
+	if !IsRESTReady {
+		return fmt.Errorf("Failed to intialize VPX REST Service for Netscaler VPX ID: %d", id)
+	}
+
+	// Wait additional buffer time for VPX service.
+	time.Sleep(time.Second * 60)
+
 	return resourceSoftLayerLbVpxRead(d, meta)
 }
 
