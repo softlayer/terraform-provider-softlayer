@@ -1,7 +1,6 @@
 package softlayer
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -230,7 +229,16 @@ func resourceSoftLayerLbLocalDelete(d *schema.ResourceData, meta interface{}) er
 		return fmt.Errorf("Error while looking up billing item associated with the load balancer: %s", err)
 	}
 
-	return cancelService(sess, *bi.Id)
+	success, err := services.GetBillingItemService(sess).Id(*bi.Id).CancelService()
+	if err != nil {
+		return err
+	}
+
+	if !success {
+		return fmt.Errorf("SoftLayer reported an unsuccessful cancellation")
+	}
+
+	return nil
 }
 
 func resourceSoftLayerLbLocalExists(d *schema.ResourceData, meta interface{}) (bool, error) {
@@ -260,45 +268,6 @@ func getConnectionLimit(connectionLimit int) int {
 	} else {
 		return 0
 	}
-}
-
-func cancelService(sess *session.Session, billingId int) error {
-	stateConf := &resource.StateChangeConf{
-		Pending: []string{"transactions_pending"},
-		Target:  []string{"complete"},
-		Refresh: func() (interface{}, string, error) {
-			success, err := services.GetBillingItemService(sess).Id(billingId).CancelService()
-
-			if err != nil {
-				if apiErr, ok := err.(sl.Error); ok {
-					// TODO this logic depends too heavily on localized strings which could be translated.
-					// Need to change this to check for pending transactions in a wait loop, and then
-					// cancel the service once, reporting any success/error
-					if strings.Index(apiErr.Message, "There is currently an active transaction") != -1 {
-						return false, "transactions_pending", nil
-					}
-				}
-				return success, "error", err
-			}
-
-			return success, "complete", nil
-		},
-		Timeout:    10 * time.Minute,
-		Delay:      30 * time.Second,
-		MinTimeout: 30 * time.Second,
-	}
-
-	pendingResult, err := stateConf.WaitForState()
-
-	if err != nil {
-		return err
-	}
-
-	if pendingResult != nil && !(pendingResult.(bool)) {
-		return errors.New("SoftLayer reported an unsuccessful cancellation, but did not provide a reason.")
-	}
-
-	return nil
 }
 
 func findLoadBalancerByOrderId(sess *session.Session, orderId int) (datatypes.Network_Application_Delivery_Controller_LoadBalancer_VirtualIpAddress, error) {
