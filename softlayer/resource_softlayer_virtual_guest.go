@@ -515,7 +515,10 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 	// Set user data if provided and not empty
 	if d.HasChange("user_data") {
 		// TODO: Check if user metadata needs to be base64 encoded
-		service.Id(id).SetUserMetadata([]string{d.Get("user_data").(string)})
+		_, err := service.Id(id).SetUserMetadata([]string{d.Get("user_data").(string)})
+		if err != nil {
+			return fmt.Errorf("Couldn't update user data for virtual guest: %s", err)
+		}
 	}
 
 	// Upgrade "cpu", "ram" and "nic_speed" if provided and changed
@@ -536,18 +539,22 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 		upgradeOptions[product.NICSpeedCategoryCode] = float64(d.Get("public_network_speed").(int))
 	}
 
-	_, err = virtual.UpgradeVirtualGuest(sess, id, upgradeOptions)
-	if err != nil {
-		return fmt.Errorf("Couldn't upgrade virtual guest: %s", err)
+	if len(upgradeOptions) > 0 {
+		_, err = virtual.UpgradeVirtualGuest(sess, id, upgradeOptions)
+		if err != nil {
+			return fmt.Errorf("Couldn't upgrade virtual guest: %s", err)
+		}
+
+		// Wait for softlayer to start upgrading...
+		_, err = WaitForUpgradeTransactionsToAppear(d, meta)
+
+		// Wait for upgrade transactions to finish
+		_, err = WaitForNoActiveTransactions(d, meta)
+
+		return err
 	}
 
-	// Wait for softlayer to start upgrading...
-	_, err = WaitForUpgradeTransactionsToAppear(d, meta)
-
-	// Wait for upgrade transactions to finish
-	_, err = WaitForNoActiveTransactions(d, meta)
-
-	return err
+	return nil
 }
 
 func resourceSoftLayerVirtualGuestDelete(d *schema.ResourceData, meta interface{}) error {
