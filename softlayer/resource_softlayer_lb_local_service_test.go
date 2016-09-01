@@ -32,7 +32,7 @@ resource "softlayer_virtual_guest" "test_server_1" {
     name = "terraform-test"
     domain = "bar.example.com"
     image = "DEBIAN_7_64"
-    region = "tok02"
+    datacenter = "tok02"
     public_network_speed = 10
     hourly_billing = true
     private_network_only = false
@@ -46,7 +46,7 @@ resource "softlayer_virtual_guest" "test_server_1" {
 
 resource "softlayer_lb_local" "testacc_foobar_lb" {
     connections = 15000
-    location    = "tok02"
+    datacenter    = "tok02"
     ha_enabled  = false
 }
 

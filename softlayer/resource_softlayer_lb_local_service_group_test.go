@@ -30,7 +30,7 @@ func TestAccSoftLayerLbLocalServiceGroup_Basic(t *testing.T) {
 const testAccCheckSoftLayerLbLocalServiceGroupConfig_basic = `
 resource "softlayer_lb_local" "testacc_foobar_lb" {
     connections = 15000
-    location    = "tok02"
+    datacenter    = "tok02"
     ha_enabled  = false
 }
 
