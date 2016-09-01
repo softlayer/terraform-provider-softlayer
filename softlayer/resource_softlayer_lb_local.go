@@ -211,11 +211,7 @@ func resourceSoftLayerLbLocalRead(d *schema.ResourceData, meta interface{}) erro
 	d.Set("ha_enabled", *vip.HighAvailabilityFlag)
 
 	// Optional fields.  Guard against nil pointer dereferences
-	if vip.SecurityCertificateId == nil {
-		d.Set("security_certificate_id", nil)
-	} else {
-		d.Set("security_certificate_id", *vip.SecurityCertificateId)
-	}
+	d.Set("security_certificate_id", sl.Get(vip.SecurityCertificateId, nil))
 
 	return nil
 }
