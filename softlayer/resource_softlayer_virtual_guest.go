@@ -424,8 +424,8 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 			"hourlyBillingFlag,localDiskFlag," +
 			"userData[value]," +
 			"datacenter[id,name,longName]," +
-			"primaryNetworkComponent[networkVlan[id,primaryRouter,primarySubnet,vlanNumber],primaryIpAddressRecord[guestNetworkComponentBinding[ipAddressId]]]," +
-			"primaryBackendNetworkComponent[networkVlan[id,primaryRouter,primarySubnet,vlanNumber],primaryIpAddressRecord[guestNetworkComponentBinding[ipAddressId]]]",
+			"primaryNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]," +
+			"primaryBackendNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]",
 	).GetObject()
 
 	if err != nil {
@@ -465,11 +465,11 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	backEndVlan["vlan_number"] = strconv.Itoa(*resultBackEndVlan.VlanNumber)
 	d.Set("back_end_vlan", backEndVlan)
 
-	d.Set("front_end_subnet", *resultFrontEndVlan.PrimarySubnet.NetworkIdentifier+"/"+
-		strconv.Itoa(*resultFrontEndVlan.PrimarySubnet.Cidr))
+	resultFrontendSubnet := result.PrimaryNetworkComponent.PrimaryIpAddressRecord.Subnet
+	d.Set("front_end_subnet", *resultFrontendSubnet.NetworkIdentifier+"/"+strconv.Itoa(*resultFrontendSubnet.Cidr))
 
-	d.Set("back_end_subnet", *resultBackEndVlan.PrimarySubnet.NetworkIdentifier+"/"+
-		strconv.Itoa(*resultBackEndVlan.PrimarySubnet.Cidr))
+	resultBackendSubnet := result.PrimaryBackendNetworkComponent.PrimaryIpAddressRecord.Subnet
+	d.Set("back_end_subnet", *resultBackendSubnet.NetworkIdentifier+"/"+strconv.Itoa(*resultBackendSubnet.Cidr))
 
 	userData := result.UserData
 	if userData != nil && len(userData) > 0 {
