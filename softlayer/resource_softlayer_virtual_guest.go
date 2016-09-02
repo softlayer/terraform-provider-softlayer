@@ -540,7 +540,7 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 	}
 
 	if len(upgradeOptions) > 0 {
-		_, err = virtual.UpgradeVirtualGuest(sess, id, upgradeOptions)
+		_, err = virtual.UpgradeVirtualGuest(sess, &result, upgradeOptions)
 		if err != nil {
 			return fmt.Errorf("Couldn't upgrade virtual guest: %s", err)
 		}
