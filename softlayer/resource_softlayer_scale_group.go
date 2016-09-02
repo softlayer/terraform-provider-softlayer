@@ -26,23 +26,13 @@ var SoftLayerScaleGroupObjectMask = []string{
 	"minimumMemberCount",
 	"maximumMemberCount",
 	"cooldown",
-	"status.keyName",
-	"regionalGroup.id",
-	"regionalGroup.name",
-	"terminationPolicy.keyName",
-	"virtualGuestMemberTemplate",
-	"loadBalancers.id",
-	"loadBalancers.port",
-	"loadBalancers.virtualServerId",
-	"loadBalancers.healthCheck.id",
-	"networkVlans.id",
-	"networkVlans.networkVlan.vlanNumber",
-	"networkVlans.networkVlan.primaryRouter.hostname",
-	"loadBalancers.healthCheck.healthCheckTypeId",
-	"loadBalancers.healthCheck.type.keyname",
-	"loadBalancers.healthCheck.attributes.value",
-	"loadBalancers.healthCheck.attributes.type.id",
-	"loadBalancers.healthCheck.attributes.type.keyname",
+	"status[keyName]",
+	"regionalGroup[id,name]",
+	"terminationPolicy[keyName]",
+	"virtualGuestMemberTemplate[blockDeviceTemplateGroup,primaryNetworkComponent[networkVlan[id]],primaryBackendNetworkComponent[networkVlan[id]]]",
+	"loadBalancers[id,port,virtualServerId,healthCheck[id]]",
+	"networkVlans[id,networkVlan[vlanNumber,primaryRouter[hostname]]]",
+	"loadBalancers[healthCheck[healthCheckTypeId,type[keyname],attributes[value,type[id,keyname]]]]",
 }
 
 func resourceSoftLayerScaleGroup() *schema.Resource {
@@ -369,7 +359,7 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 
 	groupId, _ := strconv.Atoi(d.Id())
 
-	slGroupObj, err := service.Id(groupId).Mask(strings.Join(SoftLayerScaleGroupObjectMask, ";")).GetObject()
+	slGroupObj, err := service.Id(groupId).Mask(strings.Join(SoftLayerScaleGroupObjectMask, ",")).GetObject()
 	if err != nil {
 		// If the scale group is somehow already destroyed, mark as successfully gone
 		if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
@@ -499,7 +489,7 @@ func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{})
 
 	// Fetch the complete object from SoftLayer, update with current values from the configuration, and send the
 	// whole thing back to SoftLayer (effectively, a PUT)
-	groupObj, err := scaleGroupService.Id(groupId).Mask(strings.Join(SoftLayerScaleGroupObjectMask, ";")).GetObject()
+	groupObj, err := scaleGroupService.Id(groupId).Mask(strings.Join(SoftLayerScaleGroupObjectMask, ",")).GetObject()
 	if err != nil {
 		return fmt.Errorf("Error retrieving softlayer_scale_group resource: %s", err)
 	}
