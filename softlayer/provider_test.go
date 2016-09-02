@@ -1,7 +1,6 @@
 package softlayer
 
 import (
-	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -29,10 +28,10 @@ func TestProvider_impl(t *testing.T) {
 }
 
 func testAccPreCheck(t *testing.T) {
-	if v := os.Getenv("SOFTLAYER_USERNAME"); v == "" {
-		t.Fatal("SOFTLAYER_USERNAME must be set for acceptance tests")
-	}
-	if v := os.Getenv("SOFTLAYER_API_KEY"); v == "" {
-		t.Fatal("SOFTLAYER_API_KEY must be set for acceptance tests")
+	for _, param := range []string{"username", "api_key", "endpoint_url"} {
+		value, _ := testAccProvider.Schema[param].DefaultFunc()
+		if value == "" {
+			t.Fatalf("A SoftLayer %s was not found. Read gopherlayer docs for how to configure this.", param)
+		}
 	}
 }
