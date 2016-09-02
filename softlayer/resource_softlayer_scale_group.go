@@ -311,6 +311,11 @@ func resourceSoftLayerScaleGroupCreate(d *schema.ResourceData, meta interface{})
 		return fmt.Errorf("Error while parsing network vlan values: %s", err)
 	}
 
+	locationGroupRegionalId, err := getLocationGroupRegionalId(sess, d.Get("regional_group").(string))
+	if err != nil {
+		return err
+	}
+
 	// Build up our creation options
 	opts := datatypes.Scale_Group{
 		Name:                       sl.String(d.Get("name").(string)),
@@ -320,10 +325,7 @@ func resourceSoftLayerScaleGroupCreate(d *schema.ResourceData, meta interface{})
 		SuspendedFlag:              sl.Bool(false),
 		VirtualGuestMemberTemplate: &virtualGuestTemplateOpts,
 		NetworkVlans:               scaleNetworkVlans,
-	}
-
-	opts.RegionalGroup = &datatypes.Location_Group_Regional{
-		Location_Group: datatypes.Location_Group{Name: sl.String(d.Get("regional_group").(string))},
+		RegionalGroupId:            &locationGroupRegionalId,
 	}
 
 	opts.TerminationPolicy = &datatypes.Scale_Termination_Policy{
@@ -664,4 +666,30 @@ func resourceSoftLayerScaleGroupNetworkVlanHash(v interface{}) int {
 	buf.WriteString(fmt.Sprintf("%s-", vlan["vlan_number"].(string)))
 	buf.WriteString(fmt.Sprintf("%s-", vlan["primary_router_hostname"].(string)))
 	return hashcode.String(buf.String())
+}
+
+func getLocationGroupRegionalId(sess *session.Session, locationGroupRegionalName string) (int, error) {
+	locationGroupRegionals, err := services.GetLocationGroupRegionalService(sess).
+		Mask("id,name").
+		// FIXME: Someday, filters may actually work in SoftLayer
+		//Filter(filter.Build(
+		//	filter.Path("name").Eq(locationGroupRegionalName))).
+		//Limit(1).
+		GetAllObjects()
+
+	if err != nil {
+		return -1, err
+	}
+
+	if len(locationGroupRegionals) < 1 {
+		return -1, fmt.Errorf("Invalid location group regional: %s", locationGroupRegionalName)
+	}
+
+	for _, locationGroupRegional := range locationGroupRegionals {
+		if *locationGroupRegional.Name == locationGroupRegionalName {
+			return *locationGroupRegional.Id, nil
+		}
+	}
+
+	return -1, fmt.Errorf("Invalid regional_group_id:", locationGroupRegionalName)
 }
