@@ -40,8 +40,6 @@ func TestAccSoftLayerScaleGroup_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "termination_policy", "CLOSEST_TO_NEXT_CHARGE"),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_server_id", "267513"),
-					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "port", "8080"),
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "health_check.type", "HTTP"),
@@ -181,7 +179,7 @@ func testAccCheckSoftLayerScaleGroupExists(n string, scalegroup *datatypes.Scale
 		scalegroupId, _ := strconv.Atoi(rs.Primary.ID)
 
 		service := services.GetScaleGroupService(testAccProvider.Meta().(*session.Session))
-		foundScaleGroup, err := service.Id(scalegroupId).Mask(strings.Join(SoftLayerScaleGroupObjectMask, ";")).GetObject()
+		foundScaleGroup, err := service.Id(scalegroupId).Mask(strings.Join(SoftLayerScaleGroupObjectMask, ",")).GetObject()
 
 		if err != nil {
 			return err
@@ -198,14 +196,28 @@ func testAccCheckSoftLayerScaleGroupExists(n string, scalegroup *datatypes.Scale
 }
 
 const testAccCheckSoftLayerScaleGroupConfig_basic = `
+resource "softlayer_lb_local" "local_lb_01" {
+    connections = 15000
+    datacenter = "sng01"
+    ha_enabled = false
+}
+
+resource "softlayer_lb_local_service_group" "http_sg" {
+    load_balancer_id = "${softlayer_lb_local.local_lb_01.id}"
+    allocation = 100
+    port = 80
+    routing_method = "ROUND_ROBIN"
+    routing_type = "HTTP"
+}
+
 resource "softlayer_scale_group" "sample-http-cluster" {
     name = "sample-http-cluster"
-    regional_group = "as-sgp-central-1" 
+    regional_group = "as-sgp-central-1"
     cooldown = 30
     minimum_member_count = 1
     maximum_member_count = 10
     termination_policy = "CLOSEST_TO_NEXT_CHARGE"
-    virtual_server_id = 267513
+    virtual_server_id = "${softlayer_lb_local_service_group.http_sg.id}"
     port = 8080
     health_check = {
         type = "HTTP"
@@ -228,11 +240,25 @@ resource "softlayer_scale_group" "sample-http-cluster" {
     network_vlans = {
             vlan_number = "1928"
             primary_router_hostname = "bcr02a.sng01"
-    }       
- 
+    }
+
 }`
 
 const testAccCheckSoftLayerScaleGroupConfig_updated = `
+resource "softlayer_lb_local" "local_lb_01" {
+    connections = 15000
+    datacenter = "sng01"
+    ha_enabled = false
+}
+
+resource "softlayer_lb_local_service_group" "http_sg" {
+    load_balancer_id = "${softlayer_lb_local.local_lb_01.id}"
+    allocation = 100
+    port = 80
+    routing_method = "ROUND_ROBIN"
+    routing_type = "HTTP"
+}
+
 resource "softlayer_scale_group" "sample-http-cluster" {
     name = "changed_name"
     regional_group = "as-sgp-central-1"
@@ -240,7 +266,7 @@ resource "softlayer_scale_group" "sample-http-cluster" {
     minimum_member_count = 2
     maximum_member_count = 12
     termination_policy = "NEWEST"
-    virtual_server_id = 267513
+    virtual_server_id = "${softlayer_lb_local_service_group.http_sg.id}"
     port = 9090
     health_check = {
         type = "HTTP-CUSTOM"
