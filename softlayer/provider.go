@@ -55,6 +55,7 @@ func Provider() terraform.ResourceProvider {
 			"softlayer_provisioning_hook":      resourceSoftLayerProvisioningHook(),
 			"softlayer_scale_policy":           resourceSoftLayerScalePolicy(),
 			"softlayer_scale_group":            resourceSoftLayerScaleGroup(),
+			"softlayer_basic_monitor":          resourceSoftLayerBasicMonitor(),
 		},
 
 		ConfigureFunc: providerConfigure,
