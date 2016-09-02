@@ -372,7 +372,7 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 	slGroupObj, err := service.Id(groupId).Mask(strings.Join(SoftLayerScaleGroupObjectMask, ";")).GetObject()
 	if err != nil {
 		// If the scale group is somehow already destroyed, mark as successfully gone
-		if strings.Contains(err.Error(), "404 Not Found") {
+		if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
 			d.SetId("")
 			return nil
 		}
