@@ -431,35 +431,37 @@ func populateMemberTemplateResourceData(template datatypes.Virtual_Guest) map[st
 	d["public_network_speed"] = *template.NetworkComponents[0].MaxSpeed
 	d["cpu"] = *template.StartCpus
 	d["ram"] = *template.MaxMemory
-	d["dedicated_acct_host_only"] = *template.DedicatedAccountHostOnlyFlag
 	d["private_network_only"] = *template.PrivateNetworkOnlyFlag
 	d["hourly_billing"] = *template.HourlyBillingFlag
 	d["local_disk"] = *template.LocalDiskFlag
-	d["post_install_script_uri"] = *template.PostInstallScriptUri
-	d["image"] = *template.OperatingSystemReferenceCode
+
+	// Guard against nil values for optional fields in virtual_guest resource
+	d["dedicated_acct_host_only"] = sl.Get(template.DedicatedAccountHostOnlyFlag)
+	d["image"] = sl.Get(template.OperatingSystemReferenceCode)
+	d["post_install_script_uri"] = sl.Get(template.PostInstallScriptUri)
+
+	if template.PrimaryNetworkComponent != nil && template.PrimaryNetworkComponent.NetworkVlan != nil {
+		d["frontend_vlan_id"] = sl.Get(template.PrimaryNetworkComponent.NetworkVlan.Id)
+	} else {
+		d["frontend_vlan_id"] = nil
+	}
+
+	if template.PrimaryBackendNetworkComponent != nil && template.PrimaryBackendNetworkComponent.NetworkVlan != nil {
+		d["backend_vlan_id"] = sl.Get(template.PrimaryBackendNetworkComponent.NetworkVlan.Id)
+	} else {
+		d["backend_vlan_id"] = nil
+	}
+
+	if template.BlockDeviceTemplateGroup != nil {
+		d["block_device_template_group_gid"] = sl.Get(template.BlockDeviceTemplateGroup.GlobalIdentifier)
+	} else {
+		d["block_device_template_group_gid"] = nil
+	}
 
 	if len(template.UserData) > 0 {
 		d["user_data"] = *template.UserData[0].Value
 	} else {
 		d["user_data"] = ""
-	}
-
-	if template.BlockDeviceTemplateGroup != nil {
-		d["block_device_template_group_gid"] = *template.BlockDeviceTemplateGroup.GlobalIdentifier
-	} else {
-		d["block_device_template_group_gid"] = ""
-	}
-
-	if template.PrimaryBackendNetworkComponent != nil {
-		d["frontend_vlan_id"] = *template.PrimaryNetworkComponent.NetworkVlan.Id
-	} else {
-		d["frontend_vlan_id"] = ""
-	}
-
-	if template.PrimaryBackendNetworkComponent != nil {
-		d["backend_vlan_id"] = *template.PrimaryBackendNetworkComponent.NetworkVlan.Id
-	} else {
-		d["backend_vlan_id"] = ""
 	}
 
 	sshKeys := make([]interface{}, 0, len(template.SshKeys))
