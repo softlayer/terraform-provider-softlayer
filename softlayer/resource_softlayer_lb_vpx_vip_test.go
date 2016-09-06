@@ -8,9 +8,9 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
 
-	"github.ibm.com/riethm/gopherlayer.git/filter"
-	"github.ibm.com/riethm/gopherlayer.git/services"
-	"github.ibm.com/riethm/gopherlayer.git/session"
+	"github.com/softlayer/softlayer-go/filter"
+	"github.com/softlayer/softlayer-go/services"
+	"github.com/softlayer/softlayer-go/session"
 )
 
 func TestAccSoftLayerLbVpxVip_Basic(t *testing.T) {

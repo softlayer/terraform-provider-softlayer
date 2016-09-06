@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
-	"github.ibm.com/riethm/gopherlayer.git/session"
+	"github.com/softlayer/softlayer-go/session"
 )
 
 func Provider() terraform.ResourceProvider {

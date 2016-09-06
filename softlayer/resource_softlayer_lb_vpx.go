@@ -11,13 +11,13 @@ import (
 	"errors"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
-	"github.ibm.com/riethm/gopherlayer.git/datatypes"
-	"github.ibm.com/riethm/gopherlayer.git/filter"
-	"github.ibm.com/riethm/gopherlayer.git/helpers/location"
-	"github.ibm.com/riethm/gopherlayer.git/helpers/product"
-	"github.ibm.com/riethm/gopherlayer.git/services"
-	"github.ibm.com/riethm/gopherlayer.git/session"
-	"github.ibm.com/riethm/gopherlayer.git/sl"
+	"github.com/softlayer/softlayer-go/datatypes"
+	"github.com/softlayer/softlayer-go/filter"
+	"github.com/softlayer/softlayer-go/helpers/location"
+	"github.com/softlayer/softlayer-go/helpers/product"
+	"github.com/softlayer/softlayer-go/services"
+	"github.com/softlayer/softlayer-go/session"
+	"github.com/softlayer/softlayer-go/sl"
 )
 
 const (
