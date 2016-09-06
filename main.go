@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/hashicorp/terraform/plugin"
-	"github.ibm.com/emerging-tech/terraform-provider-softlayer.git/softlayer"
+	"github.com/softlayer/terraform-provider-softlayer/softlayer"
 )
 
 func main() {
