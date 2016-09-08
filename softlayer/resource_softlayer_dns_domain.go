@@ -1,6 +1,7 @@
 package softlayer
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -21,112 +22,112 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 		Delete:   resourceSoftLayerDnsDomainDelete,
 		Importer: &schema.ResourceImporter{},
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
+			"id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
 
-			"name": &schema.Schema{
+			"name": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"serial": &schema.Schema{
+			"serial": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
 
-			"update_date": &schema.Schema{
+			"update_date": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
 
-			"records": &schema.Schema{
+			"records": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"record_data": &schema.Schema{
+						"record_data": {
 							Type:     schema.TypeString,
 							Required: true,
 							ForceNew: true,
 						},
 
-						"domain_id": &schema.Schema{
+						"domain_id": {
 							Type:     schema.TypeInt,
 							Required: true,
 							ForceNew: true,
 						},
 
-						"expire": &schema.Schema{
+						"expire": {
 							Type:     schema.TypeInt,
 							Optional: true,
 						},
 
-						"host": &schema.Schema{
+						"host": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
 
-						"minimum_ttl": &schema.Schema{
+						"minimum_ttl": {
 							Type:     schema.TypeInt,
 							Optional: true,
 						},
 
-						"mx_priority": &schema.Schema{
+						"mx_priority": {
 							Type:     schema.TypeInt,
 							Optional: true,
 						},
 
-						"refresh": &schema.Schema{
+						"refresh": {
 							Type:     schema.TypeInt,
 							Optional: true,
 						},
 
-						"contact_email": &schema.Schema{
+						"contact_email": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
 
-						"retry": &schema.Schema{
+						"retry": {
 							Type:     schema.TypeInt,
 							Optional: true,
 						},
 
-						"ttl": &schema.Schema{
+						"ttl": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
 
-						"record_type": &schema.Schema{
+						"record_type": {
 							Type:     schema.TypeString,
 							Required: true,
 							ForceNew: true,
 						},
 
-						"service": &schema.Schema{
+						"service": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
 
-						"protocol": &schema.Schema{
+						"protocol": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
 
-						"port": &schema.Schema{
+						"port": {
 							Type:     schema.TypeInt,
 							Optional: true,
 						},
 
-						"priority": &schema.Schema{
+						"priority": {
 							Type:     schema.TypeInt,
 							Optional: true,
 						},
 
-						"weight": &schema.Schema{
+						"weight": {
 							Type:     schema.TypeInt,
 							Optional: true,
 						},
@@ -235,7 +236,7 @@ func read_resource_records(list []datatypes.Dns_Domain_ResourceRecord) []map[str
 
 func resourceSoftLayerDnsDomainUpdate(d *schema.ResourceData, meta interface{}) error {
 	// TODO - update is not supported - implement delete-create?
-	return fmt.Errorf("Not implemented. Update Dns Domain is currently unsupported")
+	return errors.New("Not implemented. Update Dns Domain is currently unsupported")
 }
 
 func resourceSoftLayerDnsDomainDelete(d *schema.ResourceData, meta interface{}) error {
@@ -254,7 +255,7 @@ func resourceSoftLayerDnsDomainDelete(d *schema.ResourceData, meta interface{}) 
 	}
 
 	if !result {
-		return fmt.Errorf("Error deleting Dns Domain")
+		return errors.New("Error deleting Dns Domain")
 	}
 
 	d.SetId("")
