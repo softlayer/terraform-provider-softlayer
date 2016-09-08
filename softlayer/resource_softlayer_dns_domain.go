@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -35,7 +36,11 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 
 			"serial": {
 				Type:     schema.TypeInt,
-				Computed: true,
+				Required: true,
+				DefaultFunc: func() (interface{}, error) {
+					t := time.Now()
+					return (t.Year() * 1000000) + (int(t.Month()) * 10000) + (t.Day() * 100) + 1, nil
+				},
 			},
 
 			"update_date": {
@@ -49,16 +54,14 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"record_data": {
+						"data": {
 							Type:     schema.TypeString,
 							Required: true,
-							ForceNew: true,
 						},
 
 						"domain_id": {
 							Type:     schema.TypeInt,
-							Required: true,
-							ForceNew: true,
+							Computed: true,
 						},
 
 						"expire": {
@@ -86,9 +89,9 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 							Optional: true,
 						},
 
-						"contact_email": {
+						"responsible_person": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"retry": {
@@ -99,9 +102,10 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 						"ttl": {
 							Type:     schema.TypeInt,
 							Required: true,
+							Default: 86400,
 						},
 
-						"record_type": {
+						"type": {
 							Type:     schema.TypeString,
 							Required: true,
 							ForceNew: true,
