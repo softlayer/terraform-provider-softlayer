@@ -1180,20 +1180,13 @@ You should have the correct source in your _$GOPATH_ for both terraform and soft
 To get _softlayer-go_:
 
 ```
-go get github.com/TheWeatherCompany/softlayer-go
-cd $GOPATH/src/TheWeatherCompany/softlayer-go
-git checkout -b sl-dev origin/sl-dev
+go get github.com/softlayer/softlayer-go
 ```
 
 To get _terraform_:
 
 ```
-cd $GOPATH/src
-mkdir hashicorp
-cd hashicorp
-git clone git@github.com:TheWeatherCompany/terraform.git
-cd terraform
-git checkout -b feature/softlayer origin/feature/softlayer
+go get github.com/hashicorp/terraform
 ```
 
 ### Build
