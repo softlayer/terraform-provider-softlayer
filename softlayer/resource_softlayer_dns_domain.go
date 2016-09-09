@@ -54,6 +54,11 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						"id": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+
 						"data": {
 							Type:     schema.TypeString,
 							Required: true,
@@ -103,7 +108,9 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 						"ttl": {
 							Type:     schema.TypeInt,
 							Required: true,
-							Default:  86400,
+							DefaultFunc: func() (interface{}, error) {
+								return 86400, nil
+							},
 						},
 
 						"type": {
@@ -192,6 +199,11 @@ func prepareRecords(raw_records []interface{}, domainId ...int) []datatypes.Dns_
 			sl_record.DomainId = sl.Int(domainId[0])
 		}
 
+		recordId := record["id"].(int)
+		if recordId != 0 {
+			sl_record.Id = sl.Int(recordId)
+		}
+
 		if *sl_record.Type == "srv" {
 			sl_record.Port = sl.Int(record["port"].(int))
 			sl_record.Priority = sl.Int(record["priority"].(int))
@@ -238,6 +250,7 @@ func read_resource_records(list []datatypes.Dns_Domain_ResourceRecord) []map[str
 		r := make(map[string]interface{})
 
 		// Required fields
+		r["id"] = *record.Id
 		r["data"] = *record.Data
 		r["domain_id"] = *record.DomainId
 		r["host"] = *record.Host
