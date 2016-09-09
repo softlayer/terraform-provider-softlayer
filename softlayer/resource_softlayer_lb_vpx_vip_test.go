@@ -8,8 +8,7 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
 
-	"github.com/softlayer/softlayer-go/filter"
-	"github.com/softlayer/softlayer-go/services"
+	"github.com/softlayer/softlayer-go/helpers/network"
 	"github.com/softlayer/softlayer-go/session"
 )
 
@@ -37,7 +36,7 @@ func TestAccSoftLayerLbVpxVip_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerLbVpxVipDestroy(s *terraform.State) error {
-	service := services.GetNetworkApplicationDeliveryControllerService(testAccProvider.Meta().(*session.Session))
+	sess := testAccProvider.Meta().(*session.Session)
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_lb_vpx_vip" {
@@ -47,12 +46,9 @@ func testAccCheckSoftLayerLbVpxVipDestroy(s *terraform.State) error {
 		nadcId, _ := strconv.Atoi(rs.Primary.Attributes["nad_controller_id"])
 		vipName, _ := rs.Primary.Attributes["name"]
 
-		vips, _ := service.
-			Id(nadcId).
-			Filter(filter.Path("name").Eq(vipName).Build()).
-			GetLoadBalancers()
+		vip, _ := network.GetNadcLbVipByName(sess, nadcId, vipName)
 
-		if len(vips) > 0 {
+		if vip != nil {
 			return fmt.Errorf("Netscaler VPX VIP still exists")
 		}
 	}
