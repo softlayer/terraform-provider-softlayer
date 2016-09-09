@@ -15,7 +15,7 @@ import (
 func resourceSoftLayerNetworkVlan() *schema.Resource {
 	return &schema.Resource{
 		Create:   resourceSoftLayerNetworkVlanCreate,
-		Read: resourceSoftLayerNetworkVlanRead,
+		Read:     resourceSoftLayerNetworkVlanRead,
 		Update:   resourceSoftLayerNetworkVlanUpdate,
 		Delete:   resourceSoftLayerNetworkVlanDelete,
 		Exists:   resourceSoftLayerNetworkVlanExists,
