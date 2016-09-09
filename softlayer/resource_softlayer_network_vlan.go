@@ -100,7 +100,7 @@ func resourceSoftLayerNetworkVlanExists(d *schema.ResourceData, meta interface{}
 
 	vlanId, err := strconv.Atoi(d.Id())
 	if err != nil {
-		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
+		return false, fmt.Errorf("Not a valid Id, Id must be an integer: %s", err)
 	}
 
 	result, err := service.Id(vlanId).GetObject()

@@ -57,6 +57,7 @@ func Provider() terraform.ResourceProvider {
 			"softlayer_scale_group":            resourceSoftLayerScaleGroup(),
 			"softlayer_basic_monitor":          resourceSoftLayerBasicMonitor(),
 			"softlayer_network_vlan":           resourceSoftLayerNetworkVlan(),
+
 		},
 
 		ConfigureFunc: providerConfigure,
