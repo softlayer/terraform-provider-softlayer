@@ -12,6 +12,7 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
+	"strings"
 )
 
 func resourceSoftLayerDnsDomain() *schema.Resource {
@@ -159,6 +160,10 @@ func resourceSoftLayerDnsDomainCreate(d *schema.ResourceData, meta interface{}) 
 		Name: sl.String(d.Get("name").(string)),
 	}
 
+	if serial, ok := d.GetOk("serial"); ok {
+		opts.Serial = sl.Int(serial.(int))
+	}
+
 	if records, ok := d.GetOk("records"); ok {
 		opts.ResourceRecords = prepareRecords(records.([]interface{}))
 	}
@@ -199,9 +204,9 @@ func prepareRecords(raw_records []interface{}, domainId ...int) []datatypes.Dns_
 			sl_record.DomainId = sl.Int(domainId[0])
 		}
 
-		recordId := record["id"].(int)
-		if recordId != 0 {
-			sl_record.Id = sl.Int(recordId)
+		recordId, ok := record["id"]
+		if ok && recordId.(int) != 0 {
+			sl_record.Id = sl.Int(recordId.(int))
 		}
 
 		if *sl_record.Type == "srv" {
@@ -233,7 +238,6 @@ func resourceSoftLayerDnsDomainRead(d *schema.ResourceData, meta interface{}) er
 	}
 
 	// populate fields
-	d.Set("id", *dns_domain.Id)
 	d.Set("name", *dns_domain.Name)
 	d.Set("serial", *dns_domain.Serial)
 	if dns_domain.UpdateDate != nil {
@@ -278,7 +282,7 @@ func read_resource_records(list []datatypes.Dns_Domain_ResourceRecord) []map[str
 			r["retry"] = *record.Retry
 		}
 
-		records = append(records, r)
+		records = append([]map[string]interface{}{r}, records...)
 	}
 	return records
 }

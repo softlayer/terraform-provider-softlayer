@@ -53,7 +53,7 @@ func TestAccSoftLayerDnsDomain_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_dns_domain.acceptance_test_dns_domain-1",
 						"records.1.data",
-						"FE80:0000:0000:0000:0202:B3FF:FE1E:8329",
+						"fe80:0000:0000:0000:0202:b3ff:fe1e:8329",
 					),
 					resource.TestCheckResourceAttr(
 						"softlayer_dns_domain.acceptance_test_dns_domain-1",
@@ -96,7 +96,7 @@ func TestAccSoftLayerDnsDomain_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_dns_domain.acceptance_test_dns_domain-1",
 						"records.1.data",
-						"FE80:0000:0000:0000:0202:B3FF:FE1E:8329",
+						"fe80:0000:0000:0000:0202:b3ff:fe1e:8329",
 					),
 					resource.TestCheckResourceAttr(
 						"softlayer_dns_domain.acceptance_test_dns_domain-1",
@@ -243,7 +243,7 @@ func testAccCheckSoftLayerDnsDomainRecordsExists(dn string, expected_record_coun
 		dns_id, _ := strconv.Atoi(rs.Primary.ID)
 
 		service := services.GetDnsDomainService(testAccProvider.Meta().(*session.Session))
-		found_domain, err := service.Id(dns_id).GetObject()
+		found_domain, err := service.Id(dns_id).Mask("id,resourceRecordCount").GetObject()
 
 		if err != nil {
 			return err
@@ -286,7 +286,7 @@ resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
 var testAccCheckSoftLayerDnsDomainConfig_changed = fmt.Sprintf(`
 resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
 	name = "%s"
-	serial = "%s"
+	serial = %d
 	records = [
 		{
 			data = "127.0.0.2"
@@ -296,7 +296,7 @@ resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
 			type = "a"
 		},
 		{
-			data = "FE80:0000:0000:0000:0202:B3FF:FE1E:8329"
+			data = "fe80:0000:0000:0000:0202:b3ff:fe1e:8329"
 			host = "hosta-2.com"
 			responsible_person = "user2changed@softlaer.com"
 			ttl = 1000
