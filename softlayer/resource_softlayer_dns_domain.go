@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
-	"strings"
 )
 
 func resourceSoftLayerDnsDomain() *schema.Resource {
@@ -37,11 +35,7 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 
 			"serial": {
 				Type:     schema.TypeInt,
-				Required: true,
-				DefaultFunc: func() (interface{}, error) {
-					t := time.Now()
-					return (t.Year() * 1000000) + (int(t.Month()) * 10000) + (t.Day() * 100) + 1, nil
-				},
+				Computed: true,
 			},
 
 			"update_date": {
@@ -280,6 +274,10 @@ func read_resource_records(list []datatypes.Dns_Domain_ResourceRecord) []map[str
 
 		if record.Retry != nil {
 			r["retry"] = *record.Retry
+		}
+
+		if record.ResponsiblePerson != nil {
+			r["responsible_person"] = *record.ResponsiblePerson
 		}
 
 		records = append([]map[string]interface{}{r}, records...)

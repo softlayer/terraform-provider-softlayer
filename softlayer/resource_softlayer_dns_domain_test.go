@@ -72,7 +72,7 @@ func TestAccSoftLayerDnsDomain_Basic(t *testing.T) {
 					testAccCheckSoftLayerDnsDomainRecordDomainId(
 						"softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
 					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", test_dns_domain_name),
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", changed_dns_domain_name),
 					resource.TestCheckResourceAttr(
 						"softlayer_dns_domain.acceptance_test_dns_domain-1",
 						"records.0.host",
@@ -268,14 +268,14 @@ resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
 		{
 			data = "127.0.0.1"
 			host = "hosta.com"
-			responsible_person = "user@softlaer.com"
+			responsible_person = "user@softlayer.com"
 			ttl = 900
 			type = "a"
 		},
 		{
-			data = "FE80:0000:0000:0000:0202:B3FF:FE1E:8329"
+			data = "fe80:0000:0000:0000:0202:b3ff:fe1e:8329"
 			host = "hosta-2.com"
-			responsible_person = "user2changed@softlaer.com"
+			responsible_person = "user2changed@softlayer.com"
 			ttl = 1000
 			type = "aaaa"
 		}
@@ -286,26 +286,25 @@ resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
 var testAccCheckSoftLayerDnsDomainConfig_changed = fmt.Sprintf(`
 resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
 	name = "%s"
-	serial = %d
 	records = [
 		{
 			data = "127.0.0.2"
 			host = "hosta.com"
-			responsible_person = "user@softlaer.com"
+			responsible_person = "user@softlayer.com"
 			ttl = 900
 			type = "a"
 		},
 		{
 			data = "fe80:0000:0000:0000:0202:b3ff:fe1e:8329"
 			host = "hosta-2.com"
-			responsible_person = "user2changed@softlaer.com"
+			responsible_person = "user2changed@softlayer.com"
 			ttl = 1000
 			type = "aaaa"
 		}
 	]
 }
-`, test_dns_domain_name, changed_serial)
+`, changed_dns_domain_name)
 
 var test_dns_domain_name = "zxczcxzxc.com"
-var changed_serial = 1234567890
+var changed_dns_domain_name = "vbnvnvbnv.com"
 var firstDnsId = 0
