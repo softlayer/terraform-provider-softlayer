@@ -21,7 +21,7 @@ func TestAccSoftLayerDnsDomain_Basic(t *testing.T) {
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckSoftLayerDnsDomainDestroy,
 		Steps: []resource.TestStep{
-			resource.TestStep{
+			{
 				Config: testAccCheckSoftLayerDnsDomainConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerDnsDomainExists("softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
@@ -47,7 +47,7 @@ func TestAccSoftLayerDnsDomain_Basic(t *testing.T) {
 				),
 				Destroy: false,
 			},
-			resource.TestStep{
+			{
 				Config: testAccCheckSoftLayerDnsDomainConfig_changed,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerDnsDomainExists("softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
@@ -107,7 +107,7 @@ func testAccCheckSoftLayerDnsDomainRecordDomainId(n string, dns_domain *datatype
 		}
 
 		if rs.Primary.ID == "" {
-			return fmt.Errorf("No Record ID is set")
+			return errors.New("No Record ID is set")
 		}
 
 		id, _ := strconv.Atoi(rs.Primary.Attributes["domain_id"])
@@ -123,7 +123,7 @@ func testAccCheckSoftLayerDnsDomainAttributes(dns *datatypes.Dns_Domain) resourc
 	return func(s *terraform.State) error {
 
 		if *dns.Name == "" {
-			return fmt.Errorf("Empty dns domain name")
+			return errors.New("Empty dns domain name")
 		}
 
 		if *dns.Serial == 0 {
@@ -168,7 +168,7 @@ func testAccCheckSoftLayerDnsDomainExists(n string, dns_domain *datatypes.Dns_Do
 		}
 
 		if rs.Primary.ID == "" {
-			return fmt.Errorf("No Record ID is set")
+			return errors.New("No Record ID is set")
 		}
 
 		dns_id, _ := strconv.Atoi(rs.Primary.ID)
@@ -181,7 +181,7 @@ func testAccCheckSoftLayerDnsDomainExists(n string, dns_domain *datatypes.Dns_Do
 		}
 
 		if strconv.Itoa(int(*found_domain.Id)) != rs.Primary.ID {
-			return fmt.Errorf("Record not found")
+			return errors.New("Record not found")
 		}
 
 		*dns_domain = found_domain
@@ -199,7 +199,7 @@ func testAccCheckSoftLayerDnsDomainRecordsExists(dn string, expected_record_coun
 		}
 
 		if rs.Primary.ID == "" {
-			return fmt.Errorf("No Record ID is set")
+			return errors.New("No Record ID is set")
 		}
 
 		dns_id, _ := strconv.Atoi(rs.Primary.ID)
@@ -216,7 +216,7 @@ func testAccCheckSoftLayerDnsDomainRecordsExists(dn string, expected_record_coun
 		}
 
 		if strconv.Itoa(int(*found_domain.Id)) != rs.Primary.ID {
-			return fmt.Errorf("Record not found")
+			return errors.New("Record not found")
 		}
 
 		return nil
