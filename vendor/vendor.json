@@ -5,86 +5,82 @@
 		{
 			"checksumSHA1": "KeNIYJQUdE6o196SaYuLMmjEPZM=",
 			"path": "github.com/softlayer/softlayer-go/config",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
+			"revision": "89b946043e17a7d0cd4affadaa9bc35394da1910",
+			"revisionTime": "2016-09-16T00:26:33Z"
 		},
 		{
 			"checksumSHA1": "OrHDs1jJzfH+/GBlVuFUG0Jd1Jk=",
 			"path": "github.com/softlayer/softlayer-go/datatypes",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
+			"revision": "89b946043e17a7d0cd4affadaa9bc35394da1910",
+			"revisionTime": "2016-09-16T00:26:33Z"
 		},
 		{
 			"checksumSHA1": "nmqOPqyvDmGdvAntqvg/e0VfdbY=",
+			"origin": "github.com/softlayer/terraform-provider-softlayer/vendor/github.com/softlayer/softlayer-go/examples",
 			"path": "github.com/softlayer/softlayer-go/examples",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
+			"revision": "cd6404ba54841ec90b73eca422e070d67ae189f9",
+			"revisionTime": "2016-09-06T18:54:25Z"
 		},
 		{
 			"checksumSHA1": "tZ3W1bwC/B9lAGW7007CwaZl6C4=",
 			"path": "github.com/softlayer/softlayer-go/filter",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
-		},
-		{
-			"checksumSHA1": "i8g7dbJiuO9bNmxfCURCfyGLuyI=",
-			"path": "github.com/softlayer/softlayer-go/helpers/hardware",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
+			"revision": "89b946043e17a7d0cd4affadaa9bc35394da1910",
+			"revisionTime": "2016-09-16T00:26:33Z"
 		},
 		{
 			"checksumSHA1": "iIil9KYj6J7ZEK4dG9UirsFuq1Y=",
 			"path": "github.com/softlayer/softlayer-go/helpers/location",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
+			"revision": "89b946043e17a7d0cd4affadaa9bc35394da1910",
+			"revisionTime": "2016-09-16T00:26:33Z"
 		},
 		{
-			"checksumSHA1": "G3kKx93f2BtEvrApz/xB3yy1BuQ=",
+			"checksumSHA1": "6ovFRvUKPrvAa9Qhb8uZ+2HqEsA=",
 			"path": "github.com/softlayer/softlayer-go/helpers/network",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
+			"revision": "89b946043e17a7d0cd4affadaa9bc35394da1910",
+			"revisionTime": "2016-09-16T00:26:33Z"
 		},
 		{
 			"checksumSHA1": "bGG9wihg55FY7q/kHVE5KQV8XmE=",
 			"path": "github.com/softlayer/softlayer-go/helpers/order",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
+			"revision": "89b946043e17a7d0cd4affadaa9bc35394da1910",
+			"revisionTime": "2016-09-16T00:26:33Z"
 		},
 		{
-			"checksumSHA1": "P/4mxQUWq3TBfriw7yZF3IuNdOs=",
+			"checksumSHA1": "G1jjlWrEsScRsGjUW22g1K6Eetg=",
 			"path": "github.com/softlayer/softlayer-go/helpers/product",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
+			"revision": "89b946043e17a7d0cd4affadaa9bc35394da1910",
+			"revisionTime": "2016-09-16T00:26:33Z"
 		},
 		{
 			"checksumSHA1": "AE7CLBIxLRpDneGO0RiDAifDMoM=",
 			"path": "github.com/softlayer/softlayer-go/helpers/virtual",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
+			"revision": "89b946043e17a7d0cd4affadaa9bc35394da1910",
+			"revisionTime": "2016-09-16T00:26:33Z"
 		},
 		{
-			"checksumSHA1": "HZImXTbhXtn7kLns/o5gd811Qu8=",
+			"checksumSHA1": "pvNpWBRTTZXi9cG+17oboQxAPVQ=",
+			"origin": "github.com/softlayer/terraform-provider-softlayer/vendor/github.com/softlayer/softlayer-go/meta",
 			"path": "github.com/softlayer/softlayer-go/meta",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
+			"revision": "cd6404ba54841ec90b73eca422e070d67ae189f9",
+			"revisionTime": "2016-09-06T18:54:25Z"
 		},
 		{
 			"checksumSHA1": "aBQM2mMJQ34n0lbyPHSucEUL0QU=",
 			"path": "github.com/softlayer/softlayer-go/services",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
+			"revision": "89b946043e17a7d0cd4affadaa9bc35394da1910",
+			"revisionTime": "2016-09-16T00:26:33Z"
 		},
 		{
-			"checksumSHA1": "4ua5VZBjaCJaBS6ycH75I8u3VAI=",
+			"checksumSHA1": "cpcqto2j9vZp6lZ5wpNeOCV6vPc=",
 			"path": "github.com/softlayer/softlayer-go/session",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
+			"revision": "89b946043e17a7d0cd4affadaa9bc35394da1910",
+			"revisionTime": "2016-09-16T00:26:33Z"
 		},
 		{
 			"checksumSHA1": "2jfZ4i3/2rxbFhkyRxhF0gnSvW4=",
 			"path": "github.com/softlayer/softlayer-go/sl",
-			"revision": "c3446c6c4055b3fdb45a220788db4f3d74f62976",
-			"revisionTime": "2016-09-14T04:36:44Z"
+			"revision": "89b946043e17a7d0cd4affadaa9bc35394da1910",
+			"revisionTime": "2016-09-16T00:26:33Z"
 		}
 	],
 	"rootPath": "github.com/softlayer/terraform-provider-softlayer"

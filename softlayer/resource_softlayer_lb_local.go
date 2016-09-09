@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform/helper/resource"
@@ -24,7 +23,7 @@ const (
 
 	LbLocalPackageType = "ADDITIONAL_SERVICES_LOAD_BALANCER"
 
-	lbMask = "id,connectionLimit,ipAddressId,securityCertificateId,highAvailabilityFlag," +
+	lbMask = "id,dedicatedFlag,connectionLimit,ipAddressId,securityCertificateId,highAvailabilityFlag," +
 		"sslEnabledFlag,loadBalancerHardware[datacenter[name]],ipAddress[ipAddress,subnetId]"
 )
 
@@ -65,6 +64,16 @@ func resourceSoftLayerLbLocal() *schema.Resource {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
+			"dedicated": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+				ForceNew: true,
+			},
+			"ssl_enabled": {
+				Type:     schema.TypeBool,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -74,6 +83,9 @@ func resourceSoftLayerLbLocalCreate(d *schema.ResourceData, meta interface{}) er
 
 	connections := d.Get("connections").(int)
 	haEnabled := d.Get("ha_enabled").(bool)
+	dedicated := d.Get("dedicated").(bool)
+
+	var categoryCode string
 
 	// SoftLayer capacities don't match the published capacities as seen in the local lb
 	// ordering screen in the customer portal. Terraform exposes the published capacities.
@@ -91,14 +103,28 @@ func resourceSoftLayerLbLocalCreate(d *schema.ResourceData, meta interface{}) er
 		capacity = c
 	}
 
-	var keyname string
-	if haEnabled {
-		keyname = "DEDICATED_LOAD_BALANCER_WITH_HIGH_AVAILABILITY_AND_SSL"
+	var keyFormatter string
+	if dedicated {
+		// Dedicated local LB always comes with SSL support
+		d.Set("ssl_enabled", true)
+		categoryCode = product.DedicatedLoadBalancerCategoryCode
+		if haEnabled {
+			keyFormatter = "DEDICATED_LOAD_BALANCER_WITH_HIGH_AVAILABILITY_AND_SSL_%d_CONNECTIONS"
+		} else {
+			keyFormatter = "LOAD_BALANCER_DEDICATED_WITH_SSL_OFFLOAD_%d_CONNECTIONS"
+		}
 	} else {
-		keyname = "LOAD_BALANCER_DEDICATED_WITH_SSL_OFFLOAD"
+		categoryCode = product.ProxyLoadBalancerCategoryCode
+		if _, ok := d.GetOk("security_certificate_id"); ok {
+			d.Set("ssl_enabled", true)
+			keyFormatter = "LOAD_BALANCER_%d_VIP_CONNECTIONS_WITH_SSL_OFFLOAD"
+		} else {
+			d.Set("ssl_enabled", false)
+			keyFormatter = "LOAD_BALANCER_%d_VIP_CONNECTIONS"
+		}
 	}
 
-	keyname = strings.Join([]string{keyname, strconv.Itoa(connections), "CONNECTIONS"}, "_")
+	keyName := fmt.Sprintf(keyFormatter, connections)
 
 	pkg, err := product.GetPackageByType(sess, LbLocalPackageType)
 	if err != nil {
@@ -114,20 +140,20 @@ func resourceSoftLayerLbLocalCreate(d *schema.ResourceData, meta interface{}) er
 	// Select only those product items with a matching keyname
 	targetItems := []datatypes.Product_Item{}
 	for _, item := range productItems {
-		if *item.KeyName == keyname {
+		if *item.KeyName == keyName {
 			targetItems = append(targetItems, item)
 		}
 	}
 
 	if len(targetItems) == 0 {
-		return fmt.Errorf("No product items matching %s could be found", keyname)
+		return fmt.Errorf("No product items matching %s could be found", keyName)
 	}
 
 	//select prices with the required capacity
 	prices := product.SelectProductPricesByCategory(
 		targetItems,
 		map[string]float64{
-			product.DedicatedLoadBalancerCategoryCode: capacity,
+			categoryCode: capacity,
 		},
 	)
 
@@ -151,7 +177,7 @@ func resourceSoftLayerLbLocalCreate(d *schema.ResourceData, meta interface{}) er
 		return fmt.Errorf("Error during creation of load balancer: %s", err)
 	}
 
-	loadBalancer, err := findLoadBalancerByOrderId(sess, *receipt.OrderId)
+	loadBalancer, err := findLoadBalancerByOrderId(sess, *receipt.OrderId, dedicated)
 
 	d.SetId(fmt.Sprintf("%d", *loadBalancer.Id))
 	d.Set("connections", getConnectionLimit(*loadBalancer.ConnectionLimit))
@@ -208,6 +234,8 @@ func resourceSoftLayerLbLocalRead(d *schema.ResourceData, meta interface{}) erro
 	d.Set("ip_address", *vip.IpAddress.IpAddress)
 	d.Set("subnet_id", *vip.IpAddress.SubnetId)
 	d.Set("ha_enabled", *vip.HighAvailabilityFlag)
+	d.Set("dedicated", *vip.DedicatedFlag)
+	d.Set("ssl_enabled", *vip.SslEnabledFlag)
 
 	// Optional fields.  Guard against nil pointer dereferences
 	d.Set("security_certificate_id", sl.Get(vip.SecurityCertificateId, nil))
@@ -217,19 +245,29 @@ func resourceSoftLayerLbLocalRead(d *schema.ResourceData, meta interface{}) erro
 
 func resourceSoftLayerLbLocalDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
+	vipService := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess)
 
 	vipID, _ := strconv.Atoi(d.Id())
 
+	var billingItem datatypes.Billing_Item_Network_LoadBalancer
+	var err error
+
 	// Get billing item associated with the load balancer
-	bi, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
-		Id(vipID).
-		GetDedicatedBillingItem()
+	if d.Get("dedicated").(bool) {
+		billingItem, err = vipService.
+			Id(vipID).
+			GetDedicatedBillingItem()
+	} else {
+		billingItem.Billing_Item, err = vipService.
+			Id(vipID).
+			GetBillingItem()
+	}
 
 	if err != nil {
 		return fmt.Errorf("Error while looking up billing item associated with the load balancer: %s", err)
 	}
 
-	success, err := services.GetBillingItemService(sess).Id(*bi.Id).CancelService()
+	success, err := services.GetBillingItemService(sess).Id(*billingItem.Id).CancelService()
 	if err != nil {
 		return err
 	}
@@ -266,18 +304,25 @@ func getConnectionLimit(connectionLimit int) int {
 		connectionLimit < LB_LARGE_150000_CONNECTIONS {
 		return LB_SMALL_15000_CONNECTIONS
 	} else {
-		return 0
+		return connectionLimit
 	}
 }
 
-func findLoadBalancerByOrderId(sess *session.Session, orderId int) (datatypes.Network_Application_Delivery_Controller_LoadBalancer_VirtualIpAddress, error) {
+func findLoadBalancerByOrderId(sess *session.Session, orderId int, dedicated bool) (datatypes.Network_Application_Delivery_Controller_LoadBalancer_VirtualIpAddress, error) {
+	var filterPath string
+	if dedicated {
+		filterPath = "adcLoadBalancers.dedicatedBillingItem.orderItem.order.id"
+	} else {
+		filterPath = "adcLoadBalancers.billingItem.orderItem.order.id"
+	}
+
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"pending"},
 		Target:  []string{"complete"},
 		Refresh: func() (interface{}, string, error) {
 			lbs, err := services.GetAccountService(sess).
 				Filter(filter.Build(
-					filter.Path("adcLoadBalancers.dedicatedBillingItem.orderItem.order.id").
+					filter.Path(filterPath).
 						Eq(strconv.Itoa(orderId)))).
 				Mask(lbMask).
 				GetAdcLoadBalancers()
