@@ -21,85 +21,97 @@ func resourceSoftLayerDnsDomainRecord() *schema.Resource {
 		Delete:   resourceSoftLayerDnsDomainRecordDelete,
 		Importer: &schema.ResourceImporter{},
 		Schema: map[string]*schema.Schema{
-			"record_data": &schema.Schema{
+			"id": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+
+			"data": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+
+			"domain_id": {
+				Type:     schema.TypeInt,
+				Required: true,
+			},
+
+			"expire": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
+
+			"host": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+
+			"mx_priority": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  10,
+			},
+
+			"refresh": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
+
+			"responsible_person": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+
+			"retry": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
+
+			"minimum_ttl": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
+
+			"ttl": {
+				Type:     schema.TypeInt,
+				Required: true,
+				DefaultFunc: func() (interface{}, error) {
+					return 86400, nil
+				},
+			},
+
+			"type": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"domain_id": &schema.Schema{
-				Type:     schema.TypeInt,
-				Required: true,
-				ForceNew: true,
-			},
-
-			"expire": &schema.Schema{
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
-
-			"host": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
-			},
-
-			"minimum_ttl": &schema.Schema{
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
-
-			"mx_priority": &schema.Schema{
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
-
-			"refresh": &schema.Schema{
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
-
-			"contact_email": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
-			},
-
-			"retry": &schema.Schema{
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
-
-			"ttl": &schema.Schema{
-				Type:     schema.TypeInt,
-				Required: true,
-			},
-
-			"record_type": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-			},
-
-			"service": &schema.Schema{
+			"service": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
 
-			"protocol": &schema.Schema{
+			"protocol": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
 
-			"port": &schema.Schema{
+			"port": {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
 
-			"priority": &schema.Schema{
+			"priority": {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
 
-			"weight": &schema.Schema{
+			"weight": {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
