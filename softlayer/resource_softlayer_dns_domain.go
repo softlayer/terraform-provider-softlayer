@@ -11,6 +11,7 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
+	"time"
 )
 
 func resourceSoftLayerDnsDomain() *schema.Resource {
@@ -35,7 +36,11 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 
 			"serial": {
 				Type:     schema.TypeInt,
-				Computed: true,
+				Required: true,
+				DefaultFunc: func() (interface{}, error) {
+					t := time.Now()
+					return (t.Year() * 1000000) + (int(t.Month()) * 10000) + (t.Day() * 100) + 2, nil
+				},
 			},
 
 			"update_date": {
@@ -43,103 +48,9 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 				Computed: true,
 			},
 
-			"records": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"id": {
-							Type:     schema.TypeInt,
-							Computed: true,
-						},
-
-						"data": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-
-						"domain_id": {
-							Type:     schema.TypeInt,
-							Computed: true,
-						},
-
-						"expire": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-
-						"host": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-
-						"mx_priority": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  10,
-						},
-
-						"refresh": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-
-						"responsible_person": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-
-						"retry": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-
-						"minimum_ttl": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-
-						"ttl": {
-							Type:     schema.TypeInt,
-							Required: true,
-							DefaultFunc: func() (interface{}, error) {
-								return 86400, nil
-							},
-						},
-
-						"type": {
-							Type:     schema.TypeString,
-							Required: true,
-							ForceNew: true,
-						},
-
-						"service": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-
-						"protocol": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-
-						"port": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-
-						"priority": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-
-						"weight": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-					},
-				},
+			"target": {
+				Type:     schema.TypeString,
+				Required: true,
 			},
 		},
 	}
@@ -158,8 +69,14 @@ func resourceSoftLayerDnsDomainCreate(d *schema.ResourceData, meta interface{}) 
 		opts.Serial = sl.Int(serial.(int))
 	}
 
-	if records, ok := d.GetOk("records"); ok {
-		opts.ResourceRecords = prepareRecords(records.([]interface{}))
+	// Create dns domain zone with default A record based on the target value
+	opts.ResourceRecords = []datatypes.Dns_Domain_ResourceRecord{
+		{
+			Data: sl.String(d.Get("target").(string)),
+			Host: sl.String("@"),
+			Ttl:  sl.Int(86400),
+			Type: sl.String("a"),
+		},
 	}
 
 	// create Dns_Domain object
@@ -175,46 +92,6 @@ func resourceSoftLayerDnsDomainCreate(d *schema.ResourceData, meta interface{}) 
 
 	// read remote state
 	return resourceSoftLayerDnsDomainRead(d, meta)
-}
-
-func prepareRecords(raw_records []interface{}, domainId ...int) []datatypes.Dns_Domain_ResourceRecord {
-	sl_records := make([]datatypes.Dns_Domain_ResourceRecord, 0, len(raw_records))
-	for _, raw_record := range raw_records {
-		record := raw_record.(map[string]interface{})
-		sl_record := datatypes.Dns_Domain_ResourceRecord{}
-
-		sl_record.Data = sl.String(record["data"].(string))
-		sl_record.Expire = sl.Int(record["expire"].(int))
-		sl_record.Host = sl.String(record["host"].(string))
-		sl_record.Minimum = sl.Int(record["minimum_ttl"].(int))
-		sl_record.MxPriority = sl.Int(record["mx_priority"].(int))
-		sl_record.Refresh = sl.Int(record["refresh"].(int))
-		sl_record.ResponsiblePerson = sl.String(record["responsible_person"].(string))
-		sl_record.Retry = sl.Int(record["retry"].(int))
-		sl_record.Ttl = sl.Int(record["ttl"].(int))
-		sl_record.Type = sl.String(record["type"].(string))
-
-		if len(domainId) > 0 {
-			sl_record.DomainId = sl.Int(domainId[0])
-		}
-
-		recordId, ok := record["id"]
-		if ok && recordId.(int) != 0 {
-			sl_record.Id = sl.Int(recordId.(int))
-		}
-
-		if *sl_record.Type == "srv" {
-			sl_record.Port = sl.Int(record["port"].(int))
-			sl_record.Priority = sl.Int(record["priority"].(int))
-			sl_record.Protocol = sl.String(record["protocol"].(string))
-			sl_record.Service = sl.String(record["service"].(string))
-			sl_record.Weight = sl.Int(record["weight"].(int))
-		}
-
-		sl_records = append(sl_records, sl_record)
-	}
-
-	return sl_records
 }
 
 func resourceSoftLayerDnsDomainRead(d *schema.ResourceData, meta interface{}) error {
@@ -237,52 +114,16 @@ func resourceSoftLayerDnsDomainRead(d *schema.ResourceData, meta interface{}) er
 	if dns_domain.UpdateDate != nil {
 		d.Set("update_date", *dns_domain.UpdateDate)
 	}
-	d.Set("records", read_resource_records(dns_domain.ResourceRecords))
+
+	// find a record with host @; that will have the current target.
+	for _, record := range dns_domain.ResourceRecords {
+		if *record.Type == "a" && *record.Host == "@" {
+			d.Set("target", *record.Data)
+			break
+		}
+	}
 
 	return nil
-}
-
-func read_resource_records(list []datatypes.Dns_Domain_ResourceRecord) []map[string]interface{} {
-	records := make([]map[string]interface{}, 0, len(list))
-	for _, record := range list {
-		r := make(map[string]interface{})
-
-		// Required fields
-		r["id"] = *record.Id
-		r["data"] = *record.Data
-		r["domain_id"] = *record.DomainId
-		r["host"] = *record.Host
-		r["ttl"] = *record.Ttl
-		r["type"] = *record.Type
-
-		// Optional fields
-		if record.Expire != nil {
-			r["expire"] = *record.Expire
-		}
-
-		if record.Minimum != nil {
-			r["minimum_ttl"] = *record.Minimum
-		}
-
-		if record.MxPriority != nil {
-			r["mx_priority"] = *record.MxPriority
-		}
-
-		if record.Refresh != nil {
-			r["refresh"] = *record.Refresh
-		}
-
-		if record.Retry != nil {
-			r["retry"] = *record.Retry
-		}
-
-		if record.ResponsiblePerson != nil {
-			r["responsible_person"] = *record.ResponsiblePerson
-		}
-
-		records = append([]map[string]interface{}{r}, records...)
-	}
-	return records
 }
 
 func resourceSoftLayerDnsDomainUpdate(d *schema.ResourceData, meta interface{}) error {
