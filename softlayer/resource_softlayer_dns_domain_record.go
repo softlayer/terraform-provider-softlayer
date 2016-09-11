@@ -50,7 +50,7 @@ func resourceSoftLayerDnsDomainRecord() *schema.Resource {
 			"mx_priority": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  10,
+				Computed: true,
 			},
 
 			"refresh": {
@@ -109,6 +109,7 @@ func resourceSoftLayerDnsDomainRecord() *schema.Resource {
 			"priority": {
 				Type:     schema.TypeInt,
 				Optional: true,
+				Computed: true,
 			},
 
 			"weight": {
@@ -126,50 +127,69 @@ func resourceSoftLayerDnsDomainRecordCreate(d *schema.ResourceData, meta interfa
 	service := services.GetDnsDomainResourceRecordService(sess)
 
 	opts := datatypes.Dns_Domain_ResourceRecord{
-		Data:              sl.String(d.Get("record_data").(string)),
+		Data:              sl.String(d.Get("data").(string)),
 		DomainId:          sl.Int(d.Get("domain_id").(int)),
-		Expire:            sl.Int(d.Get("expire").(int)),
 		Host:              sl.String(d.Get("host").(string)),
-		Minimum:           sl.Int(d.Get("minimum_ttl").(int)),
-		MxPriority:        sl.Int(d.Get("mx_priority").(int)),
-		Refresh:           sl.Int(d.Get("refresh").(int)),
-		ResponsiblePerson: sl.String(d.Get("contact_email").(string)),
-		Retry:             sl.Int(d.Get("retry").(int)),
 		Ttl:               sl.Int(d.Get("ttl").(int)),
-		Type:              sl.String(d.Get("record_type").(string)),
+		Type:              sl.String(d.Get("type").(string)),
+	}
+
+	if expire, ok := d.GetOk("expire"); ok {
+		opts.Expire = sl.Int(expire.(int))
+	}
+
+	if minimum, ok := d.GetOk("minimum_ttl"); ok {
+		opts.Minimum = sl.Int(minimum.(int))
+	}
+
+	if mxPriority, ok := d.GetOk("mx_priority"); ok {
+		opts.MxPriority = sl.Int(mxPriority.(int))
+	}
+
+	if refresh, ok := d.GetOk("refresh"); ok {
+		opts.Refresh = sl.Int(refresh.(int))
+	}
+
+	if responsiblePerson, ok := d.GetOk("responsible_person"); ok {
+		opts.ResponsiblePerson = sl.String(responsiblePerson.(string))
+	}
+
+	if retry, ok := d.GetOk("retry"); ok {
+		opts.Retry = sl.Int(retry.(int))
 	}
 
 	if *opts.Type == "srv" {
-		opts_srv := datatypes.Dns_Domain_ResourceRecord_SrvType{
-			Dns_Domain_ResourceRecord: opts,
-			Service:                   sl.String(d.Get("service").(string)),
-			Protocol:                  sl.String(d.Get("protocol").(string)),
-			Priority:                  sl.Int(d.Get("priority").(int)),
-			Weight:                    sl.Int(d.Get("weight").(int)),
-			Port:                      sl.Int(d.Get("port").(int)),
+		if serviceName, ok := d.GetOk("service"); ok {
+			opts.Service = sl.String(serviceName.(string))
 		}
 
-		service_srv := services.GetDnsDomainResourceRecordSrvTypeService(sess)
-		log.Printf("[INFO] Creating DNS Resource SRV Record for '%d' dns domain", d.Get("id"))
-		record, err := service_srv.CreateObject(&opts_srv)
-		if err != nil {
-			return fmt.Errorf("Error creating DNS Resource SRV Record: %s", err)
+		if protocol, ok := d.GetOk("protocol"); ok {
+			opts.Protocol = sl.String(protocol.(string))
 		}
 
-		d.SetId(fmt.Sprintf("%d", *record.Id))
-		log.Printf("[INFO] Dns Resource SRV Record ID: %s", d.Id())
-	} else {
-		log.Printf("[INFO] Creating DNS Resource Record for '%d' dns domain", d.Get("id"))
-		record, err := service.CreateObject(&opts)
-
-		if err != nil {
-			return fmt.Errorf("Error creating DNS Resource Record: %s", err)
+		if priority, ok := d.GetOk("priority"); ok {
+			opts.Priority = sl.Int(priority.(int))
 		}
 
-		d.SetId(fmt.Sprintf("%d", *record.Id))
+		if weight, ok := d.GetOk("weight"); ok {
+			opts.Weight = sl.Int(weight.(int))
+		}
 
-		log.Printf("[INFO] Dns Resource Record ID: %s", d.Id())
+		if port, ok := d.GetOk("port"); ok {
+			opts.Port = sl.Int(port.(int))
+		}
 	}
+
+	log.Printf("[INFO] Creating DNS Resource %s Record for '%d' dns domain", *opts.Type, d.Get("id"))
+	record, err := service.CreateObject(&opts)
+
+	if err != nil {
+		return fmt.Errorf("Error creating DNS Resource %s Record: %s", *opts.Type, err)
+	}
+
+	d.SetId(fmt.Sprintf("%d", *record.Id))
+
+	log.Printf("[INFO] Dns Resource %s Record ID: %s", *opts.Type, d.Id())
 
 	return resourceSoftLayerDnsDomainRecordRead(d, meta)
 }
@@ -190,30 +210,55 @@ func resourceSoftLayerDnsDomainRecordRead(d *schema.ResourceData, meta interface
 	}
 
 	d.Set("data", *result.Data)
-	d.Set("domainId", *result.DomainId)
-	d.Set("expire", *result.Expire)
+	d.Set("domain_id", *result.DomainId)
 	d.Set("host", *result.Host)
-	d.Set("id", *result.Id)
-	d.Set("minimum", *result.Minimum)
-	d.Set("mxPriority", *result.MxPriority)
-	d.Set("refresh", *result.Refresh)
-	d.Set("responsiblePerson", *result.ResponsiblePerson)
-	d.Set("retry", *result.Retry)
-	d.Set("ttl", *result.Ttl)
 	d.Set("type", *result.Type)
+	d.Set("ttl", *result.Ttl)
+
+	if result.Expire != nil {
+		d.Set("expire", *result.Expire)
+	}
+
+	if result.Minimum != nil {
+		d.Set("minimum_ttl", *result.Minimum)
+	}
+
+	if result.MxPriority != nil {
+		d.Set("mx_priority", *result.MxPriority)
+	}
+
+	if result.Refresh != nil {
+		d.Set("refresh", *result.Refresh)
+	}
+
+	if result.ResponsiblePerson != nil {
+		d.Set("responsible_person", *result.ResponsiblePerson)
+	}
+
+	if result.Retry != nil {
+		d.Set("retry", *result.Retry)
+	}
 
 	if *result.Type == "srv" {
-		service := services.GetDnsDomainResourceRecordSrvTypeService(sess)
-		result, err := service.Id(id).GetObject()
-		if err != nil {
-			return fmt.Errorf("Error retrieving DNS Resource SRV Record: %s", err)
+		if result.Service != nil {
+			d.Set("service", *result.Service)
 		}
 
-		d.Set("service", *result.Service)
-		d.Set("protocol", *result.Protocol)
-		d.Set("port", *result.Port)
-		d.Set("priority", *result.Priority)
-		d.Set("weight", *result.Weight)
+		if result.Protocol != nil {
+			d.Set("protocol", *result.Protocol)
+		}
+
+		if result.Port != nil {
+			d.Set("port", *result.Port)
+		}
+
+		if result.Priority != nil {
+			d.Set("priority", *result.Priority)
+		}
+
+		if result.Weight != nil {
+			d.Set("weight", *result.Weight)
+		}
 	}
 
 	return nil
@@ -368,5 +413,5 @@ func resourceSoftLayerDnsDomainRecordExists(d *schema.ResourceData, meta interfa
 
 	record, err := service.Id(id).GetObject()
 
-	return record.Id != nil && err == nil && *record.Id == id, nil
+	return err == nil && record.Id != nil && *record.Id == id, nil
 }
