@@ -23,30 +23,44 @@ func TestAccSoftLayerDnsDomain_Basic(t *testing.T) {
 		CheckDestroy: testAccCheckSoftLayerDnsDomainDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCheckSoftLayerDnsDomainConfig_basic,
+				Config: fmt.Sprintf(config, domainName1, target1),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerDnsDomainExists("softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
 					testAccCheckSoftLayerDnsDomainAttributes(&dns_domain),
 					saveSoftLayerDnsDomainId(&dns_domain, &firstDnsId),
 					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", test_dns_domain_name),
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", domainName1),
 					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain.acceptance_test_dns_domain-1", "target", target),
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", "target", target1),
 				),
 				Destroy: false,
 			},
 			{
-				Config: testAccCheckSoftLayerDnsDomainConfig_changed,
+				Config: fmt.Sprintf(config, domainName2, target1),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerDnsDomainExists("softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
 					testAccCheckSoftLayerDnsDomainAttributes(&dns_domain),
 					testAccCheckSoftLayerDnsDomainRecordDomainId(
 						"softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
 					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", changed_dns_domain_name),
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", domainName2),
 					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain.acceptance_test_dns_domain-1", "target", target),
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", "target", target1),
 					testAccCheckSoftLayerDnsDomainChanged(&dns_domain),
+				),
+				Destroy: false,
+			},
+			{
+				Config: fmt.Sprintf(config, domainName2, target2),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSoftLayerDnsDomainExists("softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
+					testAccCheckSoftLayerDnsDomainAttributes(&dns_domain),
+					testAccCheckSoftLayerDnsDomainRecordDomainId(
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
+					resource.TestCheckResourceAttr(
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", domainName2),
+					resource.TestCheckResourceAttr(
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", "target", target2),
 				),
 				Destroy: false,
 			},
@@ -165,7 +179,9 @@ func testAccCheckSoftLayerDnsDomainExists(n string, dns_domain *datatypes.Dns_Do
 		dns_id, _ := strconv.Atoi(rs.Primary.ID)
 
 		service := services.GetDnsDomainService(testAccProvider.Meta().(*session.Session))
-		found_domain, err := service.Id(dns_id).GetObject()
+		found_domain, err := service.Id(dns_id).Mask(
+			"id,name,updateDate,resourceRecords",
+		).GetObject()
 
 		if err != nil {
 			return err
@@ -181,21 +197,29 @@ func testAccCheckSoftLayerDnsDomainExists(n string, dns_domain *datatypes.Dns_Do
 	}
 }
 
-var testAccCheckSoftLayerDnsDomainConfig_basic = fmt.Sprintf(`
+var config = `
 resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
 	name = "%s"
 	target = "%s"
 }
-`, test_dns_domain_name, target)
+`
 
-var testAccCheckSoftLayerDnsDomainConfig_changed = fmt.Sprintf(`
-resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
-	name = "%s"
-	target = "%s"
-}
-`, changed_dns_domain_name, target)
+//var testAccCheckSoftLayerDnsDomainConfig_basic = fmt.Sprintf(`
+//resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
+//	name = "%s"
+//	target = "%s"
+//}
+//`, test_dns_domain_name, target1)
+//
+//var testAccCheckSoftLayerDnsDomainConfig_changed = fmt.Sprintf(`
+//resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
+//	name = "%s"
+//	target = "%s"
+//}
+//`, changed_dns_domain_name, target1)
 
-var test_dns_domain_name = "zxczcxzxc.com"
-var changed_dns_domain_name = "vbnvnvbnv.com"
-var target = "172.16.0.100"
+var domainName1 = "zxczcxzxc.com"
+var domainName2 = "vbnvnvbnv.com"
+var target1 = "172.16.0.100"
+var target2 = "172.16.0.101"
 var firstDnsId = 0

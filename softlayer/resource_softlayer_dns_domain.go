@@ -112,8 +112,49 @@ func resourceSoftLayerDnsDomainRead(d *schema.ResourceData, meta interface{}) er
 }
 
 func resourceSoftLayerDnsDomainUpdate(d *schema.ResourceData, meta interface{}) error {
-	// TODO - update is not supported - implement delete-create?
-	return errors.New("Not implemented. Update Dns Domain is currently unsupported")
+	// If the target has been updated, find the corresponding dns record and update its data.
+	sess := meta.(*session.Session)
+	domainId, _ := strconv.Atoi(d.Id())
+
+	if !d.HasChange("target") {
+		return nil
+	}
+
+	newTarget := d.Get("target").(string)
+
+	// retrieve domain state
+	domainService := services.GetDnsDomainService(sess)
+	domain, err := domainService.Id(domainId).Mask(
+		"id,name,updateDate,resourceRecords",
+	).GetObject()
+	if err != nil {
+		return fmt.Errorf("Error retrieving DNS resource %d: %s", domainId, err)
+	}
+
+	// find a record with host @; that will have the current target.
+	var record datatypes.Dns_Domain_ResourceRecord
+	for _, record = range domain.ResourceRecords {
+		if *record.Type == "a" && *record.Host == "@" {
+			break
+		}
+	}
+
+	if record.Id == nil {
+		return fmt.Errorf("Could not find DNS target record for domain %s (%d)",
+			sl.Get(domain.Name), sl.Get(domain.Id))
+	}
+
+	record.Data = sl.String(newTarget)
+
+	_, err = services.GetDnsDomainResourceRecordService(sess).
+		Id(*record.Id).EditObject(&record)
+
+	if err != nil {
+		return fmt.Errorf("Error editing DNS target record for domain %s (%d): %s",
+			sl.Get(domain.Name), sl.Get(domain.Id), err)
+	}
+
+	return nil
 }
 
 func resourceSoftLayerDnsDomainDelete(d *schema.ResourceData, meta interface{}) error {
