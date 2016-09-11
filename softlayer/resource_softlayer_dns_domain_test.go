@@ -204,20 +204,6 @@ resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
 }
 `
 
-//var testAccCheckSoftLayerDnsDomainConfig_basic = fmt.Sprintf(`
-//resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
-//	name = "%s"
-//	target = "%s"
-//}
-//`, test_dns_domain_name, target1)
-//
-//var testAccCheckSoftLayerDnsDomainConfig_changed = fmt.Sprintf(`
-//resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
-//	name = "%s"
-//	target = "%s"
-//}
-//`, changed_dns_domain_name, target1)
-
 var domainName1 = "zxczcxzxc.com"
 var domainName2 = "vbnvnvbnv.com"
 var target1 = "172.16.0.100"
