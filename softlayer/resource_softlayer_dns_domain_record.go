@@ -127,11 +127,11 @@ func resourceSoftLayerDnsDomainRecordCreate(d *schema.ResourceData, meta interfa
 	service := services.GetDnsDomainResourceRecordService(sess)
 
 	opts := datatypes.Dns_Domain_ResourceRecord{
-		Data:              sl.String(d.Get("data").(string)),
-		DomainId:          sl.Int(d.Get("domain_id").(int)),
-		Host:              sl.String(d.Get("host").(string)),
-		Ttl:               sl.Int(d.Get("ttl").(int)),
-		Type:              sl.String(d.Get("type").(string)),
+		Data:     sl.String(d.Get("data").(string)),
+		DomainId: sl.Int(d.Get("domain_id").(int)),
+		Host:     sl.String(d.Get("host").(string)),
+		Ttl:      sl.Int(d.Get("ttl").(int)),
+		Type:     sl.String(d.Get("type").(string)),
 	}
 
 	if expire, ok := d.GetOk("expire"); ok {

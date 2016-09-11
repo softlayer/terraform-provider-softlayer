@@ -106,8 +106,17 @@ func testAccCheckSoftLayerDnsDomainAttributes(dns *datatypes.Dns_Domain) resourc
 			return errors.New("Empty dns domain name")
 		}
 
-		if serial := sl.Get(dns.Serial); serial == 0 {
-			return fmt.Errorf("Bad dns domain serial: %d", serial)
+		// find a record with host @; that will have the current target.
+		foundTarget := false
+		for _, record := range dns.ResourceRecords {
+			if *record.Type == "a" && *record.Host == "@" {
+				foundTarget = true
+				break
+			}
+		}
+
+		if !foundTarget {
+			return fmt.Errorf("Target record not found for dns domain %s (%d)", sl.Get(dns.Name), sl.Get(dns.Id))
 		}
 
 		if id := sl.Get(dns.Id); id == 0 {
@@ -130,7 +139,9 @@ func testAccCheckSoftLayerDnsDomainChanged(dns *datatypes.Dns_Domain) resource.T
 	return func(s *terraform.State) error {
 		service := services.GetDnsDomainService(testAccProvider.Meta().(*session.Session))
 
-		_, err := service.Id(firstDnsId).GetObject()
+		_, err := service.Id(firstDnsId).Mask(
+			"id,name,updateDate,resourceRecords",
+		).GetObject()
 		if err == nil {
 			return fmt.Errorf("Dns domain with id %d still exists", firstDnsId)
 		}

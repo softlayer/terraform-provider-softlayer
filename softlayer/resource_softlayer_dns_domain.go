@@ -11,7 +11,6 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
-	"time"
 )
 
 func resourceSoftLayerDnsDomain() *schema.Resource {
@@ -34,15 +33,6 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"serial": {
-				Type:     schema.TypeInt,
-				Required: true,
-				DefaultFunc: func() (interface{}, error) {
-					t := time.Now()
-					return (t.Year() * 1000000) + (int(t.Month()) * 10000) + (t.Day() * 100) + 2, nil
-				},
-			},
-
 			"update_date": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -63,10 +53,6 @@ func resourceSoftLayerDnsDomainCreate(d *schema.ResourceData, meta interface{}) 
 	// prepare creation parameters
 	opts := datatypes.Dns_Domain{
 		Name: sl.String(d.Get("name").(string)),
-	}
-
-	if serial, ok := d.GetOk("serial"); ok {
-		opts.Serial = sl.Int(serial.(int))
 	}
 
 	// Create dns domain zone with default A record based on the target value
@@ -102,7 +88,7 @@ func resourceSoftLayerDnsDomainRead(d *schema.ResourceData, meta interface{}) er
 
 	// retrieve remote object state
 	dns_domain, err := service.Id(dnsId).Mask(
-		"id,name,serial,updateDate,resourceRecords",
+		"id,name,updateDate,resourceRecords",
 	).GetObject()
 	if err != nil {
 		return fmt.Errorf("Error retrieving Dns Domain %d: %s", dnsId, err)
@@ -110,7 +96,6 @@ func resourceSoftLayerDnsDomainRead(d *schema.ResourceData, meta interface{}) er
 
 	// populate fields
 	d.Set("name", *dns_domain.Name)
-	d.Set("serial", *dns_domain.Serial)
 	if dns_domain.UpdateDate != nil {
 		d.Set("update_date", *dns_domain.UpdateDate)
 	}
