@@ -33,6 +33,11 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 				ForceNew: true,
 			},
 
+			"serial": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+
 			"update_date": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -96,6 +101,10 @@ func resourceSoftLayerDnsDomainRead(d *schema.ResourceData, meta interface{}) er
 
 	// populate fields
 	d.Set("name", *dns_domain.Name)
+	if dns_domain.Serial != nil {
+		d.Set("serial", *dns_domain.Serial)
+	}
+
 	if dns_domain.UpdateDate != nil {
 		d.Set("update_date", *dns_domain.UpdateDate)
 	}
