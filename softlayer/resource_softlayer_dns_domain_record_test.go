@@ -53,17 +53,24 @@ func TestAccSoftLayerDnsDomainRecord_Types(t *testing.T) {
 		CheckDestroy: testAccCheckSoftLayerDnsDomainDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCheckSoftLayerDnsDomainRecordConfig_all_types,
+				Config: fmt.Sprintf(testAccCheckSoftLayerDnsDomainRecordConfig_all_types, "_tcp"),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerDnsDomainExists("softlayer_dns_domain.test_dns_domain_record_types", &dns_domain),
 					testAccCheckSoftLayerDnsDomainRecordExists("softlayer_dns_domain_record.recordA", &dns_domain_record),
 					testAccCheckSoftLayerDnsDomainRecordExists("softlayer_dns_domain_record.recordAAAA", &dns_domain_record),
 					testAccCheckSoftLayerDnsDomainRecordExists("softlayer_dns_domain_record.recordCNAME", &dns_domain_record),
 					testAccCheckSoftLayerDnsDomainRecordExists("softlayer_dns_domain_record.recordMX", &dns_domain_record),
-					testAccCheckSoftLayerDnsDomainRecordExists("softlayer_dns_domain_record.recordNS", &dns_domain_record),
 					testAccCheckSoftLayerDnsDomainRecordExists("softlayer_dns_domain_record.recordSPF", &dns_domain_record),
 					testAccCheckSoftLayerDnsDomainRecordExists("softlayer_dns_domain_record.recordTXT", &dns_domain_record),
 					testAccCheckSoftLayerDnsDomainRecordExists("softlayer_dns_domain_record.recordSRV", &dns_domain_record),
+				),
+				Destroy: false,
+			},
+			{
+				Config: fmt.Sprintf(testAccCheckSoftLayerDnsDomainRecordConfig_all_types, "_udp"),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSoftLayerDnsDomainExists("softlayer_dns_domain.test_dns_domain_record_types", &dns_domain),
+					resource.TestCheckResourceAttr("softlayer_dns_domain_record.recordSRV", "protocol", "_udp"),
 				),
 				Destroy: false,
 			},
@@ -116,7 +123,7 @@ resource "softlayer_dns_domain_record" "recordA" {
     mx_priority = 1
     refresh = 1
     host = "hosta.com"
-    responsible_person = "user@softlaer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
     retry = 1
     type = "a"
@@ -132,16 +139,16 @@ resource "softlayer_dns_domain_record" "recordA" {
     data = "127.0.0.1"
     domain_id = "${softlayer_dns_domain.test_dns_domain_record_types.id}"
     host = "hosta.com"
-    responsible_person = "user@softlaer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
     type = "a"
 }
 
 resource "softlayer_dns_domain_record" "recordAAAA" {
-    data = "FE80:0000:0000:0000:0202:B3FF:FE1E:8329"
+    data = "fe80:0000:0000:0000:0202:b3ff:fe1e:8329"
     domain_id = "${softlayer_dns_domain.test_dns_domain_record_types.id}"
     host = "hosta-2.com"
-    responsible_person = "user2changed@softlaer.com"
+    responsible_person = "user2changed@softlayer.com"
     ttl = 1000
     type = "aaaa"
 }
@@ -150,7 +157,7 @@ resource "softlayer_dns_domain_record" "recordCNAME" {
     data = "testsssaaaass.com"
     domain_id = "${softlayer_dns_domain.test_dns_domain_record_types.id}"
     host = "hosta-cname.com"
-    responsible_person = "user@softlaer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
     type = "cname"
 }
@@ -159,25 +166,16 @@ resource "softlayer_dns_domain_record" "recordMX" {
     data = "email.example.com"
     domain_id = "${softlayer_dns_domain.test_dns_domain_record_types.id}"
     host = "hosta-mx.com"
-    responsible_person = "user@softlaer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
     type = "mx"
-}
-
-resource "softlayer_dns_domain_record" "recordNS" {
-    data = "ns1.example.org"
-    domain_id = "${softlayer_dns_domain.test_dns_domain_record_types.id}"
-    host = "hosta-ns.com"
-    responsible_person = "user@softlaer.com"
-    ttl = 900
-    type = "ns"
 }
 
 resource "softlayer_dns_domain_record" "recordSPF" {
     data = "v=spf1 mx:mail.example.org ~all"
     domain_id = "${softlayer_dns_domain.test_dns_domain_record_types.id}"
     host = "hosta-spf"
-    responsible_person = "user@softlaer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
     type = "spf"
 }
@@ -186,7 +184,7 @@ resource "softlayer_dns_domain_record" "recordTXT" {
     data = "127.0.0.1"
     domain_id = "${softlayer_dns_domain.test_dns_domain_record_types.id}"
     host = "hosta-txt.com"
-    responsible_person = "user@softlaer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
     type = "txt"
 }
@@ -195,12 +193,12 @@ resource "softlayer_dns_domain_record" "recordSRV" {
     data = "ns1.example.org"
     domain_id = "${softlayer_dns_domain.test_dns_domain_record_types.id}"
     host = "hosta-srv.com"
-    responsible_person = "user@softlaer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
     type = "srv"
 	port = 8080
 	priority = 3
-	protocol = "_tcp"
+	protocol = "%s"
 	weight = 3
 	service = "_mail"
 }

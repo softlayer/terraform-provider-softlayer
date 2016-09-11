@@ -158,36 +158,55 @@ func resourceSoftLayerDnsDomainRecordCreate(d *schema.ResourceData, meta interfa
 		opts.Retry = sl.Int(retry.(int))
 	}
 
+	optsSrv := datatypes.Dns_Domain_ResourceRecord_SrvType{
+		Dns_Domain_ResourceRecord: opts,
+	}
 	if *opts.Type == "srv" {
 		if serviceName, ok := d.GetOk("service"); ok {
-			opts.Service = sl.String(serviceName.(string))
+			optsSrv.Service = sl.String(serviceName.(string))
 		}
 
 		if protocol, ok := d.GetOk("protocol"); ok {
-			opts.Protocol = sl.String(protocol.(string))
+			optsSrv.Protocol = sl.String(protocol.(string))
 		}
 
 		if priority, ok := d.GetOk("priority"); ok {
-			opts.Priority = sl.Int(priority.(int))
+			optsSrv.Priority = sl.Int(priority.(int))
 		}
 
 		if weight, ok := d.GetOk("weight"); ok {
-			opts.Weight = sl.Int(weight.(int))
+			optsSrv.Weight = sl.Int(weight.(int))
 		}
 
 		if port, ok := d.GetOk("port"); ok {
-			opts.Port = sl.Int(port.(int))
+			optsSrv.Port = sl.Int(port.(int))
 		}
 	}
 
 	log.Printf("[INFO] Creating DNS Resource %s Record for '%d' dns domain", *opts.Type, d.Get("id"))
-	record, err := service.CreateObject(&opts)
+
+	var err error
+	var id int
+	if *opts.Type == "srv" {
+		var record datatypes.Dns_Domain_ResourceRecord_SrvType
+		serviceSrv := services.GetDnsDomainResourceRecordSrvTypeService(sess)
+		record, err = serviceSrv.CreateObject(&optsSrv)
+		if record.Id != nil {
+			id = *record.Id
+		}
+	} else {
+		var record datatypes.Dns_Domain_ResourceRecord
+		record, err = service.CreateObject(&opts)
+		if record.Id != nil {
+			id = *record.Id
+		}
+	}
 
 	if err != nil {
 		return fmt.Errorf("Error creating DNS Resource %s Record: %s", *opts.Type, err)
 	}
 
-	d.SetId(fmt.Sprintf("%d", *record.Id))
+	d.SetId(fmt.Sprintf("%d", id))
 
 	log.Printf("[INFO] Dns Resource %s Record ID: %s", *opts.Type, d.Id())
 
@@ -329,38 +348,47 @@ func resourceSoftLayerDnsDomainRecordUpdate(d *schema.ResourceData, meta interfa
 		hasChanged = hasChanged || d.HasChange("retry")
 	}
 
+	recordSrv := datatypes.Dns_Domain_ResourceRecord_SrvType{
+		Dns_Domain_ResourceRecord: record,
+	}
 	if recordType == "srv" {
 		if service, ok := d.GetOk("service"); ok {
-			record.Service = sl.String(service.(string))
+			recordSrv.Service = sl.String(service.(string))
 			hasChanged = hasChanged || d.HasChange("service")
 		}
 
 		if priority, ok := d.GetOk("priority"); ok {
-			record.Priority = sl.Int(priority.(int))
+			recordSrv.Priority = sl.Int(priority.(int))
 			hasChanged = hasChanged || d.HasChange("priority")
 		}
 
 		if protocol, ok := d.GetOk("protocol"); ok {
-			record.Protocol = sl.String(protocol.(string))
+			recordSrv.Protocol = sl.String(protocol.(string))
 			hasChanged = hasChanged || d.HasChange("protocol")
 		}
 
 		if port, ok := d.GetOk("port"); ok {
-			record.Port = sl.Int(port.(int))
+			recordSrv.Port = sl.Int(port.(int))
 			hasChanged = hasChanged || d.HasChange("port")
 		}
 
 		if weight, ok := d.GetOk("weight"); ok {
-			record.Weight = sl.Int(weight.(int))
+			recordSrv.Weight = sl.Int(weight.(int))
 			hasChanged = hasChanged || d.HasChange("weight")
 		}
 	}
 
 	if hasChanged {
-		_, err = service.Id(recordId).EditObject(&record)
-		if err != nil {
-			return fmt.Errorf("Error editing DNS Resoource Record: %s", err)
+		if recordType == "srv" {
+			_, err = services.GetDnsDomainResourceRecordSrvTypeService(sess).
+				Id(recordId).EditObject(&recordSrv)
+		} else {
+			_, err = service.Id(recordId).EditObject(&record)
 		}
+	}
+
+	if err != nil {
+		return fmt.Errorf("Error editing DNS Resource %s Record %d: %s", recordType, recordId, err)
 	}
 
 	return nil
