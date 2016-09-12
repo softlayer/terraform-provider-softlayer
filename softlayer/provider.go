@@ -1,6 +1,7 @@
 package softlayer
 
 import (
+	"errors"
 	"os"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -67,6 +68,13 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		UserName: d.Get("username").(string),
 		APIKey:   d.Get("api_key").(string),
 		Endpoint: d.Get("endpoint_url").(string),
+	}
+
+	if sess.UserName == "" || sess.APIKey == "" {
+		return nil, errors.New(
+			"No SoftLayer credentials were found. Please ensure you have specified" +
+				" them in the provider or in the environment (see the documentation).",
+		)
 	}
 
 	if os.Getenv("TF_LOG") != "" {
