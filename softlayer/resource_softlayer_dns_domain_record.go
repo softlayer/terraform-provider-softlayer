@@ -3,7 +3,9 @@ package softlayer
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -11,6 +13,20 @@ import (
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
+
+var allowedDomainRecordTypes = []string{
+	"a", "aaaa", "cname", "mx", "ptr", "spf", "srv", "txt",
+}
+var ipv6Regexp *regexp.Regexp
+var upcaseRegexp *regexp.Regexp
+
+func init() {
+	ipv6Regexp, _ = regexp.Compile(
+		"[a-zA-Z0-9]{4}:[a-zA-Z0-9]{4}:[a-zA-Z0-9]{4}:[a-zA-Z0-9]{4}:" +
+			"[a-zA-Z0-9]{4}:[a-zA-Z0-9]{4}:[a-zA-Z0-9]{4}:[a-zA-Z0-9]{4}",
+	)
+	upcaseRegexp, _ = regexp.Compile("[A-Z]")
+}
 
 func resourceSoftLayerDnsDomainRecord() *schema.Resource {
 	return &schema.Resource{
@@ -29,6 +45,19 @@ func resourceSoftLayerDnsDomainRecord() *schema.Resource {
 			"data": {
 				Type:     schema.TypeString,
 				Required: true,
+				ValidateFunc: func(val interface{}, field string) (warnings []string, errors []error) {
+					value := val.(string)
+					if ipv6Regexp.MatchString(value) && upcaseRegexp.MatchString(value) {
+						errors = append(
+							errors,
+							fmt.Errorf(
+								"IPv6 addresses in the data property cannot have upper case letters: %s",
+								value,
+							),
+						)
+					}
+					return
+				},
 			},
 
 			"domain_id": {
