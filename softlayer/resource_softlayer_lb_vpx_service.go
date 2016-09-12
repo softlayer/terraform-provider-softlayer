@@ -91,9 +91,28 @@ func parseServiceId(id string) (string, int, string, error) {
 	return vipId, nacdId, serviceName, nil
 }
 
+func updateVpxService(sess *session.Session, nadcId int, lbVip *datatypes.Network_LoadBalancer_VirtualIpAddress) (bool, error) {
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
+	serviceName := *lbVip.Services[0].Name
+	successFlag := true
+	var err error
+	for count := 0; count < 10; count++ {
+		successFlag, err = service.Id(nadcId).UpdateLiveLoadBalancer(lbVip)
+		log.Printf("[INFO] Updating LoadBalancer Service %s successFlag : %t", serviceName, successFlag)
+
+		if err != nil && strings.Contains(err.Error(), "Operation already in progress") {
+			log.Printf("[INFO] Updating LoadBalancer Service %s Error : %s. Retry in 10 secs", serviceName, err.Error())
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		break
+	}
+	return successFlag, err
+}
+
 func resourceSoftLayerLbVpxServiceCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
-	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	vipId := d.Get("vip_id").(string)
 	vipName, nadcId, _, err := parseServiceId(vipId)
@@ -120,29 +139,17 @@ func resourceSoftLayerLbVpxServiceCreate(d *schema.ResourceData, meta interface{
 	}
 
 	// Check if there is an existed loadbalancer service which has same name.
-	log.Printf("[INFO] Creating LoadBalancer Service Name %s validation", *lb_services[0].Name)
+	log.Printf("[INFO] Creating LoadBalancer Service Name %s validation", serviceName)
 
 	_, err = network.GetNadcLbVipServiceByName(sess, nadcId, vipName, serviceName)
 	if err == nil {
 		return fmt.Errorf("Error creating LoadBalancer Service: The service name '%s' is already used.",
-			*lb_services[0].Name)
+			serviceName)
 	}
 
-	log.Printf("[INFO] Creating LoadBalancer Service %s", *lb_services[0].Name)
+	log.Printf("[INFO] Creating LoadBalancer Service %s", serviceName)
 
-	successFlag := true
-	for count := 0; count < 10; count++ {
-		successFlag, err = service.Id(nadcId).UpdateLiveLoadBalancer(lbVip)
-		log.Printf("[INFO] Creating LoadBalancer Service %s successFlag : %t", *lb_services[0].Name, successFlag)
-
-		if err != nil && strings.Contains(err.Error(), "Operation already in progress") {
-			log.Printf("[INFO] Creating LoadBalancer Service %s Error : %s. Retry in 10 secs", *lb_services[0].Name, err.Error())
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		break
-	}
+	successFlag, err := updateVpxService(sess, nadcId, lbVip)
 
 	if err != nil {
 		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
@@ -183,7 +190,6 @@ func resourceSoftLayerLbVpxServiceRead(d *schema.ResourceData, meta interface{})
 
 func resourceSoftLayerLbVpxServiceUpdate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
-	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	vipName, nadcId, serviceName, err := parseServiceId(d.Id())
 	if err != nil {
@@ -223,19 +229,7 @@ func resourceSoftLayerLbVpxServiceUpdate(d *schema.ResourceData, meta interface{
 			template},
 	}
 
-	successFlag := true
-	for count := 0; count < 10; count++ {
-		successFlag, err = service.Id(nadcId).UpdateLiveLoadBalancer(lbVip)
-		log.Printf("[INFO] Updating Loadbalancer service %s successFlag : %t", serviceName, successFlag)
-
-		if err != nil && strings.Contains(err.Error(), "Operation already in progress") {
-			log.Printf("[INFO] Updating Loadbalancer service %s Error : %s. Retry in 10 secs", serviceName, err.Error())
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		break
-	}
+	successFlag, err := updateVpxService(sess, nadcId, lbVip)
 
 	if err != nil {
 		return fmt.Errorf("Error updating LoadBalancer Service: %s", err)
