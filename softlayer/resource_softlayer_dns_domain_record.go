@@ -118,6 +118,22 @@ func resourceSoftLayerDnsDomainRecord() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
+				ValidateFunc: func(val interface{}, field string) (warnings []string, errors []error) {
+					value := val.(string)
+					for _, rtype := range allowedDomainRecordTypes {
+						if value == rtype {
+							return
+						}
+					}
+
+					errors = append(
+						errors,
+						fmt.Errorf("%s is not one of the valid domain record types: %s",
+							value, strings.Join(allowedDomainRecordTypes, ", "),
+						),
+					)
+					return
+				},
 			},
 
 			"service": {
