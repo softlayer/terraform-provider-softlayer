@@ -33,7 +33,7 @@ func TestAccSoftLayerDnsDomainRecord_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr("softlayer_dns_domain_record.recordA", "mx_priority", "1"),
 					resource.TestCheckResourceAttr("softlayer_dns_domain_record.recordA", "refresh", "1"),
 					resource.TestCheckResourceAttr("softlayer_dns_domain_record.recordA", "host", "hosta.com"),
-					resource.TestCheckResourceAttr("softlayer_dns_domain_record.recordA", "responsible_person", "user@softlaer.com"),
+					resource.TestCheckResourceAttr("softlayer_dns_domain_record.recordA", "responsible_person", "user@softlayer.com"),
 					resource.TestCheckResourceAttr("softlayer_dns_domain_record.recordA", "ttl", "900"),
 					resource.TestCheckResourceAttr("softlayer_dns_domain_record.recordA", "retry", "1"),
 					resource.TestCheckResourceAttr("softlayer_dns_domain_record.recordA", "type", "a"),
