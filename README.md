@@ -461,11 +461,12 @@ No additional arguments needed.
 
 #### `softlayer_dns_domain`
 
-The `softLayer_dns_domain` data type represents a single DNS domain record hosted on the SoftLayer nameservers. Domains contain general information about the domain name such as name and serial. Individual records such as `A`, `AAAA`, `CTYPE`, and `MX` records are stored in the domain's associated resource records using the  [`softlayer_dns_domain_record`](/docs/providers/softlayer/r/dns_records.html) resource.
+The `softlayer_dns_domain` resource represents a single DNS domain managed on SoftLayer. Domains contain general information about the domain name such as name and serial. Individual records such as `A`, `AAAA`, `CTYPE`, and `MX` records are stored in the domain's associated resource records using the [`softlayer_dns_domain_record`](/docs/providers/softlayer/r/dns_records.html) resource.
 
 ```hcl
 resource "softlayer_dns_domain" "dns-domain-test" {
     name = "dns-domain-test.com"
+    target = "127.0.0.10"
 }
 ```
 
@@ -473,8 +474,8 @@ resource "softlayer_dns_domain" "dns-domain-test" {
 
 The following arguments are supported:
 
-* `name` | *string*
-     * (Required) A domain's name including top-level domain, for example "example.com". _Name_ is the only field that needs to be set for `softlayer_dns_domain`. During creation the `NS` and `SOA` resource records are created automatically.
+* `name` | *string* - (Required) A domain's name including top-level domain, for example "example.com". When the domain is created, proper `NS` and `SOA`  records are created automatically for it.
+* `target`|*string* - (Required) The primary target IP address that the domain will resolve to. Upon creation, an `A` record will be created with a host value of `@` and a data-target value of the IP address provided which will be associated to the new domain.
 
 ##### Attributes Reference
 
@@ -486,12 +487,12 @@ The following attributes are exported
 
 #### `softlayer_dns_domain_record`
 
-The `softlayer_dns_domain_record` data type represents a single resource record entry in a [`softlayer_dns_domain`](/docs/providers/softlayer/r/dns.html). Each resource record contains a `host` and `record_data` property, defining a resource's name and it's target data.
+The `softlayer_dns_domain_record` data type represents a single resource record entry in a [`softlayer_dns_domain`](/docs/providers/softlayer/r/dns.html). Each resource record contains a `host` and `data` property, defining a resource's name and it's target data.
 
 We are using [SoftLayer_Dns_Domain_ResourceRecord](https://sldn.softlayer.com/reference/datatypes/SoftLayer_Dns_Domain_ResourceRecord)
 SL's object for most of CRUD operations. Only for SRV record type we are using [SoftLayer_Dns_Domain_ResourceRecord_SrvType](https://sldn.softlayer.com/reference/services/SoftLayer_Dns_Domain_ResourceRecord_SrvType) SL's object.
 
-Currently we can CRUD almost all record types except _SOA_ type which is initially created on DNS create action.
+You cannot create _SOA_ nor _NS_ record types, as these are automatically created by SoftLayer when the domain is created.
 
 ##### `A` Record | [SLDN](http://sldn.softlayer.com/reference/datatypes/SoftLayer_Dns_Domain_ResourceRecord_AType)
 
@@ -501,12 +502,12 @@ resource "softlayer_dns_domain" "main" {
 }
 
 resource "softlayer_dns_domain_record" "www" {
-    record_data = "123.123.123.123"
+    data = "123.123.123.123"
     domain_id = "${softlayer_dns_domain.main.id}"
     host = "www.example.com"
-    contact_email = "user@softlayer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
-    record_type = "a"
+    type = "a"
 }
 ```
 
@@ -514,12 +515,12 @@ resource "softlayer_dns_domain_record" "www" {
 
 ```hcl
 resource "softlayer_dns_domain_record" "aaaa" {
-    record_data = "FE80:0000:0000:0000:0202:B3FF:FE1E:8329"
+    data = "fe80:0000:0000:0000:0202:b3ff:fe1e:8329"
     domain_id = "${softlayer_dns_domain.main.id}"
     host = "www.example.com"
-    contact_email = "user@softlayer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 1000
-    record_type = "aaaa"
+    type = "aaaa"
 }
 ```
 
@@ -527,12 +528,12 @@ resource "softlayer_dns_domain_record" "aaaa" {
 
 ```hcl
 resource "softlayer_dns_domain_record" "cname" {
-    record_data = "real-host.example.com."
+    data = "real-host.example.com."
     domain_id = "${softlayer_dns_domain.main.id}"
     host = "alias.example.com"
-    contact_email = "user@softlayer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
-    record_type = "cname"
+    type = "cname"
 }
 ```
 
@@ -540,26 +541,13 @@ resource "softlayer_dns_domain_record" "cname" {
 
 ```hcl
 resource "softlayer_dns_domain_record" "recordMX-1" {
-    record_data = "mail-1"
+    data = "mail-1"
     domain_id = "${softlayer_dns_domain.main.id}"
     host = "@"
     mx_priority = "10"
-    contact_email = "user@softlayer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
-    record_type = "mx"
-}
-```
-
-##### `NS` Record | [SLDN](http://sldn.softlayer.com/reference/datatypes/SoftLayer_Dns_Domain_ResourceRecord_NsType)
-
-```hcl
-resource "softlayer_dns_domain_record" "recordNS" {
-    record_data = "ns1.example.org"
-    domain_id = "${softlayer_dns_domain.main.id}"
-    host = "@"
-    contact_email = "user@softlayer.com"
-    ttl = 900
-    record_type = "ns"
+    type = "mx"
 }
 ```
 
@@ -567,12 +555,12 @@ resource "softlayer_dns_domain_record" "recordNS" {
 
 ```hcl
 resource "softlayer_dns_domain_record" "recordSPF" {
-    record_data = "v=spf1 mx:mail.example.org ~all"
+    data = "v=spf1 mx:mail.example.org ~all"
     domain_id = "${softlayer_dns_domain.main.id}"
     host = "mail-1"
-    contact_email = "user@softlayer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
-    record_type = "spf"
+    type = "spf"
 }
 ```
 
@@ -580,12 +568,12 @@ resource "softlayer_dns_domain_record" "recordSPF" {
 
 ```hcl
 resource "softlayer_dns_domain_record" "recordTXT" {
-    record_data = "host"
+    data = "host"
     domain_id = "${softlayer_dns_domain.main.id}"
     host = "A SPF test host"
-    contact_email = "user@softlayer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
-    record_type = "txt"
+    type = "txt"
 }
 ```
 
@@ -593,12 +581,12 @@ resource "softlayer_dns_domain_record" "recordTXT" {
 
 ```hcl
 resource "softlayer_dns_domain_record" "recordSRV" {
-    record_data = "ns1.example.org"
+    data = "ns1.example.org"
     domain_id = "${softlayer_dns_domain.main.id}"
     host = "hosta-srv.com"
-    contact_email = "user@softlayer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
-    record_type = "srv"
+    type = "srv"
     port = 8080
     priority = 3
     protocol = "_tcp"
@@ -614,18 +602,18 @@ There are a lot of things that make the `PTR` record work properly, please revie
 
 ```hcl
 resource "softlayer_dns_domain_record" "recordPTR" {
-    record_data = "ptr.example.com"
+    data = "ptr.example.com"
     domain_id = "${softlayer_dns_domain.main.id}"
     host = "45"  # <- this is the last octet of IPAddress in the range of the subnet
-    contact_email = "user@softlayer.com"
+    responsible_person = "user@softlayer.com"
     ttl = 900
-    record_type = "ptr"
+    type = "ptr"
 }
 ```
 
 ##### Argument Reference
 
-* `record_data` | *string*
+* `data` | *string*
     * (Required) The value of a domain's resource record. This can be an IP address or a hostname. Fully qualified host and domain name data must end with the "." character.
 * `domain_id` | *int*
     * (Required) An identifier belonging to the domain that a resource record is associated with.
@@ -639,34 +627,32 @@ resource "softlayer_dns_domain_record" "recordPTR" {
     * Useful in cases where a domain has more than one mail exchanger, the priority property is the priority of the MTA that delivers mail for a domain. A lower number denotes a higher priority, and mail will attempt to deliver through that MTA before moving to lower priority mail servers. Priority is defaulted to 10 upon resource record creation.
 * `refresh` | *int*
     * The amount of time in seconds that a secondary name server should wait to check for a new copy of a DNS zone from the domain's primary name server. If a zone file has changed then the secondary DNS server will update it's copy of the zone to match the primary DNS server's zone.
-* `contact_email` | *string*
+* `responsible_person` | *string*
     * (Required) The email address of the person responsible for a domain, with the "@" replaced with a `.`. For instance, if root@example.org is responsible for example.org, then example.org's SOA responsibility is `root.example.org.`.
 * `retry` | *int*
     * The amount of time in seconds that a domain's primary name server (or servers) should wait if an attempt to refresh by a secondary name server failed before attempting to refresh a domain's zone with that secondary name server again.
 * `ttl` | *int*
     * (Required) The Time To Live value of a resource record, measured in seconds. TTL is used by a name server to determine how long to cache a resource record. An SOA record's TTL value defines the domain's overall TTL.
-* `record_type` | *string* - (Required) A domain resource record's type, valid types are:
+* `type` | *string* - (Required) A domain resource record's type, valid types are:
     * `a` for address records
     * `aaaa` for address records
     * `cname` for canonical name records
     * `mx` for mail exchanger records
-    * `ns` for name server records
     * `ptr` for pointer records in reverse domains
-    * `soa` for a domain's start of authority record
     * `spf` for sender policy framework records
     * `srv` for service records
 * `txt` | *string*
     * for text records
 * `service` | *string*
-    * The symbolic name of the desired service
+    * The symbolic name of the desired service. Only used for `SRV` records.
 * `protocol` | *string*
-    * The protocol of the desired service; this is usually either TCP or UDP.
+    * The protocol of the desired service; this is usually either TCP or UDP. Only used for `SRV` records.
 * `port` | *int*
-    * The TCP or UDP port on which the service is to be found.
+    * The TCP or UDP port on which the service is to be found. Only used for `SRV` records.
 * `priority` | *int*
-    * The priority of the target host, lower value means more preferred.
+    * The priority of the target host, lower value means more preferred. Only used for `SRV` records.
 * `weight` | *int*
-    * A relative weight for records with the same priority.
+    * A relative weight for records with the same priority. Only used for `SRV` records.
 
 ##### Attributes Reference
 
@@ -913,10 +899,10 @@ The following arguments are supported:
     * **Required**
 * `health_check` | *map*
     * Specifies the type of health check. For example HTTP. Also used to specify custom HTTP methods.
-    * **Required**  
+    * **Required**
 * `virtual_guest_member_template` | *array*
     * This is the template to create guest memebers with.
-    * **Required**    
+    * **Required**
 * `network_vlans` | *array of map of strings*
     * Collection of VLANs for this auto scale group.
     * *Default*: nil
@@ -972,7 +958,7 @@ The following arguments are supported:
     * **Required**
 * `scale_type` | *string*
     * Set the scale type for the scale policy. Accepted values are ABSOLUTE, RELATIVE and PERCENT
-    * **Required** 
+    * **Required**
 * `scale_amount` | *int*
     * A count of the scale actions to perform upon any trigger hit.
     * **Required**
@@ -991,7 +977,7 @@ The following arguments are supported:
 The following attributes are exported:
 
 * `id` - id of the scale policy.
- 
+
 #### `softlayer_lb_local`
 
 Provides a `lb_local` resource. This allows local load balancers to be created, updated and deleted.
@@ -1002,7 +988,7 @@ Provides a `lb_local` resource. This allows local load balancers to be created, 
 # Create a new local load balancer
 resource "softlayer_lb_local" "test_lb_local" {
     connections = 1500
-    datacenter = "tok02"         
+    datacenter = "tok02"
     ha_enabled = false
 }
 ```
@@ -1016,7 +1002,7 @@ The following arguments are supported:
     * **Required**
 * `datacenter` | *string*
     * Set the data center for the local load balancer.
-    * **Required** 
+    * **Required**
 * `ha_enabled` | *boolean*
     * Set if the local load balancer needs to be HA enabled or not.
     * **Required**
@@ -1059,7 +1045,7 @@ The following arguments are supported:
     * **Required**
 * `allocation` | *int*
     * Set the allocation field for the load balancer service group.
-    * **Required** 
+    * **Required**
 * `port` | *int*
     * Set the port for the local load balancer service group.
     * **Required**
@@ -1085,7 +1071,7 @@ For additional details please refer to [API documentation](http://sldn.softlayer
 ##### Example Usage
 
 ```hcl
-# Create a new local load balancer service 
+# Create a new local load balancer service
 resource "softlayer_lb_local_service" "test_lb_local_service" {
     port = 80
     enabled = true
@@ -1106,7 +1092,7 @@ The following arguments are supported:
     * **Required**
 * `ip_address_id` | *int*
     * Set the Id of the virtual server.
-    * **Required** 
+    * **Required**
 * `port` | *int*
     * Set the port for the local load balancer service.
     * **Required**
@@ -1118,7 +1104,7 @@ The following arguments are supported:
     * **Required**
 * `weight` | *int*
     * Set the weight for the load balancer service.
-    * **Required** 
+    * **Required**
 
 ##### Attributes Reference
 
@@ -1150,7 +1136,7 @@ The following arguments are supported:
     * **Required**
 * `ip_address` | *string*
     * Set the ip address to be monitored.
-    * **Optional** 
+    * **Optional**
 * `query_type_id` | *int*
     * Set the id of the query type.
     * **Required**
@@ -1162,7 +1148,7 @@ The following arguments are supported:
     * **Optional**
 * `notified_users` | *array of ints*
     * Set the list of user id's to be notified.
-    * **Optional**    
+    * **Optional**
 
 ##### Attributes Reference
 
