@@ -1,6 +1,6 @@
 # `softlayer_dns_domain_record`
 
-The `softlayer_dns_domain_record` data type represents a single resource record entry in a [`softlayer_dns_domain`](/docs/providers/softlayer/r/dns.html). Each resource record contains a `host` and `data` property, defining a resource's name and it's target data.
+The `softlayer_dns_domain_record` data type represents a single resource record entry in a `softlayer_dns_domain`. Each resource record contains a `host` and `data` property, defining a resource's name and it's target data.
 
 We are using [SoftLayer_Dns_Domain_ResourceRecord](https://sldn.softlayer.com/reference/datatypes/SoftLayer_Dns_Domain_ResourceRecord)
 SL's object for most of CRUD operations. Only for SRV record type we are using [SoftLayer_Dns_Domain_ResourceRecord_SrvType](https://sldn.softlayer.com/reference/services/SoftLayer_Dns_Domain_ResourceRecord_SrvType) SL's object.

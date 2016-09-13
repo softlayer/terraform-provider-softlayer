@@ -1,6 +1,6 @@
 # `softlayer_dns_domain`
 
-The `softlayer_dns_domain` resource represents a single DNS domain managed on SoftLayer. Domains contain general information about the domain name such as name and serial. Individual records such as `A`, `AAAA`, `CTYPE`, and `MX` records are stored in the domain's associated resource records using the [`softlayer_dns_domain_record`](/docs/providers/softlayer/r/dns_records.html) resource.
+The `softlayer_dns_domain` resource represents a single DNS domain managed on SoftLayer. Domains contain general information about the domain name such as name and serial. Individual records such as `A`, `AAAA`, `CTYPE`, and `MX` records are stored in the domain's associated resource records using the `softlayer_dns_domain_record` resource.
 
 ```hcl
 resource "softlayer_dns_domain" "dns-domain-test" {
