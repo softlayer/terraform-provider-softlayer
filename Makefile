@@ -20,6 +20,7 @@ test: fmtcheck generate
 	TF_ACC= go test $(TEST) $(TESTARGS) -timeout=30s -parallel=4
 
 # testacc runs acceptance tests
+# e.g make testacc TESTARGS="-run TestAccSoftLayerScaleGroup_Basic"
 testacc: fmtcheck generate
 	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m
 
