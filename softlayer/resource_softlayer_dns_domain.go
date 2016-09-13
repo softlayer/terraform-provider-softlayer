@@ -1,6 +1,7 @@
 package softlayer
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -21,117 +22,30 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 		Delete:   resourceSoftLayerDnsDomainDelete,
 		Importer: &schema.ResourceImporter{},
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
+			"id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
 
-			"name": &schema.Schema{
+			"name": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"serial": &schema.Schema{
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-
-			"update_date": &schema.Schema{
+			"serial": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
 
-			"records": &schema.Schema{
-				Type:     schema.TypeList,
+			"update_date": {
+				Type:     schema.TypeString,
 				Computed: true,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"record_data": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-							ForceNew: true,
-						},
+			},
 
-						"domain_id": &schema.Schema{
-							Type:     schema.TypeInt,
-							Required: true,
-							ForceNew: true,
-						},
-
-						"expire": &schema.Schema{
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-
-						"host": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-						},
-
-						"minimum_ttl": &schema.Schema{
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-
-						"mx_priority": &schema.Schema{
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-
-						"refresh": &schema.Schema{
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-
-						"contact_email": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-						},
-
-						"retry": &schema.Schema{
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-
-						"ttl": &schema.Schema{
-							Type:     schema.TypeInt,
-							Required: true,
-						},
-
-						"record_type": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-							ForceNew: true,
-						},
-
-						"service": &schema.Schema{
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-
-						"protocol": &schema.Schema{
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-
-						"port": &schema.Schema{
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-
-						"priority": &schema.Schema{
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-
-						"weight": &schema.Schema{
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-					},
-				},
+			"target": {
+				Type:     schema.TypeString,
+				Required: true,
 			},
 		},
 	}
@@ -146,8 +60,14 @@ func resourceSoftLayerDnsDomainCreate(d *schema.ResourceData, meta interface{}) 
 		Name: sl.String(d.Get("name").(string)),
 	}
 
-	if records, ok := d.GetOk("records"); ok {
-		opts.ResourceRecords = prepareRecords(records.([]interface{}))
+	// Create dns domain zone with default A record based on the target value
+	opts.ResourceRecords = []datatypes.Dns_Domain_ResourceRecord{
+		{
+			Data: sl.String(d.Get("target").(string)),
+			Host: sl.String("@"),
+			Ttl:  sl.Int(86400),
+			Type: sl.String("a"),
+		},
 	}
 
 	// create Dns_Domain object
@@ -165,30 +85,6 @@ func resourceSoftLayerDnsDomainCreate(d *schema.ResourceData, meta interface{}) 
 	return resourceSoftLayerDnsDomainRead(d, meta)
 }
 
-func prepareRecords(raw_records []interface{}) []datatypes.Dns_Domain_ResourceRecord {
-	sl_records := make([]datatypes.Dns_Domain_ResourceRecord, 0)
-	for _, raw_record := range raw_records {
-		var sl_record datatypes.Dns_Domain_ResourceRecord
-		record := raw_record.(map[string]interface{})
-
-		sl_record.Data = sl.String(record["record_data"].(string))
-		sl_record.DomainId = sl.Int(record["domain_id"].(int))
-		sl_record.Expire = sl.Int(record["expire"].(int))
-		sl_record.Host = sl.String(record["host"].(string))
-		sl_record.Minimum = sl.Int(record["minimum_ttl"].(int))
-		sl_record.MxPriority = sl.Int(record["mx_priority"].(int))
-		sl_record.Refresh = sl.Int(record["refresh"].(int))
-		sl_record.ResponsiblePerson = sl.String(record["contact_email"].(string))
-		sl_record.Retry = sl.Int(record["retry"].(int))
-		sl_record.Ttl = sl.Int(record["ttl"].(int))
-		sl_record.Type = sl.String(record["record_type"].(string))
-
-		sl_records = append(sl_records, sl_record)
-	}
-
-	return sl_records
-}
-
 func resourceSoftLayerDnsDomainRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetDnsDomainService(sess)
@@ -197,45 +93,72 @@ func resourceSoftLayerDnsDomainRead(d *schema.ResourceData, meta interface{}) er
 
 	// retrieve remote object state
 	dns_domain, err := service.Id(dnsId).Mask(
-		"id,name,serial,updateDate," +
-			"resourceRecords[data,domainId,expire,host,minimum,mxPriority,refresh,retry,ttl,type]",
+		"id,name,updateDate,resourceRecords",
 	).GetObject()
 	if err != nil {
 		return fmt.Errorf("Error retrieving Dns Domain %d: %s", dnsId, err)
 	}
 
 	// populate fields
-	d.Set("id", *dns_domain.Id)
 	d.Set("name", *dns_domain.Name)
-	d.Set("serial", *dns_domain.Serial)
-	d.Set("update_date", *dns_domain.UpdateDate)
-	d.Set("records", read_resource_records(dns_domain.ResourceRecords))
+	d.Set("serial", sl.Get(dns_domain.Serial, nil))
+	d.Set("update_date", sl.Get(dns_domain.UpdateDate, nil))
+
+	// find a record with host @; that will have the current target.
+	for _, record := range dns_domain.ResourceRecords {
+		if *record.Type == "a" && *record.Host == "@" {
+			d.Set("target", *record.Data)
+			break
+		}
+	}
 
 	return nil
 }
 
-func read_resource_records(list []datatypes.Dns_Domain_ResourceRecord) []map[string]interface{} {
-	records := make([]map[string]interface{}, 0, len(list))
-	for _, record := range list {
-		r := make(map[string]interface{})
-		r["record_data"] = *record.Data
-		r["domain_id"] = *record.DomainId
-		r["expire"] = *record.Expire
-		r["host"] = *record.Host
-		r["minimum_ttl"] = *record.Minimum
-		r["mx_priority"] = *record.MxPriority
-		r["refresh"] = *record.Refresh
-		r["retry"] = *record.Retry
-		r["ttl"] = *record.Ttl
-		r["record_type"] = *record.Type
-		records = append(records, r)
-	}
-	return records
-}
-
 func resourceSoftLayerDnsDomainUpdate(d *schema.ResourceData, meta interface{}) error {
-	// TODO - update is not supported - implement delete-create?
-	return fmt.Errorf("Not implemented. Update Dns Domain is currently unsupported")
+	// If the target has been updated, find the corresponding dns record and update its data.
+	sess := meta.(*session.Session)
+	domainId, _ := strconv.Atoi(d.Id())
+
+	if !d.HasChange("target") { // target is the only editable field
+		return nil
+	}
+
+	newTarget := d.Get("target").(string)
+
+	// retrieve domain state
+	domainService := services.GetDnsDomainService(sess)
+	domain, err := domainService.Id(domainId).Mask(
+		"id,name,updateDate,resourceRecords",
+	).GetObject()
+	if err != nil {
+		return fmt.Errorf("Error retrieving DNS resource %d: %s", domainId, err)
+	}
+
+	// find a record with host @; that will have the current target.
+	var record datatypes.Dns_Domain_ResourceRecord
+	for _, record = range domain.ResourceRecords {
+		if *record.Type == "a" && *record.Host == "@" {
+			break
+		}
+	}
+
+	if record.Id == nil {
+		return fmt.Errorf("Could not find DNS target record for domain %s (%d)",
+			sl.Get(domain.Name), sl.Get(domain.Id))
+	}
+
+	record.Data = sl.String(newTarget)
+
+	_, err = services.GetDnsDomainResourceRecordService(sess).
+		Id(*record.Id).EditObject(&record)
+
+	if err != nil {
+		return fmt.Errorf("Error editing DNS target record for domain %s (%d): %s",
+			sl.Get(domain.Name), sl.Get(domain.Id), err)
+	}
+
+	return nil
 }
 
 func resourceSoftLayerDnsDomainDelete(d *schema.ResourceData, meta interface{}) error {
@@ -254,7 +177,7 @@ func resourceSoftLayerDnsDomainDelete(d *schema.ResourceData, meta interface{}) 
 	}
 
 	if !result {
-		return fmt.Errorf("Error deleting Dns Domain")
+		return errors.New("Error deleting Dns Domain")
 	}
 
 	d.SetId("")
@@ -271,5 +194,5 @@ func resourceSoftLayerDnsDomainExists(d *schema.ResourceData, meta interface{}) 
 	}
 
 	result, err := service.Id(dnsId).GetObject()
-	return result.Id != nil && err == nil && *result.Id == dnsId, nil
+	return err == nil && result.Id != nil && *result.Id == dnsId, nil
 }
