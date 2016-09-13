@@ -13,6 +13,7 @@ import (
 	"github.com/softlayer/softlayer-go/sl"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func resourceSoftLayerLbVpxVip() *schema.Resource {
@@ -100,7 +101,28 @@ func resourceSoftLayerLbVpxVipCreate(d *schema.ResourceData, meta interface{}) e
 
 	log.Printf("[INFO] Creating Virtual Ip Address %s", *template.VirtualIpAddress)
 
-	successFlag, err := service.Id(nadcId).CreateLiveLoadBalancer(&template)
+	var err error
+	var successFlag bool
+
+	for count := 0; count < 10; count++ {
+		successFlag, err = service.Id(nadcId).CreateLiveLoadBalancer(&template)
+		log.Printf("[INFO] Creating Virtual Ip Address %s successFlag : %t", *template.VirtualIpAddress, successFlag)
+
+		if err != nil && strings.Contains(err.Error(), "already exists") {
+			log.Printf("[INFO] Creating Virtual Ip Address %s error : %s. Ingore the error.", *template.VirtualIpAddress, err.Error())
+			successFlag = true
+			err = nil
+			break
+		}
+
+		if err != nil && strings.Contains(err.Error(), "Operation already in progress") {
+			log.Printf("[INFO] Creating Virtual Ip Address %s error : %s. Retry in 10 secs", *template.VirtualIpAddress, err.Error())
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		break
+	}
 
 	if err != nil {
 		return fmt.Errorf("Error creating Virtual Ip Address: %s", err)
@@ -171,7 +193,21 @@ func resourceSoftLayerLbVpxVipUpdate(d *schema.ResourceData, meta interface{}) e
 		template.VirtualIpAddress = sl.String(d.Get("virtual_ip_address").(string))
 	}
 
-	_, err := service.Id(nadcId).UpdateLiveLoadBalancer(&template)
+	var err error
+
+	for count := 0; count < 10; count++ {
+		var successFlag bool
+		successFlag, err = service.Id(nadcId).UpdateLiveLoadBalancer(&template)
+		log.Printf("[INFO]  Updating Virtual Ip Address %s successFlag : %t", *template.VirtualIpAddress, successFlag)
+
+		if err != nil && strings.Contains(err.Error(), "Operation already in progress") {
+			log.Printf("[INFO] Updating Virtual Ip Address %s error : %s. Retry in 10 secs", *template.VirtualIpAddress, err.Error())
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		break
+	}
 
 	if err != nil {
 		return fmt.Errorf("Error updating Virtual Ip Address: %s", err)
@@ -189,9 +225,30 @@ func resourceSoftLayerLbVpxVipDelete(d *schema.ResourceData, meta interface{}) e
 		return fmt.Errorf("softlayer_lb_vpx : %s", err)
 	}
 
-	_, err = service.Id(nadcId).DeleteLiveLoadBalancer(
-		&datatypes.Network_LoadBalancer_VirtualIpAddress{Name: sl.String(vipName)},
-	)
+	for count := 0; count < 10; count++ {
+		var successFlag bool
+		successFlag, err = service.Id(nadcId).DeleteLiveLoadBalancer(
+			&datatypes.Network_LoadBalancer_VirtualIpAddress{Name: sl.String(vipName)},
+		)
+		log.Printf("[INFO] Deleting Virtual Ip Address %s successFlag : %t", vipName, successFlag)
+
+		if err != nil &&
+			(strings.Contains(err.Error(), "Operation already in progress") ||
+				strings.Contains(err.Error(), "No Service")) {
+			log.Printf("[INFO] Deleting Virtual Ip Address %s Error : %s  Retry in 10 secs", vipName, err.Error())
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		// Check if the resource is already deleted.
+		if err != nil && strings.Contains(err.Error(), "Unable to find object with unknown identifier of") {
+			log.Printf("[INFO] Deleting Virtual Ip Address %s Error : %s . Ignore the error.", vipName, err.Error())
+			err = nil
+		}
+
+		break
+	}
+
 	if err != nil {
 		return fmt.Errorf("Error deleting Virtual Ip Address %s: %s", vipName, err)
 	}

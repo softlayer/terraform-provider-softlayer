@@ -14,6 +14,7 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
+	"time"
 )
 
 func resourceSoftLayerLbVpxService() *schema.Resource {
@@ -90,9 +91,28 @@ func parseServiceId(id string) (string, int, string, error) {
 	return vipId, nacdId, serviceName, nil
 }
 
+func updateVpxService(sess *session.Session, nadcId int, lbVip *datatypes.Network_LoadBalancer_VirtualIpAddress) (bool, error) {
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
+	serviceName := *lbVip.Services[0].Name
+	successFlag := true
+	var err error
+	for count := 0; count < 10; count++ {
+		successFlag, err = service.Id(nadcId).UpdateLiveLoadBalancer(lbVip)
+		log.Printf("[INFO] Updating LoadBalancer Service %s successFlag : %t", serviceName, successFlag)
+
+		if err != nil && strings.Contains(err.Error(), "Operation already in progress") {
+			log.Printf("[INFO] Updating LoadBalancer Service %s Error : %s. Retry in 10 secs", serviceName, err.Error())
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		break
+	}
+	return successFlag, err
+}
+
 func resourceSoftLayerLbVpxServiceCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
-	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	vipId := d.Get("vip_id").(string)
 	vipName, nadcId, _, err := parseServiceId(vipId)
@@ -119,17 +139,18 @@ func resourceSoftLayerLbVpxServiceCreate(d *schema.ResourceData, meta interface{
 	}
 
 	// Check if there is an existed loadbalancer service which has same name.
-	log.Printf("[INFO] Validating LoadBalancer Service Name %s", *lb_services[0].Name)
+	log.Printf("[INFO] Creating LoadBalancer Service Name %s validation", serviceName)
 
 	_, err = network.GetNadcLbVipServiceByName(sess, nadcId, vipName, serviceName)
 	if err == nil {
 		return fmt.Errorf("Error creating LoadBalancer Service: The service name '%s' is already used.",
-			*lb_services[0].Name)
+			serviceName)
 	}
 
-	log.Printf("[INFO] Creating LoadBalancer Service %s", *lb_services[0].Name)
+	log.Printf("[INFO] Creating LoadBalancer Service %s", serviceName)
 
-	successFlag, err := service.Id(nadcId).UpdateLiveLoadBalancer(lbVip)
+	successFlag, err := updateVpxService(sess, nadcId, lbVip)
+
 	if err != nil {
 		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
 	}
@@ -153,9 +174,10 @@ func resourceSoftLayerLbVpxServiceRead(d *schema.ResourceData, meta interface{})
 
 	lbService, err := network.GetNadcLbVipServiceByName(sess, nadcId, vipName, serviceName)
 	if err != nil {
-		return fmt.Errorf("Unable to get load balancer service: %s", err)
+		return fmt.Errorf("Unable to get load balancer service %s: %s", serviceName, err)
 	}
 
+	d.Set("vip_id", strconv.Itoa(nadcId)+":"+vipName)
 	d.Set("name", *lbService.Name)
 	d.Set("destination_ip_address", *lbService.DestinationIpAddress)
 	d.Set("destination_port", *lbService.DestinationPort)
@@ -168,14 +190,13 @@ func resourceSoftLayerLbVpxServiceRead(d *schema.ResourceData, meta interface{})
 
 func resourceSoftLayerLbVpxServiceUpdate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
-	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
-	vipName, nadcId, _, err := parseServiceId(d.Id())
+	vipName, nadcId, serviceName, err := parseServiceId(d.Id())
 	if err != nil {
 		return fmt.Errorf("Error parsing vip id: %s", err)
 	}
 
-	lbService, err := network.GetNadcLbVipServiceByName(sess, nadcId, vipName, d.Get("name").(string))
+	lbService, err := network.GetNadcLbVipServiceByName(sess, nadcId, vipName, serviceName)
 	if err != nil {
 		return fmt.Errorf("Unable to get load balancer service: %s", err)
 	}
@@ -202,12 +223,20 @@ func resourceSoftLayerLbVpxServiceUpdate(d *schema.ResourceData, meta interface{
 		template.ConnectionLimit = sl.Int(data.(int))
 	}
 
-	_, err = service.Id(nadcId).UpdateLiveLoadBalancer(&datatypes.Network_LoadBalancer_VirtualIpAddress{
-		Name:     sl.String(vipName),
-		Services: []datatypes.Network_LoadBalancer_Service{template},
-	})
+	lbVip := &datatypes.Network_LoadBalancer_VirtualIpAddress{
+		Name: sl.String(vipName),
+		Services: []datatypes.Network_LoadBalancer_Service{
+			template},
+	}
+
+	successFlag, err := updateVpxService(sess, nadcId, lbVip)
+
 	if err != nil {
 		return fmt.Errorf("Error updating LoadBalancer Service: %s", err)
+	}
+
+	if !successFlag {
+		return errors.New("Error updating LoadBalancer Service")
 	}
 
 	return nil
@@ -222,15 +251,37 @@ func resourceSoftLayerLbVpxServiceDelete(d *schema.ResourceData, meta interface{
 	sess := meta.(*session.Session)
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
-	_, err = service.Id(nadcId).DeleteLiveLoadBalancerService(&datatypes.Network_LoadBalancer_Service{
+	lbSvc := datatypes.Network_LoadBalancer_Service{
 		Name: sl.String(serviceName),
 		Vip: &datatypes.Network_LoadBalancer_VirtualIpAddress{
 			Name: sl.String(vipName),
 		},
-	})
+	}
+
+	for count := 0; count < 10; count++ {
+		err = service.Id(nadcId).DeleteLiveLoadBalancerService(&lbSvc)
+		log.Printf("[INFO] Deleting Loadbalancer service %s", serviceName)
+
+		if err != nil &&
+			(strings.Contains(err.Error(), "Operation already in progress") ||
+				strings.Contains(err.Error(), "Internal Error")) {
+			log.Printf("[INFO] Deleting Loadbalancer service Error : %s. Retry in 10 secs", err.Error())
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		if err != nil &&
+			(strings.Contains(err.Error(), "No Service") ||
+				strings.Contains(err.Error(), "Unable to find object with unknown identifier of")) {
+			log.Printf("[INFO] Deleting Loadbalancer service %s Error : %s ", serviceName, err.Error())
+			err = nil
+		}
+
+		break
+	}
 
 	if err != nil {
-		return fmt.Errorf("Error deleting Load Balancer Service %s: %s", serviceName, err)
+		return fmt.Errorf("Error deleting LoadBalancer Service %s: %s", serviceName, err)
 	}
 
 	return nil
@@ -245,7 +296,7 @@ func resourceSoftLayerLbVpxServiceExists(d *schema.ResourceData, meta interface{
 	sess := meta.(*session.Session)
 	lbService, err := network.GetNadcLbVipServiceByName(sess, nadcId, vipName, serviceName)
 	if err != nil {
-		return false, fmt.Errorf("Unable to get load balancer service: %s", err)
+		return false, fmt.Errorf("Unable to get load balancer service %s: %s", serviceName, err)
 	}
 
 	return err == nil && *lbService.Name == serviceName, nil
