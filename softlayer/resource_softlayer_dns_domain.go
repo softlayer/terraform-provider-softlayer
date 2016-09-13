@@ -101,13 +101,8 @@ func resourceSoftLayerDnsDomainRead(d *schema.ResourceData, meta interface{}) er
 
 	// populate fields
 	d.Set("name", *dns_domain.Name)
-	if dns_domain.Serial != nil {
-		d.Set("serial", *dns_domain.Serial)
-	}
-
-	if dns_domain.UpdateDate != nil {
-		d.Set("update_date", *dns_domain.UpdateDate)
-	}
+	d.Set("serial", sl.Get(dns_domain.Serial, nil))
+	d.Set("update_date", sl.Get(dns_domain.UpdateDate, nil))
 
 	// find a record with host @; that will have the current target.
 	for _, record := range dns_domain.ResourceRecords {
@@ -125,7 +120,7 @@ func resourceSoftLayerDnsDomainUpdate(d *schema.ResourceData, meta interface{}) 
 	sess := meta.(*session.Session)
 	domainId, _ := strconv.Atoi(d.Id())
 
-	if !d.HasChange("target") {
+	if !d.HasChange("target") { // target is the only editable field
 		return nil
 	}
 

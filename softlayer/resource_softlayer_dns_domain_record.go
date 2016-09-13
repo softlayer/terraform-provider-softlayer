@@ -273,56 +273,27 @@ func resourceSoftLayerDnsDomainRecordRead(d *schema.ResourceData, meta interface
 		return fmt.Errorf("Error retrieving DNS Resource Record: %s", err)
 	}
 
+	// Required fields
 	d.Set("data", *result.Data)
 	d.Set("domain_id", *result.DomainId)
 	d.Set("host", *result.Host)
 	d.Set("type", *result.Type)
 	d.Set("ttl", *result.Ttl)
 
-	if result.Expire != nil {
-		d.Set("expire", *result.Expire)
-	}
-
-	if result.Minimum != nil {
-		d.Set("minimum_ttl", *result.Minimum)
-	}
-
-	if result.MxPriority != nil {
-		d.Set("mx_priority", *result.MxPriority)
-	}
-
-	if result.Refresh != nil {
-		d.Set("refresh", *result.Refresh)
-	}
-
-	if result.ResponsiblePerson != nil {
-		d.Set("responsible_person", *result.ResponsiblePerson)
-	}
-
-	if result.Retry != nil {
-		d.Set("retry", *result.Retry)
-	}
+	// Optional fields
+	d.Set("expire", sl.Get(result.Expire, nil))
+	d.Set("minimum_ttl", sl.Get(result.Minimum, nil))
+	d.Set("mx_priority", sl.Get(result.MxPriority, nil))
+	d.Set("responsible_person", sl.Get(result.ResponsiblePerson, nil))
+	d.Set("refresh", sl.Get(result.Refresh, nil))
+	d.Set("retry", sl.Get(result.Retry, nil))
 
 	if *result.Type == "srv" {
-		if result.Service != nil {
-			d.Set("service", *result.Service)
-		}
-
-		if result.Protocol != nil {
-			d.Set("protocol", *result.Protocol)
-		}
-
-		if result.Port != nil {
-			d.Set("port", *result.Port)
-		}
-
-		if result.Priority != nil {
-			d.Set("priority", *result.Priority)
-		}
-
-		if result.Weight != nil {
-			d.Set("weight", *result.Weight)
-		}
+		d.Set("service", sl.Get(result.Service, nil))
+		d.Set("protocol", sl.Get(result.Protocol, nil))
+		d.Set("port", sl.Get(result.Port, nil))
+		d.Set("priority", sl.Get(result.Priority, nil))
+		d.Set("weight", sl.Get(result.Weight, nil))
 	}
 
 	return nil
@@ -341,95 +312,77 @@ func resourceSoftLayerDnsDomainRecordUpdate(d *schema.ResourceData, meta interfa
 	}
 
 	recordType := d.Get("type").(string)
-	hasChanged := false
 
-	if data, ok := d.GetOk("data"); ok {
+	if data, ok := d.GetOk("data"); ok && d.HasChange("data") {
 		record.Data = sl.String(data.(string))
-		hasChanged = hasChanged || d.HasChange("data")
 	}
 
-	if domain_id, ok := d.GetOk("domain_id"); ok {
+	if domain_id, ok := d.GetOk("domain_id"); ok && d.HasChange("domain_id") {
 		record.DomainId = sl.Int(domain_id.(int))
-		hasChanged = hasChanged || d.HasChange("domain_id")
 	}
 
-	if host, ok := d.GetOk("host"); ok {
+	if host, ok := d.GetOk("host"); ok && d.HasChange("host") {
 		record.Host = sl.String(host.(string))
-		hasChanged = hasChanged || d.HasChange("host")
 	}
 
-	if ttl, ok := d.GetOk("ttl"); ok {
+	if ttl, ok := d.GetOk("ttl"); ok && d.HasChange("ttl") {
 		record.Ttl = sl.Int(ttl.(int))
-		hasChanged = hasChanged || d.HasChange("ttl")
 	}
 
-	if expire, ok := d.GetOk("expire"); ok {
+	if expire, ok := d.GetOk("expire"); ok && d.HasChange("expire") {
 		record.Expire = sl.Int(expire.(int))
-		hasChanged = hasChanged || d.HasChange("expire")
 	}
 
-	if minimum_ttl, ok := d.GetOk("minimum_ttl"); ok {
+	if minimum_ttl, ok := d.GetOk("minimum_ttl"); ok && d.HasChange("minimum_ttl") {
 		record.Minimum = sl.Int(minimum_ttl.(int))
-		hasChanged = hasChanged || d.HasChange("minimum_ttl")
 	}
 
-	if mx_priority, ok := d.GetOk("mx_priority"); ok {
+	if mx_priority, ok := d.GetOk("mx_priority"); ok && d.HasChange("mx_priority") {
 		record.MxPriority = sl.Int(mx_priority.(int))
-		hasChanged = hasChanged || d.HasChange("mx_priority")
 	}
 
-	if refresh, ok := d.GetOk("refresh"); ok {
+	if refresh, ok := d.GetOk("refresh"); ok && d.HasChange("refresh") {
 		record.Refresh = sl.Int(refresh.(int))
-		hasChanged = hasChanged || d.HasChange("refresh")
 	}
 
-	if contact_email, ok := d.GetOk("responsible_person"); ok {
+	if contact_email, ok := d.GetOk("responsible_person"); ok && d.HasChange("responsible_person") {
 		record.ResponsiblePerson = sl.String(contact_email.(string))
-		hasChanged = hasChanged || d.HasChange("responsible_person")
 	}
 
-	if retry, ok := d.GetOk("retry"); ok {
+	if retry, ok := d.GetOk("retry"); ok && d.HasChange("retry") {
 		record.Retry = sl.Int(retry.(int))
-		hasChanged = hasChanged || d.HasChange("retry")
 	}
 
 	recordSrv := datatypes.Dns_Domain_ResourceRecord_SrvType{
 		Dns_Domain_ResourceRecord: record,
 	}
 	if recordType == "srv" {
-		if service, ok := d.GetOk("service"); ok {
+		if service, ok := d.GetOk("service"); ok && d.HasChange("service") {
 			recordSrv.Service = sl.String(service.(string))
-			hasChanged = hasChanged || d.HasChange("service")
 		}
 
-		if priority, ok := d.GetOk("priority"); ok {
+		if priority, ok := d.GetOk("priority"); ok && d.HasChange("priority") {
 			recordSrv.Priority = sl.Int(priority.(int))
-			hasChanged = hasChanged || d.HasChange("priority")
 		}
 
-		if protocol, ok := d.GetOk("protocol"); ok {
+		if protocol, ok := d.GetOk("protocol"); ok && d.HasChange("protocol") {
 			recordSrv.Protocol = sl.String(protocol.(string))
-			hasChanged = hasChanged || d.HasChange("protocol")
 		}
 
-		if port, ok := d.GetOk("port"); ok {
+		if port, ok := d.GetOk("port"); ok && d.HasChange("port") {
 			recordSrv.Port = sl.Int(port.(int))
-			hasChanged = hasChanged || d.HasChange("port")
 		}
 
-		if weight, ok := d.GetOk("weight"); ok {
+		if weight, ok := d.GetOk("weight"); ok && d.HasChange("weight") {
 			recordSrv.Weight = sl.Int(weight.(int))
-			hasChanged = hasChanged || d.HasChange("weight")
 		}
 	}
 
-	if hasChanged {
-		if recordType == "srv" {
-			_, err = services.GetDnsDomainResourceRecordSrvTypeService(sess).
-				Id(recordId).EditObject(&recordSrv)
-		} else {
-			_, err = service.Id(recordId).EditObject(&record)
-		}
+	if recordType == "srv" {
+		_, err = services.GetDnsDomainResourceRecordSrvTypeService(sess).
+			Id(recordId).EditObject(&recordSrv)
+	} else {
+		_, err = service.Id(recordId).EditObject(&record)
 	}
 
 	if err != nil {
