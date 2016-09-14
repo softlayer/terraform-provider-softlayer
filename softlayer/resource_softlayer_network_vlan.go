@@ -26,32 +26,53 @@ func resourceSoftLayerNetworkVlan() *schema.Resource {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
-
-			"name": &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-			},
 			"datacenter": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"type": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
-			"note": &schema.Schema{
+			"name": &schema.Schema{
 				Type:     schema.TypeString,
-				Optional: true,
-			},
-
-			"primary_router_hostname": &schema.Schema{
-				Type:     schema.TypeString,
-				Computed: true,
 				Optional: true,
 			},
 			"vlan_number": &schema.Schema{
 				Type:     schema.TypeInt,
 				Computed: true,
+			},
+			"primary_router_hostname": &schema.Schema{
+				Type:     schema.TypeString,
+				Computed: true,
+				Optional: true,
+				ForceNew: true,
+			},
+			"price": &schema.Schema{
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"child_resource_count": &schema.Schema{
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"subnets": &schema.Schema{
+				Type:     schema.TypeSet,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"subnet": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"subnet_type": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -67,43 +88,63 @@ func resourceSoftLayerNetworkVlanRead(d *schema.ResourceData, meta interface{}) 
 	sess := meta.(*session.Session)
 	service := services.GetNetworkVlanService(sess)
 
-	vlanId, _ := strconv.Atoi(d.Id())
-	mask := strings.Join([]string{
-		"id",
-		"name",
-		"primaryRouter.datacenter.name",
-		"type.name",
-		"note",
-		"primaryRouter.hostname",
-		"vlanNumber",
-	}, ";")
-
-	vlan, err := service.Id(vlanId).Mask(mask).GetObject()
+	vlanId, err := strconv.Atoi(d.Id())
 	if err != nil {
-		if strings.Contains(err.Error(), "404 Not Found") {
-			d.SetId("")
-			return nil
-		}
+		return fmt.Errorf("Not a valid vlan ID, must be an integer: %s", err)
+	}
 
+	vlan, err := service.Id(vlanId).Mask(
+		"id," +
+			"name," +
+			"primaryRouter[datacenter[name]]," +
+			"primaryRouter[hostname]," +
+			"vlanNumber," +
+			"billingItem[recurringFee]," +
+			"guestNetworkComponentCount," +
+			"subnets[networkIdentifier,cidr,subnetType]",
+	).GetObject()
+
+	if err != nil {
 		return fmt.Errorf("Error retrieving Network Vlan: %s", err)
 	}
 
 	d.Set("id", *vlan.Id)
-	d.Set("name", *vlan.Name)
-	if vlan.Type != nil {
-		d.Set("type", *vlan.Type.Name)
-	}
-	if vlan.Note != nil {
-		d.Set("note", *vlan.Note)
-	}
 	d.Set("vlan_number", *vlan.VlanNumber)
+	d.Set("child_resource_count", *vlan.GuestNetworkComponentCount)
+	if vlan.Name != nil {
+		d.Set("name", *vlan.Name)
+	} else {
+		d.Set("name", "")
+	}
 
 	if vlan.PrimaryRouter != nil {
 		d.Set("primary_router_hostname", *vlan.PrimaryRouter.Hostname)
+		if strings.HasPrefix(*vlan.PrimaryRouter.Hostname, "fcr") {
+			d.Set("type", "PUBLIC")
+		} else {
+			d.Set("type", "PRIVATE")
+		}
 		if vlan.PrimaryRouter.Datacenter != nil {
 			d.Set("datacenter", *vlan.PrimaryRouter.Datacenter.Name)
 		}
 	}
+
+	if vlan.BillingItem != nil {
+		d.Set("price", *vlan.BillingItem.RecurringFee)
+	} else {
+		d.Set("price", 0)
+	}
+
+	// Subnets
+	subnets := make([]map[string]interface{}, 0)
+
+	for _, elem := range vlan.Subnets {
+		subnet := make(map[string]interface{})
+		subnet["subnet"] = *elem.NetworkIdentifier + "/" + strconv.Itoa(*elem.Cidr)
+		subnet["subnet_type"] = *elem.SubnetType
+		subnets = append(subnets, subnet)
+	}
+	d.Set("subnets", subnets)
 
 	return nil
 }
@@ -112,7 +153,10 @@ func resourceSoftLayerNetworkVlanUpdate(d *schema.ResourceData, meta interface{}
 	sess := meta.(*session.Session)
 	service := services.GetNetworkVlanService(sess)
 
-	vlanId, _ := strconv.Atoi(d.Id())
+	vlanId, err := strconv.Atoi(d.Id())
+	if err != nil {
+		return fmt.Errorf("Not a valid vlan ID, must be an integer: %s", err)
+	}
 
 	opts := datatypes.Network_Vlan{}
 
@@ -120,48 +164,45 @@ func resourceSoftLayerNetworkVlanUpdate(d *schema.ResourceData, meta interface{}
 		opts.Name = sl.String(d.Get("name").(string))
 	}
 
-	_, err := service.Id(vlanId).EditObject(&opts)
+	_, err = service.Id(vlanId).EditObject(&opts)
 
 	if err != nil {
-		return fmt.Errorf("Error editing Network Vlan: %s", err)
+		return fmt.Errorf("Error updating Network Vlan: %s", err)
 	}
-	return nil
+	return resourceSoftLayerNetworkVlanRead(d, meta)
 }
 
 func resourceSoftLayerNetworkVlanDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
-	accountService := services.GetAccountService(sess)
-	billingItemService := services.GetBillingItemService(sess)
+	service := services.GetNetworkVlanService(sess)
 
-	vlanId, _ := strconv.Atoi(d.Id())
-
-	mask := strings.Join([]string{
-		"id",
-		"billingItem.id",
-	}, ";")
-
-	filter := fmt.Sprintf(
-		`{"networkVlans":{"id":{"operation":"%s"}}`, vlanId,
-	)
-
-	networkVlans, err := accountService.Mask(mask).Filter(filter).GetNetworkVlans()
+	vlanId, err := strconv.Atoi(d.Id())
 	if err != nil {
-		return nil, fmt.Errorf("Error retrieving list of Network Vlans: %s", err)
+		return fmt.Errorf("Not a valid vlan ID, must be an integer: %s", err)
 	}
 
-	if len(networkVlans) < 1 {
-		return nil, fmt.Errorf(
-			"Unable to locate a vlan matching the provided id: %s", vlanId)
-	}
-
-	billingItemId := networkVlans[0].BillingItem.Id
-	_, err := billingItemService.Id(billingItemId).CancelItem()
-
+	// Check if the VLAN is existed.
+	_, err = service.Id(vlanId).Mask("id").GetObject()
 	if err != nil {
 		return fmt.Errorf("Error deleting Network Vlan: %s", err)
 	}
 
-	d.SetId("")
+	billingItem, err := service.Id(vlanId).GetBillingItem()
+	if err != nil {
+		return fmt.Errorf("Error deleting Network Vlan: %s", err)
+	}
+	if billingItem.Id == nil {
+		return nil
+	}
+
+	success, err := services.GetBillingItemService(sess).Id(*billingItem.Id).CancelService()
+	if err != nil {
+		return err
+	}
+
+	if !success {
+		return fmt.Errorf("SoftLayer reported an unsuccessful cancellation")
+	}
 
 	return nil
 }
@@ -172,9 +213,14 @@ func resourceSoftLayerNetworkVlanExists(d *schema.ResourceData, meta interface{}
 
 	vlanId, err := strconv.Atoi(d.Id())
 	if err != nil {
-		return false, fmt.Errorf("Not a valid Id, Id must be an integer: %s", err)
+		return false, fmt.Errorf("Not a valid vlan ID, must be an integer: %s", err)
 	}
 
-	result, err := service.Id(vlanId).GetObject()
-	return result.Id != nil && err == nil && *result.Id == vlanId, nil
+	_, err = service.Id(vlanId).Mask("id").GetObject()
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
