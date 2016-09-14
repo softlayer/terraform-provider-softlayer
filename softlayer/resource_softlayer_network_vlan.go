@@ -34,24 +34,29 @@ func resourceSoftLayerNetworkVlan() *schema.Resource {
 			"datacenter": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"type": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"note": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
 			},
 
 			"primary_router_hostname": &schema.Schema{
 				Type:     schema.TypeString,
 				Computed: true,
 				Optional: true,
+				ForceNew: true,
 			},
 			"vlan_number": &schema.Schema{
 				Type:     schema.TypeInt,
 				Computed: true,
+				ForceNew: true,
 			},
 		},
 	}
@@ -89,9 +94,16 @@ func resourceSoftLayerNetworkVlanRead(d *schema.ResourceData, meta interface{}) 
 	}
 
 	d.Set("id", *vlan.Id)
-	d.Set("name", *vlan.Name)
+
+	if vlan.Name != nil {
+		d.Set("name", *vlan.Name)
+	}
 	if vlan.Type != nil {
-		d.Set("type", *vlan.Type.Name)
+		if strings.HasPrefix(*vlan.PrimaryRouter.Hostname, "fcr") {
+			d.Set("type", "public")
+		} else {
+			d.Set("type", "private")
+		}
 	}
 	if vlan.Note != nil {
 		d.Set("note", *vlan.Note)
@@ -146,16 +158,14 @@ func resourceSoftLayerNetworkVlanDelete(d *schema.ResourceData, meta interface{}
 
 	networkVlans, err := accountService.Mask(mask).Filter(filter).GetNetworkVlans()
 	if err != nil {
-		return nil, fmt.Errorf("Error retrieving list of Network Vlans: %s", err)
+		return fmt.Errorf("Error retrieving list of Network Vlans: %s", err)
 	}
 
 	if len(networkVlans) < 1 {
-		return nil, fmt.Errorf(
-			"Unable to locate a vlan matching the provided id: %s", vlanId)
+		return fmt.Errorf("Unable to locate a vlan matching the provided id: %s", vlanId)
 	}
 
-	billingItemId := networkVlans[0].BillingItem.Id
-	_, err := billingItemService.Id(billingItemId).CancelItem()
+	_, err = billingItemService.Id(*networkVlans[0].BillingItem.Id).CancelItem(nil, nil, nil, nil)
 
 	if err != nil {
 		return fmt.Errorf("Error deleting Network Vlan: %s", err)
