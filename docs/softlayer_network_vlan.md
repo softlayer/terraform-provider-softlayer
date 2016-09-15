@@ -1,6 +1,11 @@
 #### `softlayer_network_vlan`
 
-Provides a `network_vlan` resource. This allows public and private network vlans to be created, updated and cancelled. To create
+Provides a `network_vlan` resource. This allows public and private network VLANs to be created, updated and cancelled. Default SoftLayer account does not have a permission to create a new VLAN by SoftLayer API. To create a new VLAN with 
+terraform, user should have a VLAN creation permission in advance. Contact a SoftLayer sales person or open a ticket.
+Existed VLANs can be managed by terraform with `terraform import` command. It requires SoftLayer VLAN ID in [VLANs](https://control.softlayer.com/network/vlans). 
+Once they are imported, they provides useful information such as subnets and child_resource_count. When `terraform destroy`
+is executed, the VLANs' billing item will be deleted. However, VLAN will be remained in SoftLayer until resources such as 
+virtual guests, secondary subnets, and firewalls on the VLAN are deleted. 
 
 For additional details please refer to [API documentation](http://sldn.softlayer.com/reference/datatypes/SoftLayer_Network_Vlan).
 
