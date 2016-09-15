@@ -17,6 +17,8 @@ providers {
 
 ## Documentation
 
+Go to the [documentation directory](docs/).
+
 ## Development
 
 ### Setup
