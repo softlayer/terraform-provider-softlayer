@@ -360,8 +360,8 @@ func findNetworkVlanByOrderId(sess *session.Session, orderId int) (datatypes.Net
 		Refresh: func() (interface{}, string, error) {
 			vlans, err := services.GetAccountService(sess).
 				Filter(filter.Build(
-					filter.Path("networkVlans.billingItem.orderItem.order.id").
-						Eq(strconv.Itoa(orderId)))).
+				filter.Path("networkVlans.billingItem.orderItem.order.id").
+					Eq(strconv.Itoa(orderId)))).
 				Mask("id").
 				GetNetworkVlans()
 			if err != nil {
