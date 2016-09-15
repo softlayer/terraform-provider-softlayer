@@ -1170,7 +1170,7 @@ The following attributes are exported:
 
 * `id` - id of the basic monitor.
 * `notified_users` - the list of user id's to be notified.
-* 
+ 
 #### `softlayer_network_vlan`
 
 Provides a `network_vlan` resource. This allows public and private network vlans to be created, updated and cancelled.
