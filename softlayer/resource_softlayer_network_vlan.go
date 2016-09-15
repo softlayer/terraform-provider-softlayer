@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	NetworkVlanPackageType = "ADDITIONAL_SERVICES_NETWORK_VLAN"
+	AdditionalServicesPackageType            = "ADDITIONAL_SERVICES"
+	AdditionalServicesNetworkVlanPackageType = "ADDITIONAL_SERVICES_NETWORK_VLAN"
 )
 
 func resourceSoftLayerNetworkVlan() *schema.Resource {
@@ -96,37 +97,9 @@ func resourceSoftLayerNetworkVlan() *schema.Resource {
 
 func resourceSoftLayerNetworkVlanCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
-
-	var err error
-	var dc datatypes.Location_Datacenter
-	var rt datatypes.Hardware
-
-	name := d.Get("name").(string)
 	router := d.Get("primary_router_hostname").(string)
-	datacenter := d.Get("datacenter").(string)
+	name := d.Get("name").(string)
 
-	if len(datacenter) > 0 {
-		dc, err = location.GetDatacenterByName(sess, datacenter, "id")
-		if err != nil {
-			return fmt.Errorf("Error creating network vlan: %s", err)
-		}
-	} else {
-		return fmt.Errorf("Error creating network vlan: datacenter name is empty.")
-	}
-
-	// 1. Get a package for ADDITIONAL_SERVICES_NETWORK_VLAN
-	pkg, err := product.GetPackageByType(sess, NetworkVlanPackageType)
-	if err != nil {
-		return err
-	}
-
-	// 2. Get all prices for the package
-	productItems, err := product.GetPackageProducts(sess, *pkg.Id)
-	if err != nil {
-		return err
-	}
-
-	// 3. Validate vlanType field
 	vlanType := d.Get("type").(string)
 	if vlanType != "PRIVATE" && vlanType != "PUBLIC" {
 		return fmt.Errorf("Error creating network vlan: vlanType should be either 'PRIVATE' or 'PUBLIC'")
@@ -136,49 +109,11 @@ func resourceSoftLayerNetworkVlanCreate(d *schema.ResourceData, meta interface{}
 		return fmt.Errorf("Error creating network vlan: mismatch between vlan_type '%s' and primary_router_hostname '%s'", vlanType, router)
 	}
 
-	// 4. Find vlan and subnet prices
-	vlanKeyname := vlanType + "_NETWORK_VLAN"
-	subnetKeyname := strconv.Itoa(d.Get("primary_subnet_size").(int)) + "_STATIC_PUBLIC_IP_ADDRESSES"
-
-	// 5. Select items with a matching keyname
-	vlanItems := []datatypes.Product_Item{}
-	subnetItems := []datatypes.Product_Item{}
-	for _, item := range productItems {
-		if *item.KeyName == vlanKeyname {
-			vlanItems = append(vlanItems, item)
-		}
-		if strings.Contains(*item.KeyName, subnetKeyname) {
-			subnetItems = append(subnetItems, item)
-		}
-	}
-
-	if len(vlanItems) == 0 {
-		return fmt.Errorf("No product items matching %s could be found", vlanKeyname)
-	}
-
-	if len(subnetItems) == 0 {
-		return fmt.Errorf("No product items matching %s could be found", subnetKeyname)
-	}
-
-	productOrderContainer := datatypes.Container_Product_Order_Network_Vlan{
-		Container_Product_Order: datatypes.Container_Product_Order{
-			PackageId: pkg.Id,
-			Location:  sl.String(strconv.Itoa(*dc.Id)),
-			Prices: []datatypes.Product_Item_Price{
-				{
-					Id: vlanItems[0].Prices[0].Id,
-				},
-				{
-					Id: subnetItems[0].Prices[0].Id,
-				},
-			},
-			Quantity: sl.Int(1),
-		},
-	}
-
-	if len(router) > 0 {
-		rt, err = hardware.GetRouterByName(sess, router, "id")
-		productOrderContainer.RouterId = rt.Id
+	// Find price items with AdditionalServicesNetworkVlan
+	productOrderContainer, err := buildVlanProductOrderContainer(d, sess, AdditionalServicesNetworkVlanPackageType)
+	if err != nil {
+		// Find price items with AdditionalServices
+		productOrderContainer, err = buildVlanProductOrderContainer(d, sess, AdditionalServicesPackageType)
 		if err != nil {
 			return fmt.Errorf("Error creating network vlan: %s", err)
 		}
@@ -187,7 +122,7 @@ func resourceSoftLayerNetworkVlanCreate(d *schema.ResourceData, meta interface{}
 	log.Println("[INFO] Creating network vlan")
 
 	receipt, err := services.GetProductOrderService(sess).
-		PlaceOrder(&productOrderContainer, sl.Bool(false))
+		PlaceOrder(productOrderContainer, sl.Bool(false))
 	if err != nil {
 		return fmt.Errorf("Error during creation of network vlan: %s", err)
 	}
@@ -251,7 +186,7 @@ func resourceSoftLayerNetworkVlanRead(d *schema.ResourceData, meta interface{}) 
 		}
 	}
 
-	if vlan.BillingItem != nil {
+	if vlan.BillingItem == nil {
 		d.Set("softlayer_managed", true)
 	} else {
 		d.Set("softlayer_managed", false)
@@ -360,8 +295,8 @@ func findNetworkVlanByOrderId(sess *session.Session, orderId int) (datatypes.Net
 		Refresh: func() (interface{}, string, error) {
 			vlans, err := services.GetAccountService(sess).
 				Filter(filter.Build(
-				filter.Path("networkVlans.billingItem.orderItem.order.id").
-					Eq(strconv.Itoa(orderId)))).
+					filter.Path("networkVlans.billingItem.orderItem.order.id").
+						Eq(strconv.Itoa(orderId)))).
 				Mask("id").
 				GetNetworkVlans()
 			if err != nil {
@@ -395,4 +330,90 @@ func findNetworkVlanByOrderId(sess *session.Session, orderId int) (datatypes.Net
 
 	return datatypes.Network_Vlan{},
 		fmt.Errorf("Cannot find Network Vlan with order id '%d'", orderId)
+}
+
+func buildVlanProductOrderContainer(d *schema.ResourceData, sess *session.Session, packageType string) (
+	*datatypes.Container_Product_Order_Network_Vlan, error) {
+	var dc datatypes.Location_Datacenter
+	var err error
+	var rt datatypes.Hardware
+	router := d.Get("primary_router_hostname").(string)
+
+	vlanType := d.Get("type").(string)
+	datacenter := d.Get("datacenter").(string)
+
+	if len(datacenter) > 0 {
+		dc, err = location.GetDatacenterByName(sess, datacenter, "id")
+		if err != nil {
+			return &datatypes.Container_Product_Order_Network_Vlan{}, err
+		}
+	} else {
+		return &datatypes.Container_Product_Order_Network_Vlan{},
+			fmt.Errorf("datacenter name is empty.")
+	}
+
+	// 1. Get a package
+	pkg, err := product.GetPackageByType(sess, packageType)
+	if err != nil {
+		return &datatypes.Container_Product_Order_Network_Vlan{}, err
+	}
+
+	// 2. Get all prices for the package
+	productItems, err := product.GetPackageProducts(sess, *pkg.Id)
+	if err != nil {
+		return &datatypes.Container_Product_Order_Network_Vlan{}, err
+	}
+
+	// 3. Find vlan and subnet prices
+	vlanKeyname := vlanType + "_NETWORK_VLAN"
+	subnetKeyname := strconv.Itoa(d.Get("primary_subnet_size").(int)) + "_STATIC_PUBLIC_IP_ADDRESSES"
+
+	// 4. Select items with a matching keyname
+	vlanItems := []datatypes.Product_Item{}
+	subnetItems := []datatypes.Product_Item{}
+	for _, item := range productItems {
+		if *item.KeyName == vlanKeyname {
+			vlanItems = append(vlanItems, item)
+		}
+		if strings.Contains(*item.KeyName, subnetKeyname) {
+			subnetItems = append(subnetItems, item)
+		}
+	}
+
+	if len(vlanItems) == 0 {
+		return &datatypes.Container_Product_Order_Network_Vlan{},
+			fmt.Errorf("No product items matching %s could be found", vlanKeyname)
+	}
+
+	if len(subnetItems) == 0 {
+		return &datatypes.Container_Product_Order_Network_Vlan{},
+			fmt.Errorf("No product items matching %s could be found", subnetKeyname)
+	}
+
+	productOrderContainer := datatypes.Container_Product_Order_Network_Vlan{
+		Container_Product_Order: datatypes.Container_Product_Order{
+			PackageId: pkg.Id,
+			Location:  sl.String(strconv.Itoa(*dc.Id)),
+			Prices: []datatypes.Product_Item_Price{
+				{
+					Id: vlanItems[0].Prices[0].Id,
+				},
+				{
+					Id: subnetItems[0].Prices[0].Id,
+				},
+			},
+			Quantity: sl.Int(1),
+		},
+	}
+
+	if len(router) > 0 {
+		rt, err = hardware.GetRouterByName(sess, router, "id")
+		productOrderContainer.RouterId = rt.Id
+		if err != nil {
+			return &datatypes.Container_Product_Order_Network_Vlan{},
+				fmt.Errorf("Error creating network vlan: %s", err)
+		}
+	}
+
+	return &productOrderContainer, nil
 }
