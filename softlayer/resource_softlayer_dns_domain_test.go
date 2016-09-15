@@ -11,6 +11,7 @@ import (
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
+	"github.com/softlayer/softlayer-go/sl"
 )
 
 func TestAccSoftLayerDnsDomain_Basic(t *testing.T) {
@@ -21,55 +22,45 @@ func TestAccSoftLayerDnsDomain_Basic(t *testing.T) {
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckSoftLayerDnsDomainDestroy,
 		Steps: []resource.TestStep{
-			resource.TestStep{
-				Config: testAccCheckSoftLayerDnsDomainConfig_basic,
+			{
+				Config: fmt.Sprintf(config, domainName1, target1),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerDnsDomainExists("softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
 					testAccCheckSoftLayerDnsDomainAttributes(&dns_domain),
-					testAccCheckSoftLayerDnsDomainRecordDomainId("softlayer_dns_domain_record.recordA", &dns_domain),
-					testAccCheckSoftLayerDnsDomainRecordDomainId("softlayer_dns_domain_record.recordAAAA", &dns_domain),
 					saveSoftLayerDnsDomainId(&dns_domain, &firstDnsId),
 					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", test_dns_domain_name),
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", domainName1),
 					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain_record.recordA", "host", "hosta.com"),
-					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain_record.recordA", "record_data", "127.0.0.1"),
-					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain_record.recordA", "record_type", "a"),
-					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain_record.recordAAAA", "host", "hosta-2.com"),
-					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain_record.recordAAAA", "record_data", "FE80:0000:0000:0000:0202:B3FF:FE1E:8329"),
-					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain_record.recordAAAA", "record_type", "aaaa"),
-					testAccCheckSoftLayerDnsDomainRecordsExists("softlayer_dns_domain.acceptance_test_dns_domain-1", 5),
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", "target", target1),
 				),
 				Destroy: false,
 			},
-			resource.TestStep{
-				Config: testAccCheckSoftLayerDnsDomainConfig_changed,
+			{
+				Config: fmt.Sprintf(config, domainName2, target1),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerDnsDomainExists("softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
 					testAccCheckSoftLayerDnsDomainAttributes(&dns_domain),
-					testAccCheckSoftLayerDnsDomainRecordDomainId("softlayer_dns_domain_record.recordA", &dns_domain),
-					testAccCheckSoftLayerDnsDomainRecordDomainId("softlayer_dns_domain_record.recordAAAA", &dns_domain),
+					testAccCheckSoftLayerDnsDomainRecordDomainId(
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
 					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", changed_dns_domain_name),
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", domainName2),
 					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain_record.recordA", "host", "hosta.com"),
-					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain_record.recordA", "record_data", "127.0.0.1"),
-					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain_record.recordA", "record_type", "a"),
-					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain_record.recordAAAA", "host", "hosta-2.com"),
-					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain_record.recordAAAA", "record_data", "FE80:0000:0000:0000:0202:B3FF:FE1E:8329"),
-					resource.TestCheckResourceAttr(
-						"softlayer_dns_domain_record.recordAAAA", "record_type", "aaaa"),
-					testAccCheckSoftLayerDnsDomainRecordsExists("softlayer_dns_domain.acceptance_test_dns_domain-1", 5),
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", "target", target1),
 					testAccCheckSoftLayerDnsDomainChanged(&dns_domain),
+				),
+				Destroy: false,
+			},
+			{
+				Config: fmt.Sprintf(config, domainName2, target2),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSoftLayerDnsDomainExists("softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
+					testAccCheckSoftLayerDnsDomainAttributes(&dns_domain),
+					testAccCheckSoftLayerDnsDomainRecordDomainId(
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
+					resource.TestCheckResourceAttr(
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", domainName2),
+					resource.TestCheckResourceAttr(
+						"softlayer_dns_domain.acceptance_test_dns_domain-1", "target", target2),
 				),
 				Destroy: false,
 			},
@@ -90,8 +81,8 @@ func testAccCheckSoftLayerDnsDomainDestroy(s *terraform.State) error {
 		// Try to find the domain
 		_, err := service.Id(dnsId).GetObject()
 
-		if err != nil {
-			return fmt.Errorf("Dns Domain with id %d does not exist", dnsId)
+		if err == nil {
+			return fmt.Errorf("Dns Domain with id %d still exists", dnsId)
 		}
 	}
 
@@ -106,13 +97,16 @@ func testAccCheckSoftLayerDnsDomainRecordDomainId(n string, dns_domain *datatype
 			return fmt.Errorf("Not found: %s", n)
 		}
 
-		if rs.Primary.ID == "" {
-			return fmt.Errorf("No Record ID is set")
-		}
-
-		id, _ := strconv.Atoi(rs.Primary.Attributes["domain_id"])
-		if *dns_domain.Id != id {
-			return fmt.Errorf("Dns domain id (%d) and Dns domain record domain id (%d) should be equal", *dns_domain.Id, id)
+		attrs := rs.Primary.Attributes
+		recordsTotal, _ := strconv.Atoi(attrs["records.#"])
+		for i := 0; i < recordsTotal; i++ {
+			recordDomainId, _ := strconv.Atoi(attrs[fmt.Sprintf("records.%d.domain_id", i)])
+			if *dns_domain.Id != recordDomainId {
+				return fmt.Errorf(
+					"Dns domain id (%d) and Dns domain record domain id (%d) should be equal",
+					*dns_domain.Id, recordDomainId,
+				)
+			}
 		}
 
 		return nil
@@ -122,16 +116,25 @@ func testAccCheckSoftLayerDnsDomainRecordDomainId(n string, dns_domain *datatype
 func testAccCheckSoftLayerDnsDomainAttributes(dns *datatypes.Dns_Domain) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 
-		if *dns.Name == "" {
-			return fmt.Errorf("Empty dns domain name")
+		if name := sl.Get(dns.Name); name == "" {
+			return errors.New("Empty dns domain name")
 		}
 
-		if *dns.Serial == 0 {
-			return fmt.Errorf("Bad dns domain serial: %d", *dns.Serial)
+		// find a record with host @; that will have the current target.
+		foundTarget := false
+		for _, record := range dns.ResourceRecords {
+			if *record.Type == "a" && *record.Host == "@" {
+				foundTarget = true
+				break
+			}
 		}
 
-		if *dns.Id == 0 {
-			return fmt.Errorf("Bad dns domain id: %d", *dns.Id)
+		if !foundTarget {
+			return fmt.Errorf("Target record not found for dns domain %s (%d)", sl.Get(dns.Name), sl.Get(dns.Id))
+		}
+
+		if id := sl.Get(dns.Id); id == 0 {
+			return fmt.Errorf("Bad dns domain id: %d", id)
 		}
 
 		return nil
@@ -150,8 +153,10 @@ func testAccCheckSoftLayerDnsDomainChanged(dns *datatypes.Dns_Domain) resource.T
 	return func(s *terraform.State) error {
 		service := services.GetDnsDomainService(testAccProvider.Meta().(*session.Session))
 
-		response, _ := service.Id(firstDnsId).GetObject()
-		if *response.Id == firstDnsId {
+		_, err := service.Id(firstDnsId).Mask(
+			"id,name,updateDate,resourceRecords",
+		).GetObject()
+		if err == nil {
 			return fmt.Errorf("Dns domain with id %d still exists", firstDnsId)
 		}
 
@@ -168,20 +173,22 @@ func testAccCheckSoftLayerDnsDomainExists(n string, dns_domain *datatypes.Dns_Do
 		}
 
 		if rs.Primary.ID == "" {
-			return fmt.Errorf("No Record ID is set")
+			return errors.New("No Record ID is set")
 		}
 
 		dns_id, _ := strconv.Atoi(rs.Primary.ID)
 
 		service := services.GetDnsDomainService(testAccProvider.Meta().(*session.Session))
-		found_domain, err := service.Id(dns_id).GetObject()
+		found_domain, err := service.Id(dns_id).Mask(
+			"id,name,updateDate,resourceRecords",
+		).GetObject()
 
 		if err != nil {
 			return err
 		}
 
 		if strconv.Itoa(int(*found_domain.Id)) != rs.Primary.ID {
-			return fmt.Errorf("Record not found")
+			return errors.New("Record not found")
 		}
 
 		*dns_domain = found_domain
@@ -190,87 +197,15 @@ func testAccCheckSoftLayerDnsDomainExists(n string, dns_domain *datatypes.Dns_Do
 	}
 }
 
-func testAccCheckSoftLayerDnsDomainRecordsExists(dn string, expected_record_count int) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		rs, ok := s.RootModule().Resources[dn]
-
-		if !ok {
-			return fmt.Errorf("Not found: %s", dn)
-		}
-
-		if rs.Primary.ID == "" {
-			return fmt.Errorf("No Record ID is set")
-		}
-
-		dns_id, _ := strconv.Atoi(rs.Primary.ID)
-
-		service := services.GetDnsDomainService(testAccProvider.Meta().(*session.Session))
-		found_domain, err := service.Id(dns_id).GetObject()
-
-		if err != nil {
-			return err
-		}
-
-		if *found_domain.ResourceRecordCount != uint(expected_record_count) {
-			return fmt.Errorf("Wrong record count:%d, expected:%d", *found_domain.ResourceRecordCount, expected_record_count)
-		}
-
-		if strconv.Itoa(int(*found_domain.Id)) != rs.Primary.ID {
-			return fmt.Errorf("Record not found")
-		}
-
-		return nil
-	}
-}
-
-var testAccCheckSoftLayerDnsDomainConfig_basic = fmt.Sprintf(`
+var config = `
 resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
 	name = "%s"
+	target = "%s"
 }
+`
 
-resource "softlayer_dns_domain_record" "recordA" {
-    record_data = "127.0.0.1"
-    domain_id = "${softlayer_dns_domain.acceptance_test_dns_domain-1.id}"
-    host = "hosta.com"
-    contact_email = "user@softlaer.com"
-    ttl = 900
-    record_type = "a"
-}
-
-resource "softlayer_dns_domain_record" "recordAAAA" {
-    record_data = "FE80:0000:0000:0000:0202:B3FF:FE1E:8329"
-    domain_id = "${softlayer_dns_domain.acceptance_test_dns_domain-1.id}"
-    host = "hosta-2.com"
-    contact_email = "user2changed@softlaer.com"
-    ttl = 1000
-    record_type = "aaaa"
-}
-`, test_dns_domain_name)
-
-var testAccCheckSoftLayerDnsDomainConfig_changed = fmt.Sprintf(`
-resource "softlayer_dns_domain" "acceptance_test_dns_domain-1" {
-	name = "%s"
-}
-
-resource "softlayer_dns_domain_record" "recordA" {
-    record_data = "127.0.0.1"
-    domain_id = "${softlayer_dns_domain.acceptance_test_dns_domain-1.id}"
-    host = "hosta.com"
-    contact_email = "user@softlaer.com"
-    ttl = 900
-    record_type = "a"
-}
-
-resource "softlayer_dns_domain_record" "recordAAAA" {
-    record_data = "FE80:0000:0000:0000:0202:B3FF:FE1E:8329"
-    domain_id = "${softlayer_dns_domain.acceptance_test_dns_domain-1.id}"
-    host = "hosta-2.com"
-    contact_email = "user2changed@softlaer.com"
-    ttl = 1000
-    record_type = "aaaa"
-}
-`, changed_dns_domain_name)
-
-var test_dns_domain_name = "zxczcxzxc.com"
-var changed_dns_domain_name = "vbnvnvbnv.com"
+var domainName1 = "zxczcxzxc.com"
+var domainName2 = "vbnvnvbnv.com"
+var target1 = "172.16.0.100"
+var target2 = "172.16.0.101"
 var firstDnsId = 0
