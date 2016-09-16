@@ -22,6 +22,9 @@ import (
 const (
 	AdditionalServicesPackageType            = "ADDITIONAL_SERVICES"
 	AdditionalServicesNetworkVlanPackageType = "ADDITIONAL_SERVICES_NETWORK_VLAN"
+
+	VlanMask = "id,name,primaryRouter[datacenter[name]],primaryRouter[hostname],vlanNumber," +
+		"billingItem[recurringFee],guestNetworkComponentCount,subnets[networkIdentifier,cidr,subnetType]"
 )
 
 func resourceSoftLayerNetworkVlan() *schema.Resource {
@@ -47,6 +50,14 @@ func resourceSoftLayerNetworkVlan() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
+				ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+					vlanType := v.(string)
+					if vlanType != "PRIVATE" && vlanType != "PUBLIC" {
+						errors = append(errors, fmt.Errorf(
+							"Invalid network vlan: vlanType should be either 'PRIVATE' or 'PUBLIC'"))
+					}
+					return
+				},
 			},
 			"primary_subnet_size": &schema.Schema{
 				Type:     schema.TypeInt,
@@ -101,9 +112,6 @@ func resourceSoftLayerNetworkVlanCreate(d *schema.ResourceData, meta interface{}
 	name := d.Get("name").(string)
 
 	vlanType := d.Get("type").(string)
-	if vlanType != "PRIVATE" && vlanType != "PUBLIC" {
-		return fmt.Errorf("Error creating network vlan: vlanType should be either 'PRIVATE' or 'PUBLIC'")
-	}
 	if (vlanType == "PRIVATE" && len(router) > 0 && strings.Contains(router, "fcr")) ||
 		(vlanType == "PUBLIC" && len(router) > 0 && strings.Contains(router, "bcr")) {
 		return fmt.Errorf("Error creating network vlan: mismatch between vlan_type '%s' and primary_router_hostname '%s'", vlanType, router)
@@ -150,16 +158,7 @@ func resourceSoftLayerNetworkVlanRead(d *schema.ResourceData, meta interface{}) 
 		return fmt.Errorf("Not a valid vlan ID, must be an integer: %s", err)
 	}
 
-	vlan, err := service.Id(vlanId).Mask(
-		"id," +
-			"name," +
-			"primaryRouter[datacenter[name]]," +
-			"primaryRouter[hostname]," +
-			"vlanNumber," +
-			"billingItem[recurringFee]," +
-			"guestNetworkComponentCount," +
-			"subnets[networkIdentifier,cidr,subnetType]",
-	).GetObject()
+	vlan, err := service.Id(vlanId).Mask(VlanMask).GetObject()
 
 	if err != nil {
 		return fmt.Errorf("Error retrieving Network Vlan: %s", err)
@@ -168,11 +167,7 @@ func resourceSoftLayerNetworkVlanRead(d *schema.ResourceData, meta interface{}) 
 	d.Set("id", *vlan.Id)
 	d.Set("vlan_number", *vlan.VlanNumber)
 	d.Set("child_resource_count", *vlan.GuestNetworkComponentCount)
-	if vlan.Name != nil {
-		d.Set("name", *vlan.Name)
-	} else {
-		d.Set("name", "")
-	}
+	d.Set("name", sl.Get(vlan.Name, ""))
 
 	if vlan.PrimaryRouter != nil {
 		d.Set("primary_router_hostname", *vlan.PrimaryRouter.Hostname)
@@ -197,7 +192,7 @@ func resourceSoftLayerNetworkVlanRead(d *schema.ResourceData, meta interface{}) 
 
 	for _, elem := range vlan.Subnets {
 		subnet := make(map[string]interface{})
-		subnet["subnet"] = *elem.NetworkIdentifier + "/" + strconv.Itoa(*elem.Cidr)
+		subnet["subnet"] = fmt.Sprintf("%s/%s", *elem.NetworkIdentifier, strconv.Itoa(*elem.Cidr))
 		subnet["subnet_type"] = *elem.SubnetType
 		subnets = append(subnets, subnet)
 	}
@@ -244,30 +239,25 @@ func resourceSoftLayerNetworkVlanDelete(d *schema.ResourceData, meta interface{}
 		return fmt.Errorf("Not a valid vlan ID, must be an integer: %s", err)
 	}
 
-	// Check if the VLAN is existed.
-	_, err = service.Id(vlanId).Mask("id").GetObject()
-	if err != nil {
-		return fmt.Errorf("Error deleting Network Vlan: %s", err)
-	}
-
 	billingItem, err := service.Id(vlanId).GetBillingItem()
 	if err != nil {
 		return fmt.Errorf("Error deleting Network Vlan: %s", err)
 	}
+
+	// VLANs which don't have billing items are managed by SoftLayer. They can't be deleted by
+	// users. If a target VLAN doesn't have a billing item, the function will return nil without
+	// errors and only VLAN resource information in a terraform state file will be deleted.
+	// Physical VLAN will be deleted automatically which the VLAN doesn't have any child resources.
 	if billingItem.Id == nil {
 		return nil
 	}
 
-	success, err := services.GetBillingItemService(sess).Id(*billingItem.Id).CancelService()
-	if err != nil {
-		return err
-	}
+	// If the VLAN has a billing item, the function deletes the billing item and returns so that
+	// the VLAN resource in a terraform state file can be deleted. Physical VLAN will be deleted
+	// automatically which the VLAN doesn't have any child resources.
+	_, err = services.GetBillingItemService(sess).Id(*billingItem.Id).CancelService()
 
-	if !success {
-		return fmt.Errorf("SoftLayer reported an unsuccessful cancellation")
-	}
-
-	return nil
+	return err
 }
 
 func resourceSoftLayerNetworkVlanExists(d *schema.ResourceData, meta interface{}) (bool, error) {
@@ -281,11 +271,7 @@ func resourceSoftLayerNetworkVlanExists(d *schema.ResourceData, meta interface{}
 
 	_, err = service.Id(vlanId).Mask("id").GetObject()
 
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
+	return err == nil, err
 }
 
 func findNetworkVlanByOrderId(sess *session.Session, orderId int) (datatypes.Network_Vlan, error) {
@@ -294,9 +280,8 @@ func findNetworkVlanByOrderId(sess *session.Session, orderId int) (datatypes.Net
 		Target:  []string{"complete"},
 		Refresh: func() (interface{}, string, error) {
 			vlans, err := services.GetAccountService(sess).
-				Filter(filter.Build(
-					filter.Path("networkVlans.billingItem.orderItem.order.id").
-						Eq(strconv.Itoa(orderId)))).
+				Filter(filter.Path("networkVlans.billingItem.orderItem.order.id").
+					Eq(strconv.Itoa(orderId)).Build()).
 				Mask("id").
 				GetNetworkVlans()
 			if err != nil {
@@ -334,22 +319,20 @@ func findNetworkVlanByOrderId(sess *session.Session, orderId int) (datatypes.Net
 
 func buildVlanProductOrderContainer(d *schema.ResourceData, sess *session.Session, packageType string) (
 	*datatypes.Container_Product_Order_Network_Vlan, error) {
-	var dc datatypes.Location_Datacenter
-	var err error
 	var rt datatypes.Hardware
 	router := d.Get("primary_router_hostname").(string)
 
 	vlanType := d.Get("type").(string)
 	datacenter := d.Get("datacenter").(string)
 
-	if len(datacenter) > 0 {
-		dc, err = location.GetDatacenterByName(sess, datacenter, "id")
-		if err != nil {
-			return &datatypes.Container_Product_Order_Network_Vlan{}, err
-		}
-	} else {
+	if datacenter == "" {
 		return &datatypes.Container_Product_Order_Network_Vlan{},
 			fmt.Errorf("datacenter name is empty.")
+	}
+
+	dc, err := location.GetDatacenterByName(sess, datacenter, "id")
+	if err != nil {
+		return &datatypes.Container_Product_Order_Network_Vlan{}, err
 	}
 
 	// 1. Get a package
