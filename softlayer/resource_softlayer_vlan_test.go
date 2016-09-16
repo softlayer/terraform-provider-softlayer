@@ -5,43 +5,43 @@ import (
 	"testing"
 )
 
-func TestAccSoftLayerNetworkVlan_Basic(t *testing.T) {
+func TestAccSoftLayerVlan_Basic(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			resource.TestStep{
-				Config: testAccCheckSoftLayerNetworkVlanConfig_basic,
+				Config: testAccCheckSoftLayerVlanConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
-						"softlayer_network_vlan.test_vlan", "name", "test_vlan"),
+						"softlayer_vlan.test_vlan", "name", "test_vlan"),
 					resource.TestCheckResourceAttr(
-						"softlayer_network_vlan.test_vlan", "datacenter", "lon02"),
+						"softlayer_vlan.test_vlan", "datacenter", "lon02"),
 					resource.TestCheckResourceAttr(
-						"softlayer_network_vlan.test_vlan", "type", "PUBLIC"),
+						"softlayer_vlan.test_vlan", "type", "PUBLIC"),
 					resource.TestCheckResourceAttr(
-						"softlayer_network_vlan.test_vlan", "softlayer_managed", "false"),
+						"softlayer_vlan.test_vlan", "softlayer_managed", "false"),
 					resource.TestCheckResourceAttr(
-						"softlayer_network_vlan.test_vlan", "primary_router_hostname", "fcr01a.lon02"),
+						"softlayer_vlan.test_vlan", "primary_router_hostname", "fcr01a.lon02"),
 					resource.TestCheckResourceAttr(
-						"softlayer_network_vlan.test_vlan", "primary_subnet_size", "8"),
+						"softlayer_vlan.test_vlan", "primary_subnet_size", "8"),
 				),
 			},
 
 			resource.TestStep{
-				Config: testAccCheckSoftLayerNetworkVlanConfig_name_update,
+				Config: testAccCheckSoftLayerVlanConfig_name_update,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
-						"softlayer_network_vlan.test_vlan", "name", "test_vlan_update"),
+						"softlayer_vlan.test_vlan", "name", "test_vlan_update"),
 				),
 			},
 		},
 	})
 }
 
-const testAccCheckSoftLayerNetworkVlanConfig_basic = `
-resource "softlayer_network_vlan" "test_vlan" {
+const testAccCheckSoftLayerVlanConfig_basic = `
+resource "softlayer_vlan" "test_vlan" {
    name = "test_vlan"
    datacenter = "lon02"
    type = "PUBLIC"
@@ -49,8 +49,8 @@ resource "softlayer_network_vlan" "test_vlan" {
    primary_router_hostname = "fcr01a.lon02"
 }`
 
-const testAccCheckSoftLayerNetworkVlanConfig_name_update = `
-resource "softlayer_network_vlan" "test_vlan" {
+const testAccCheckSoftLayerVlanConfig_name_update = `
+resource "softlayer_vlan" "test_vlan" {
    name = "test_vlan_update"
    datacenter = "lon02"
    type = "PUBLIC"

@@ -27,13 +27,13 @@ const (
 		"billingItem[recurringFee],guestNetworkComponentCount,subnets[networkIdentifier,cidr,subnetType]"
 )
 
-func resourceSoftLayerNetworkVlan() *schema.Resource {
+func resourceSoftLayerVlan() *schema.Resource {
 	return &schema.Resource{
-		Create:   resourceSoftLayerNetworkVlanCreate,
-		Read:     resourceSoftLayerNetworkVlanRead,
-		Update:   resourceSoftLayerNetworkVlanUpdate,
-		Delete:   resourceSoftLayerNetworkVlanDelete,
-		Exists:   resourceSoftLayerNetworkVlanExists,
+		Create:   resourceSoftLayerVlanCreate,
+		Read:     resourceSoftLayerVlanRead,
+		Update:   resourceSoftLayerVlanUpdate,
+		Delete:   resourceSoftLayerVlanDelete,
+		Exists:   resourceSoftLayerVlanExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
@@ -54,7 +54,7 @@ func resourceSoftLayerNetworkVlan() *schema.Resource {
 					vlanType := v.(string)
 					if vlanType != "PRIVATE" && vlanType != "PUBLIC" {
 						errors = append(errors, fmt.Errorf(
-							"Invalid network vlan: vlanType should be either 'PRIVATE' or 'PUBLIC'"))
+							"Invalid vlan: vlanType should be either 'PRIVATE' or 'PUBLIC'"))
 					}
 					return
 				},
@@ -106,7 +106,7 @@ func resourceSoftLayerNetworkVlan() *schema.Resource {
 	}
 }
 
-func resourceSoftLayerNetworkVlanCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerVlanCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	router := d.Get("primary_router_hostname").(string)
 	name := d.Get("name").(string)
@@ -114,7 +114,7 @@ func resourceSoftLayerNetworkVlanCreate(d *schema.ResourceData, meta interface{}
 	vlanType := d.Get("type").(string)
 	if (vlanType == "PRIVATE" && len(router) > 0 && strings.Contains(router, "fcr")) ||
 		(vlanType == "PUBLIC" && len(router) > 0 && strings.Contains(router, "bcr")) {
-		return fmt.Errorf("Error creating network vlan: mismatch between vlan_type '%s' and primary_router_hostname '%s'", vlanType, router)
+		return fmt.Errorf("Error creating vlan: mismatch between vlan_type '%s' and primary_router_hostname '%s'", vlanType, router)
 	}
 
 	// Find price items with AdditionalServicesNetworkVlan
@@ -123,33 +123,33 @@ func resourceSoftLayerNetworkVlanCreate(d *schema.ResourceData, meta interface{}
 		// Find price items with AdditionalServices
 		productOrderContainer, err = buildVlanProductOrderContainer(d, sess, AdditionalServicesPackageType)
 		if err != nil {
-			return fmt.Errorf("Error creating network vlan: %s", err)
+			return fmt.Errorf("Error creating vlan: %s", err)
 		}
 	}
 
-	log.Println("[INFO] Creating network vlan")
+	log.Println("[INFO] Creating vlan")
 
 	receipt, err := services.GetProductOrderService(sess).
 		PlaceOrder(productOrderContainer, sl.Bool(false))
 	if err != nil {
-		return fmt.Errorf("Error during creation of network vlan: %s", err)
+		return fmt.Errorf("Error during creation of vlan: %s", err)
 	}
 
-	vlan, err := findNetworkVlanByOrderId(sess, *receipt.OrderId)
+	vlan, err := findVlanByOrderId(sess, *receipt.OrderId)
 
 	if len(name) > 0 {
 		_, err = services.GetNetworkVlanService(sess).
 			Id(*vlan.Id).EditObject(&datatypes.Network_Vlan{Name: sl.String(name)})
 		if err != nil {
-			return fmt.Errorf("Error updating Network Vlan: %s", err)
+			return fmt.Errorf("Error updating vlan: %s", err)
 		}
 	}
 
 	d.SetId(fmt.Sprintf("%d", *vlan.Id))
-	return resourceSoftLayerNetworkVlanRead(d, meta)
+	return resourceSoftLayerVlanRead(d, meta)
 }
 
-func resourceSoftLayerNetworkVlanRead(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkVlanService(sess)
 
@@ -161,7 +161,7 @@ func resourceSoftLayerNetworkVlanRead(d *schema.ResourceData, meta interface{}) 
 	vlan, err := service.Id(vlanId).Mask(VlanMask).GetObject()
 
 	if err != nil {
-		return fmt.Errorf("Error retrieving Network Vlan: %s", err)
+		return fmt.Errorf("Error retrieving vlan: %s", err)
 	}
 
 	d.Set("id", *vlan.Id)
@@ -207,7 +207,7 @@ func resourceSoftLayerNetworkVlanRead(d *schema.ResourceData, meta interface{}) 
 	return nil
 }
 
-func resourceSoftLayerNetworkVlanUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerVlanUpdate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkVlanService(sess)
 
@@ -225,12 +225,12 @@ func resourceSoftLayerNetworkVlanUpdate(d *schema.ResourceData, meta interface{}
 	_, err = service.Id(vlanId).EditObject(&opts)
 
 	if err != nil {
-		return fmt.Errorf("Error updating Network Vlan: %s", err)
+		return fmt.Errorf("Error updating vlan: %s", err)
 	}
-	return resourceSoftLayerNetworkVlanRead(d, meta)
+	return resourceSoftLayerVlanRead(d, meta)
 }
 
-func resourceSoftLayerNetworkVlanDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerVlanDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkVlanService(sess)
 
@@ -241,7 +241,7 @@ func resourceSoftLayerNetworkVlanDelete(d *schema.ResourceData, meta interface{}
 
 	billingItem, err := service.Id(vlanId).GetBillingItem()
 	if err != nil {
-		return fmt.Errorf("Error deleting Network Vlan: %s", err)
+		return fmt.Errorf("Error deleting vlan: %s", err)
 	}
 
 	// VLANs which don't have billing items are managed by SoftLayer. They can't be deleted by
@@ -260,7 +260,7 @@ func resourceSoftLayerNetworkVlanDelete(d *schema.ResourceData, meta interface{}
 	return err
 }
 
-func resourceSoftLayerNetworkVlanExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceSoftLayerVlanExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkVlanService(sess)
 
@@ -274,7 +274,7 @@ func resourceSoftLayerNetworkVlanExists(d *schema.ResourceData, meta interface{}
 	return err == nil, err
 }
 
-func findNetworkVlanByOrderId(sess *session.Session, orderId int) (datatypes.Network_Vlan, error) {
+func findVlanByOrderId(sess *session.Session, orderId int) (datatypes.Network_Vlan, error) {
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"pending"},
 		Target:  []string{"complete"},
@@ -293,7 +293,7 @@ func findNetworkVlanByOrderId(sess *session.Session, orderId int) (datatypes.Net
 			} else if len(vlans) == 0 {
 				return nil, "pending", nil
 			} else {
-				return nil, "", fmt.Errorf("Expected one network vlan: %s", err)
+				return nil, "", fmt.Errorf("Expected one vlan: %s", err)
 			}
 		},
 		Timeout:    10 * time.Minute,
@@ -314,7 +314,7 @@ func findNetworkVlanByOrderId(sess *session.Session, orderId int) (datatypes.Net
 	}
 
 	return datatypes.Network_Vlan{},
-		fmt.Errorf("Cannot find Network Vlan with order id '%d'", orderId)
+		fmt.Errorf("Cannot find vlan with order id '%d'", orderId)
 }
 
 func buildVlanProductOrderContainer(d *schema.ResourceData, sess *session.Session, packageType string) (
@@ -394,7 +394,7 @@ func buildVlanProductOrderContainer(d *schema.ResourceData, sess *session.Sessio
 		productOrderContainer.RouterId = rt.Id
 		if err != nil {
 			return &datatypes.Container_Product_Order_Network_Vlan{},
-				fmt.Errorf("Error creating network vlan: %s", err)
+				fmt.Errorf("Error creating vlan: %s", err)
 		}
 	}
 

@@ -1,6 +1,6 @@
-#### `softlayer_network_vlan`
+#### `softlayer_vlan`
 
-Provides a `network_vlan` resource. This allows public and private network VLANs to be created, updated and cancelled. Default SoftLayer account does not have a permission to create a new VLAN by SoftLayer API. To create a new VLAN with 
+Provides a `VLAN` resource. This allows public and private VLANs to be created, updated and cancelled. Default SoftLayer account does not have a permission to create a new VLAN by SoftLayer API. To create a new VLAN with 
 terraform, user should have a VLAN creation permission in advance. Contact a SoftLayer sales person or open a ticket.
 Existed VLANs can be managed by terraform with `terraform import` command. It requires SoftLayer VLAN ID in [VLANs](https://control.softlayer.com/network/vlans). 
 Once they are imported, they provides useful information such as subnets and child_resource_count. When `terraform destroy`
@@ -12,8 +12,8 @@ For additional details please refer to [API documentation](http://sldn.softlayer
 ##### Example Usage
 
 ```hcl
-# Create a new network vlan
-resource "softlayer_network_vlan" "test_vlan" {
+# Create a new vlan
+resource "softlayer_vlan" "test_vlan" {
    name = "test_vlan"
    datacenter = "lon02"
    type = "PUBLIC"
@@ -27,7 +27,7 @@ resource "softlayer_network_vlan" "test_vlan" {
 The following arguments are supported:
 
 * `datacenter` | *string*
-    * Set the datacenter in which the network VLAN resides.
+    * Set the datacenter in which the VLAN resides.
     * **Required**
 * `type` | *string*
     * Set the type of the VLAN if it is public or private. Accepted values are PRIVATE and PUBLIC.
@@ -46,10 +46,10 @@ The following arguments are supported:
 
 The following attributes are exported:
 
-* `id` - id of the network VLAN.
+* `id` - id of the VLAN.
 * `vlan_number` - The VLAN number as recorded within the SoftLayer network. This is configured directly on SoftLayer's networking equipment.
-* `softlayer_managed` - Whether the network vlan is managed by SoftLayer or not. If the vlan is created by SoftLayer automatically while other
- resources are created, `softlayer_managed` is true. If the vlan is created by user via SoftLayer API, portal, or ticket, `softlayer_managed`
+* `softlayer_managed` - Whether the VLAN is managed by SoftLayer or not. If the VLAN is created by SoftLayer automatically while other
+ resources are created, `softlayer_managed` is true. If the VLAN is created by user via SoftLayer API, portal, or ticket, `softlayer_managed`
  is false.
 * `child_resource_count` - A count of all of the resources such as Virtual Servers and other network components that are connected to the VLAN. 
 * `subnets` - Collection of subnets associated with the VLAN.
