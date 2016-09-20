@@ -27,7 +27,7 @@ resource "softlayer_ssh_key" "testkey1" {
 resource "softlayer_virtual_guest" "host-a" {
     name = "host-a.example.com"
     domain = "example.com"
-    ssh_keys = ["123456"]
+    ssh_keys = [123456]
     image = "DEBIAN_7_64"
     datacenter = "ams01"
     public_network_speed = 10
@@ -40,7 +40,7 @@ resource "softlayer_virtual_guest" "host-a" {
 resource "softlayer_virtual_guest" "host-b" {
     name = "host-b.example.com"
     domain = "example.com"
-    ssh_keys = ["123456", "${softlayer_ssh_key.test_key_1.id}"]
+    ssh_keys = [123456, ${softlayer_ssh_key.test_key_1.id}]
     image = "CENTOS_6_64"
     datacenter = "ams01"
     public_network_speed = 10
