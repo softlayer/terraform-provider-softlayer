@@ -17,9 +17,9 @@ provider "softlayer" {
 # Devices>Manage>SSH Keys in the SoftLayer console.
 resource "softlayer_ssh_key" "testkey1" {
     name = "testkey1"
-    public_key = "${file(\"~/.ssh/id_rsa_test_key_1.pub\")}"
+    public_key = "${file("~/.ssh/id_rsa_test_key_1.pub")}"
     # Windows Example:
-    # public_key = "${file(\"C:\ssh\keys\path\id_rsa_test_key_1.pub\")}"
+    # public_key = "${file("C:\ssh\keys\path\id_rsa_test_key_1.pub")}"
 }
 
 # Virtual Server created with existing SSH Key already in SoftLayer \
