@@ -28,42 +28,43 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"name": &schema.Schema{
+			"name": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
 
-			"domain": &schema.Schema{
+			"domain": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
 
-			"image": &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+			"os_reference_code": {
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"image_id"},
 			},
 
-			"hourly_billing": &schema.Schema{
+			"hourly_billing": {
 				Type:     schema.TypeBool,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"private_network_only": &schema.Schema{
+			"private_network_only": {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  false,
 				ForceNew: true,
 			},
 
-			"datacenter": &schema.Schema{
+			"datacenter": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"cpu": &schema.Schema{
+			"cpu": {
 				Type:     schema.TypeInt,
 				Required: true,
 				// TODO: This fields for now requires recreation, because currently for some reason SoftLayer resets "dedicated_acct_host_only"
@@ -72,7 +73,7 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"ram": &schema.Schema{
+			"ram": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
@@ -90,25 +91,25 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				},
 			},
 
-			"dedicated_acct_host_only": &schema.Schema{
+			"dedicated_acct_host_only": {
 				Type:     schema.TypeBool,
 				Optional: true,
 				ForceNew: true,
 			},
 
-			"front_end_vlan": &schema.Schema{
+			"front_end_vlan": {
 				Type:     schema.TypeMap,
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"vlan_number": &schema.Schema{
+						"vlan_number": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
 
-						"primary_router_hostname": &schema.Schema{
+						"primary_router_hostname": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -116,26 +117,26 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				},
 			},
 
-			"front_end_subnet": &schema.Schema{
+			"front_end_subnet": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
 			},
 
-			"back_end_vlan": &schema.Schema{
+			"back_end_vlan": {
 				Type:     schema.TypeMap,
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"vlan_number": &schema.Schema{
+						"vlan_number": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
 
-						"primary_router_hostname": &schema.Schema{
+						"primary_router_hostname": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -143,73 +144,74 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				},
 			},
 
-			"back_end_subnet": &schema.Schema{
+			"back_end_subnet": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
 			},
 
-			"disks": &schema.Schema{
+			"disks": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeInt},
 			},
 
-			"public_network_speed": &schema.Schema{
+			"network_speed": {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  1000,
 			},
 
-			"ipv4_address": &schema.Schema{
+			"ipv4_address": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
 
-			"ipv4_address_private": &schema.Schema{
+			"ipv4_address_private": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
 
-			"ip_address_id": &schema.Schema{
+			"ip_address_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
 
-			"ip_address_id_private": &schema.Schema{
+			"ip_address_id_private": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
 
-			"ssh_keys": &schema.Schema{
+			"ssh_keys": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeInt},
 			},
 
-			"user_data": &schema.Schema{
+			"user_data": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
 
-			"local_disk": &schema.Schema{
+			"local_disk": {
 				Type:     schema.TypeBool,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"post_install_script_uri": &schema.Schema{
+			"post_install_script_uri": {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  nil,
 				ForceNew: true,
 			},
 
-			"block_device_template_group_gid": &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+			"image_id": {
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"os_reference_code"},
 			},
 		},
 	}
@@ -253,7 +255,7 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 	}
 
 	networkComponent := datatypes.Virtual_Guest_Network_Component{
-		MaxSpeed: sl.Int(d.Get("public_network_speed").(int)),
+		MaxSpeed: sl.Int(d.Get("network_speed").(int)),
 	}
 
 	opts := datatypes.Virtual_Guest{
@@ -274,13 +276,13 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 		opts.DedicatedAccountHostOnlyFlag = sl.Bool(dedicatedAcctHostOnly.(bool))
 	}
 
-	if globalIdentifier, ok := d.GetOk("block_device_template_group_gid"); ok {
+	if globalIdentifier, ok := d.GetOk("image_id"); ok {
 		opts.BlockDeviceTemplateGroup = &datatypes.Virtual_Guest_Block_Device_Template_Group{
 			GlobalIdentifier: sl.String(globalIdentifier.(string)),
 		}
 	}
 
-	if operatingSystemReferenceCode, ok := d.GetOk("image"); ok {
+	if operatingSystemReferenceCode, ok := d.GetOk("os_reference_code"); ok {
 		opts.OperatingSystemReferenceCode = sl.String(operatingSystemReferenceCode.(string))
 	}
 
@@ -439,7 +441,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		d.Set("datacenter", *result.Datacenter.Name)
 	}
 
-	d.Set("public_network_speed", *result.PrimaryNetworkComponent.MaxSpeed)
+	d.Set("network_speed", *result.PrimaryNetworkComponent.MaxSpeed)
 	d.Set("cpu", *result.StartCpus)
 	d.Set("ram", *result.MaxMemory)
 	d.Set("dedicated_acct_host_only", *result.DedicatedAccountHostOnlyFlag)
@@ -543,8 +545,8 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 		upgradeOptions[product.MemoryCategoryCode] = float64(int(memoryInMB / 1024))
 	}
 
-	if d.HasChange("public_network_speed") {
-		upgradeOptions[product.NICSpeedCategoryCode] = float64(d.Get("public_network_speed").(int))
+	if d.HasChange("network_speed") {
+		upgradeOptions[product.NICSpeedCategoryCode] = float64(d.Get("network_speed").(int))
 	}
 
 	if len(upgradeOptions) > 0 {
