@@ -7,9 +7,9 @@ Provides a `virtual_guest` resource. This allows virtual guests to be created, u
 resource "softlayer_virtual_guest" "twc_terraform_sample" {
     name = "twc-terraform-sample-name"
     domain = "bar.example.com"
-    image = "DEBIAN_7_64"
+    os_reference_code = "DEBIAN_7_64"
     datacenter = "wdc01"
-    public_network_speed = 10
+    network_speed = 10
     hourly_billing = true
     private_network_only = false
     cpu = 1
@@ -42,7 +42,7 @@ resource "softlayer_virtual_guest" "terraform-sample-BDTGroup" {
    cpu = 1
    ram = 1024
    local_disk = false
-   block_device_template_group_gid = "****-****-****-****-****"
+   image_id = "****-****-****-****-****"
 }
 ```
 
@@ -75,13 +75,13 @@ The following arguments are supported:
     * Specifies whether or not the instance must only run on hosts with instances from the same account
     * *Default*: nil
     * *Optional*
-* `image` | *string*
-    * An identifier for the operating system to provision the computing instance with.
-    * **Conditionally required**    - Disallowed when blockDeviceTemplateGroup.globalIdentifier is provided, as the template will specify the operating system.
-* `block_device_template_group_gid` | *string*
-    * A global identifier for the template to be used to provision the computing instance.
-    * **Conditionally required**    - Disallowed when operatingSystemReferenceCode is provided, as the template will specify the operating system.
-* `public_network_speed` | *int*
+* `os_reference_code` | *string*
+    * An operating system reference code that will be used to provision the computing instance.
+    * **Conflicts with** `image_id`.
+* `image_id` | *string*
+    * A global identifier for the image template to be used to provision the computing instance.
+    * **Conflicts with** `os_reference_code`.
+* `network_speed` | *int*
     * Specifies the connection speed for the instance's network components.
     * *Default*: 10
     * *Optional*
