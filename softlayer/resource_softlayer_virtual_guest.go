@@ -443,8 +443,10 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	d.Set("cpu", *result.StartCpus)
 	d.Set("ram", *result.MaxMemory)
 	d.Set("dedicated_acct_host_only", *result.DedicatedAccountHostOnlyFlag)
-	d.Set("has_public_ip", *result.PrimaryIpAddress != "")
-	d.Set("ipv4_address", *result.PrimaryIpAddress)
+	if result.PrimaryIpAddress != nil {
+		d.Set("has_public_ip", *result.PrimaryIpAddress != "")
+		d.Set("ipv4_address", *result.PrimaryIpAddress)
+	}
 	d.Set("ipv4_address_private", *result.PrimaryBackendIpAddress)
 	d.Set("ip_address_id", *result.PrimaryNetworkComponent.PrimaryIpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
 	d.Set("ip_address_id_private",
