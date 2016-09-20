@@ -448,18 +448,22 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		d.Set("ipv4_address", *result.PrimaryIpAddress)
 	}
 	d.Set("ipv4_address_private", *result.PrimaryBackendIpAddress)
-	d.Set("ip_address_id", *result.PrimaryNetworkComponent.PrimaryIpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
+	if result.PrimaryNetworkComponent.PrimaryIpAddressRecord != nil {
+		d.Set("ip_address_id", *result.PrimaryNetworkComponent.PrimaryIpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
+	}
 	d.Set("ip_address_id_private",
 		*result.PrimaryBackendNetworkComponent.PrimaryIpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
 	d.Set("private_network_only", *result.PrivateNetworkOnlyFlag)
 	d.Set("hourly_billing", *result.HourlyBillingFlag)
 	d.Set("local_disk", *result.LocalDiskFlag)
 
-	frontEndVlan := d.Get("front_end_vlan").(map[string]interface{})
-	resultFrontEndVlan := result.PrimaryNetworkComponent.NetworkVlan
-	frontEndVlan["primary_router_hostname"] = *resultFrontEndVlan.PrimaryRouter.Hostname
-	frontEndVlan["vlan_number"] = strconv.Itoa(*resultFrontEndVlan.VlanNumber)
-	d.Set("front_end_vlan", frontEndVlan)
+	if result.PrimaryNetworkComponent.NetworkVlan != nil {
+		frontEndVlan := d.Get("front_end_vlan").(map[string]interface{})
+		resultFrontEndVlan := result.PrimaryNetworkComponent.NetworkVlan
+		frontEndVlan["primary_router_hostname"] = *resultFrontEndVlan.PrimaryRouter.Hostname
+		frontEndVlan["vlan_number"] = strconv.Itoa(*resultFrontEndVlan.VlanNumber)
+		d.Set("front_end_vlan", frontEndVlan)
+	}
 
 	backEndVlan := d.Get("back_end_vlan").(map[string]interface{})
 	resultBackEndVlan := result.PrimaryBackendNetworkComponent.NetworkVlan
@@ -467,8 +471,10 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	backEndVlan["vlan_number"] = strconv.Itoa(*resultBackEndVlan.VlanNumber)
 	d.Set("back_end_vlan", backEndVlan)
 
-	resultFrontendSubnet := result.PrimaryNetworkComponent.PrimaryIpAddressRecord.Subnet
-	d.Set("front_end_subnet", *resultFrontendSubnet.NetworkIdentifier+"/"+strconv.Itoa(*resultFrontendSubnet.Cidr))
+	if result.PrimaryNetworkComponent.PrimaryIpAddressRecord != nil {
+		resultFrontendSubnet := result.PrimaryNetworkComponent.PrimaryIpAddressRecord.Subnet
+		d.Set("front_end_subnet", *resultFrontendSubnet.NetworkIdentifier+"/"+strconv.Itoa(*resultFrontendSubnet.Cidr))
+	}
 
 	resultBackendSubnet := result.PrimaryBackendNetworkComponent.PrimaryIpAddressRecord.Subnet
 	d.Set("back_end_subnet", *resultBackendSubnet.NetworkIdentifier+"/"+strconv.Itoa(*resultBackendSubnet.Cidr))
