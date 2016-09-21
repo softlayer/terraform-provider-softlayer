@@ -28,9 +28,9 @@ resource "softlayer_virtual_guest" "host-a" {
     name = "host-a.example.com"
     domain = "example.com"
     ssh_keys = [123456]
-    image = "DEBIAN_7_64"
+    os_reference_code = "DEBIAN_7_64"
     datacenter = "ams01"
-    public_network_speed = 10
+    network_speed = 10
     cpu = 1
     ram = 1024
 }
@@ -41,9 +41,9 @@ resource "softlayer_virtual_guest" "host-b" {
     name = "host-b.example.com"
     domain = "example.com"
     ssh_keys = [123456, ${softlayer_ssh_key.test_key_1.id}]
-    image = "CENTOS_6_64"
+    os_reference_code = "CENTOS_6_64"
     datacenter = "ams01"
-    public_network_speed = 10
+    network_speed = 10
     cpu = 1
     ram = 1024
 }
