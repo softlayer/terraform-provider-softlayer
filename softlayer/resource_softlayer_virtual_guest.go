@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
+	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/helpers/product"
 	"github.com/softlayer/softlayer-go/helpers/virtual"
 	"github.com/softlayer/softlayer-go/services"
@@ -380,7 +381,9 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 	ssh_key_labels := d.Get("ssh_key_labels").([]interface{})
 	if len(ssh_key_labels) > 0 {
 		accountService := services.GetAccountService(meta.(*session.Session))
-		sshKeys, err := accountService.GetSshKeys()
+		sshKeys, err := accountService.Filter(
+			filter.Path("sshKeys.label").In(ssh_key_labels...).Build(),
+		).GetSshKeys()
 		if err != nil {
 			return opts, err
 		}
