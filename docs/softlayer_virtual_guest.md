@@ -113,10 +113,15 @@ The following arguments are supported:
     * Arbitrary data to be made available to the computing instance.
     * *Default*: nil
     * *Optional*
-* `ssh_keys` | *array*
+* `ssh_keys` | *array* of numbers
     * SSH keys to install on the computing instance upon provisioning.
     * *Default*: nil
     * *Optional*
+    * *Conflicts with* `ssh_key_labels`
+* `ssh_key_labels` | *array* of strings
+    * SSH key labels to install on the computing instance upon provisioning. **Be warned** that if duplicate ssh key labels exist, the code will use the first one it finds that matches.
+    * *Optional*
+    * *Conflicts with* `ssh_keys`
 * `ipv4_address` | *string*
     * Uses editObject call, template data [defined here](https://sldn.softlayer.com/reference/datatypes/SoftLayer_Virtual_Guest).
     * *Default*: nil
