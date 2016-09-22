@@ -10,7 +10,7 @@ resource "softlayer_lb_local" "test_lb_local" {
     connections = 1500
     datacenter = "tok02"
     ha_enabled = false
-    dedicated = false
+    dedicated = false       
 }
 ```
 
@@ -32,6 +32,7 @@ The following arguments are supported:
     * **Optional**
 * `dedicated` | *boolean*
     * Set if the local load balancer needs to be shared or dedicated.
+    * Default: false
     * **Optional**
 
 ## Attributes Reference
