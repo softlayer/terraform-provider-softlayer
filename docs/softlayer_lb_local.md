@@ -31,7 +31,7 @@ The following arguments are supported:
     * Set the Id of the security certificate associated with the local load balancer.
     * **Optional**
 * `dedicated` | *boolean*
-    * Set if the local load balancer needs to be shared or dedicated.
+    * Set to true if the local load balancer should be dedicated.
     * Default: false
     * **Optional**
 
