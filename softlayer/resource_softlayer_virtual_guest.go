@@ -287,9 +287,21 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 		opts.DedicatedAccountHostOnlyFlag = sl.Bool(dedicatedAcctHostOnly.(bool))
 	}
 
-	if globalIdentifier, ok := d.GetOk("image_id"); ok {
+	if imgId, ok := d.GetOk("image_id"); ok {
+		imageId := imgId.(string)
+		service := services.GetAccountService(meta.(*session.Session))
+		images, err := service.
+			Mask("id,globalIdentifier").
+			Filter(filter.Path("id").Eq(imageId).Build()).
+			GetBlockDeviceTemplateGroups()
+		if err != nil {
+			return opts, fmt.Errorf("Error looking up image %d: %s", imageId, err)
+		} else if len(images) == 0 {
+			return opts, fmt.Errorf("Could not find image %d", imageId)
+		}
+
 		opts.BlockDeviceTemplateGroup = &datatypes.Virtual_Guest_Block_Device_Template_Group{
-			GlobalIdentifier: sl.String(globalIdentifier.(string)),
+			GlobalIdentifier: images[0].GlobalIdentifier,
 		}
 	}
 
