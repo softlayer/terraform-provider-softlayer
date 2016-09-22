@@ -14,7 +14,7 @@ func TestAccSoftLayerLbLocal_Basic(t *testing.T) {
 				Config: testAccCheckSoftLayerLbLocalConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
-						"softlayer_lb_local.testacc_foobar_lb", "connections", "15000"),
+						"softlayer_lb_local.testacc_foobar_lb", "connections", "250"),
 					resource.TestCheckResourceAttr(
 						"softlayer_lb_local.testacc_foobar_lb", "datacenter", "tok02"),
 					resource.TestCheckResourceAttr(
@@ -49,7 +49,7 @@ func TestAccSoftLayerLbLocalDedicated_Basic(t *testing.T) {
 
 const testAccCheckSoftLayerLbLocalConfig_basic = `
 resource "softlayer_lb_local" "testacc_foobar_lb" {
-    connections = 15000
+    connections = 250
     datacenter    = "tok02"
     ha_enabled  = false
 }`
