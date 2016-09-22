@@ -23,7 +23,7 @@ Go to the [documentation directory](docs/).
 
 ### Setup
 
-You should have the correct source in your _$GOPATH_ for both terraform and softlayer-go.
+You should have the correct source in your _$GOPATH_ for both terraform and softlayer-go. _$GOPATH/bin_ should also be in your _$PATH_.
 
 To get _softlayer-go_:
 
