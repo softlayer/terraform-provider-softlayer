@@ -28,9 +28,15 @@ func resourceSoftLayerSSHKey() *schema.Resource {
 				Computed: true,
 			},
 
-			"name": &schema.Schema{
+			"label": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
+			},
+
+			"name": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Removed:  "Use 'label' instead",
 			},
 
 			"public_key": &schema.Schema{
@@ -59,7 +65,7 @@ func resourceSoftLayerSSHKeyCreate(d *schema.ResourceData, meta interface{}) err
 
 	// Build up our creation options
 	opts := datatypes.Security_Ssh_Key{
-		Label: sl.String(d.Get("name").(string)),
+		Label: sl.String(d.Get("label").(string)),
 		Key:   sl.String(d.Get("public_key").(string)),
 	}
 
@@ -97,7 +103,7 @@ func resourceSoftLayerSSHKeyRead(d *schema.ResourceData, meta interface{}) error
 	}
 
 	d.Set("id", *key.Id)
-	d.Set("name", *key.Label)
+	d.Set("label", *key.Label)
 	d.Set("public_key", strings.TrimSpace(*key.Key))
 	d.Set("fingerprint", *key.Fingerprint)
 
@@ -119,8 +125,8 @@ func resourceSoftLayerSSHKeyUpdate(d *schema.ResourceData, meta interface{}) err
 		return fmt.Errorf("Error retrieving SSH key: %s", err)
 	}
 
-	if d.HasChange("name") {
-		key.Label = sl.String(d.Get("name").(string))
+	if d.HasChange("label") {
+		key.Label = sl.String(d.Get("label").(string))
 	}
 
 	if d.HasChange("notes") {
