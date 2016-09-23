@@ -50,7 +50,8 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 
 			"hourly_billing": {
 				Type:     schema.TypeBool,
-				Required: true,
+				Optional: true,
+				Default:  true,
 				ForceNew: true,
 			},
 
@@ -163,7 +164,7 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 			"network_speed": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  1000,
+				Default:  100,
 			},
 
 			"ipv4_address": {
@@ -199,7 +200,8 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 
 			"local_disk": {
 				Type:     schema.TypeBool,
-				Required: true,
+				Optional: true,
+				Default:  false,
 				ForceNew: true,
 			},
 
