@@ -77,7 +77,7 @@ The following arguments are supported:
     * *Optional*
 * `os_reference_code` | *string*
     * An operating system reference code that will be used to provision the computing instance. To get a complete list of the os reference codes, you can use the _softlayer-go_ library like this:
-    ```
+    ```go
     package main
 
     import (
