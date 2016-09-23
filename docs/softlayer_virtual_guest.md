@@ -84,7 +84,7 @@ The following arguments are supported:
     * The image template id to be used to provision the computing instance. Note this is not the global identifier (uuid), but the image template group id that should point to a valid global identifier. You can get the image template id by navigating on the portal to _Devices > Manage > Images_, clicking on the desired image, and taking note of the id number in the browser URL location.
     * **Conflicts with** `os_reference_code`.
 * `network_speed` | *int*
-    * Specifies the connection speed for the instance's network components.
+    * Specifies the connection speed (in Mbps) for the instance's network components.
     * *Default*: 100
     * *Optional*
 * `private_network_only` | *boolean*
@@ -103,7 +103,7 @@ The following arguments are supported:
 * `back_end_subnet` | *string*
     * Public subnet which is to be used for the private network interface of the instance. Accepted values are primary private networks and can be found [here](https://control.softlayer.com/network/subnets).
     * *Optional*
-* `disks` | *array* of numeric disk sizes.
+* `disks` | *array* of numeric disk sizes (in GBs).
     * Block device and disk image settings for the computing instance
     * *Optional*
     * *Default*: The smallest available capacity for the primary disk will be used. If an image template is specified the disk capacity will be be provided by the template.
