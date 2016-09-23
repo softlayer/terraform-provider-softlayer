@@ -219,7 +219,7 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 			},
 
 			"image_id": {
-				Type:          schema.TypeString,
+				Type:          schema.TypeInt,
 				Optional:      true,
 				ForceNew:      true,
 				ConflictsWith: []string{"os_reference_code"},
@@ -287,9 +287,23 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 		opts.DedicatedAccountHostOnlyFlag = sl.Bool(dedicatedAcctHostOnly.(bool))
 	}
 
-	if globalIdentifier, ok := d.GetOk("image_id"); ok {
+	if imgId, ok := d.GetOk("image_id"); ok {
+		imageId := imgId.(int)
+		service := services.
+			GetVirtualGuestBlockDeviceTemplateGroupService(meta.(*session.Session))
+
+		image, err := service.
+			Mask("id,globalIdentifier").Id(imageId).
+			GetObject()
+		if err != nil {
+			return opts, fmt.Errorf("Error looking up image %d: %s", imageId, err)
+		} else if image.GlobalIdentifier == nil {
+			return opts, fmt.Errorf(
+				"Image template %d does not have a global identifier", imageId)
+		}
+
 		opts.BlockDeviceTemplateGroup = &datatypes.Virtual_Guest_Block_Device_Template_Group{
-			GlobalIdentifier: sl.String(globalIdentifier.(string)),
+			GlobalIdentifier: image.GlobalIdentifier,
 		}
 	}
 

@@ -296,6 +296,6 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-BDTGroup" {
     cpu = 1
     ram = 1024
     local_disk = false
-    image_id = "ac2b413c-9893-4178-8e62-a24cbe2864db"
+    image_id = 1025457
 }
 `

@@ -42,7 +42,7 @@ resource "softlayer_virtual_guest" "terraform-sample-BDTGroup" {
    cpu = 1
    ram = 1024
    local_disk = false
-   image_id = "****-****-****-****-****"
+   image_id = 12345
 }
 ```
 
@@ -76,10 +76,10 @@ The following arguments are supported:
     * *Default*: nil
     * *Optional*
 * `os_reference_code` | *string*
-    * An operating system reference code that will be used to provision the computing instance.
+    * An operating system reference code that will be used to provision the computing instance. [Get a complete list of the os reference codes available](https://api.softlayer.com/rest/v3/SoftLayer_Virtual_Guest_Block_Device_Template_Group/getVhdImportSoftwareDescriptions.json?objectMask=referenceCode) (use your api key as the password).
     * **Conflicts with** `image_id`.
-* `image_id` | *string*
-    * A global identifier for the image template to be used to provision the computing instance.
+* `image_id` | *int*
+    * The image template id to be used to provision the computing instance. Note this is not the global identifier (uuid), but the image template group id that should point to a valid global identifier. You can get the image template id by navigating on the portal to _Devices > Manage > Images_, clicking on the desired image, and taking note of the id number in the browser URL location.
     * **Conflicts with** `os_reference_code`.
 * `network_speed` | *int*
     * Specifies the connection speed for the instance's network components.
