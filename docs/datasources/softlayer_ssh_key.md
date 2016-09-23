@@ -34,5 +34,5 @@ or use most_recent to choose the most recent one.
 `id` is set to the ID of the SSH key.  In addition, the following attributes are exported:
 
 * `fingerprint` - sequence of bytes to authenticate or lookup a longer ssh key
-* `public_key` - (Required) The public ssh key
-* `notes` - (Optional) A small note about an SSH key to use at your discretion
+* `public_key` - the public key contents
+* `notes` - notes stored with the SSH key
