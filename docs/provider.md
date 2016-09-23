@@ -40,7 +40,7 @@ resource "softlayer_virtual_guest" "host-a" {
 resource "softlayer_virtual_guest" "host-b" {
     name = "host-b.example.com"
     domain = "example.com"
-    ssh_keys = [123456, ${softlayer_ssh_key.test_key_1.id}]
+    ssh_keys = [123456, "${softlayer_ssh_key.test_key_1.id}"]
     os_reference_code = "CENTOS_6_64"
     datacenter = "ams01"
     network_speed = 10
