@@ -13,7 +13,7 @@ provider "softlayer" {
     api_key = ""
 }
 
-# This will create a new SSH key that will show up under the \
+# This will create a new SSH key that will show up under the
 # Devices>Manage>SSH Keys in the SoftLayer console.
 resource "softlayer_ssh_key" "testkey1" {
     name = "testkey1"
@@ -22,7 +22,7 @@ resource "softlayer_ssh_key" "testkey1" {
     # public_key = "${file("C:\ssh\keys\path\id_rsa_test_key_1.pub")}"
 }
 
-# Virtual Server created with existing SSH Key already in SoftLayer \
+# Virtual Server created with existing SSH Key already in SoftLayer
 # inventory and not created using this Terraform template.
 resource "softlayer_virtual_guest" "host-a" {
     name = "host-a.example.com"
@@ -35,7 +35,7 @@ resource "softlayer_virtual_guest" "host-a" {
     ram = 1024
 }
 
-# Virtual Server created with a mix of previously existing and \
+# Virtual Server created with a mix of previously existing and
 # Terraform created/managed resources.
 resource "softlayer_virtual_guest" "host-b" {
     name = "host-b.example.com"
@@ -60,7 +60,7 @@ provider "softlayer" {}
 
 ...and instead set these environment variables:
 
-- **SOFTLAYER_USERNAME**: Your SoftLayer username
-- **SOFTLAYER_API_KEY**: Your API key
+- **SOFTLAYER_USERNAME** or **SL_USERNAME**: Your SoftLayer username
+- **SOFTLAYER_API_KEY** or **SL_API_KEY**: Your API key
 
 You can also put credentials in _~/.softlayer_. See the [softlayer api python client docs](http://softlayer-python.readthedocs.io/en/latest/config_file.html) for details on this configuration file.
