@@ -67,13 +67,15 @@ The following arguments are supported:
     * **Required**
 * `hourly_billing` | *boolean*
     * Specifies the billing type for the instance. When true the computing instance will be billed on hourly usage, otherwise it will be billed on a monthly basis.
-    * **Required**
+    * *Default*: true
+    * *Optional*
 * `local_disk` | *boolean*
     * Specifies the disk type for the instance. When true the disks for the computing instance will be provisioned on the host which it runs, otherwise SAN disks will be provisioned.
-    * **Required**
+    * *Default*: false
+    * *Optional*
 * `dedicated_acct_host_only` | *boolean*
     * Specifies whether or not the instance must only run on hosts with instances from the same account
-    * *Default*: nil
+    * *Default*: false
     * *Optional*
 * `os_reference_code` | *string*
     * An operating system reference code that will be used to provision the computing instance. [Get a complete list of the os reference codes available](https://api.softlayer.com/rest/v3/SoftLayer_Virtual_Guest_Block_Device_Template_Group/getVhdImportSoftwareDescriptions.json?objectMask=referenceCode) (use your api key as the password).
@@ -83,7 +85,7 @@ The following arguments are supported:
     * **Conflicts with** `os_reference_code`.
 * `network_speed` | *int*
     * Specifies the connection speed for the instance's network components.
-    * *Default*: 10
+    * *Default*: 100
     * *Optional*
 * `private_network_only` | *boolean*
     * Specifies whether or not the instance only has access to the private network. When true this flag specifies that a compute instance is to only have access to the private network.
@@ -105,7 +107,7 @@ The following arguments are supported:
     * Public subnet which is to be used for the private network interface of the instance. Accepted values are primary private networks and can be found [here](https://control.softlayer.com/network/subnets).
     * *Default*: nil
     * *Optional*
-* `disks` | *array*
+* `disks` | *array* of numeric disk sizes.
     * Block device and disk image settings for the computing instance
     * *Optional*
     * *Default*: The smallest available capacity for the primary disk will be used. If an image template is specified the disk capacity will be be provided by the template.
@@ -117,8 +119,7 @@ The following arguments are supported:
     * SSH keys to install on the computing instance upon provisioning.
     * *Default*: nil
     * *Optional*
-
-    **Note:** Don't know the ID(s) for your SSH keys?  See [here](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_ssh_key.md) for a way to reference your SSH keys by their labels
+    * **Note:** Don't know the ID(s) for your SSH keys? See [here](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_ssh_key.md) for a way to reference your SSH keys by their labels.
 
 * `ipv4_address` | *string*
     * Uses editObject call, template data [defined here](https://sldn.softlayer.com/reference/datatypes/SoftLayer_Virtual_Guest).
@@ -138,3 +139,7 @@ The following arguments are supported:
 The following attributes are exported:
 
 * `id` - id of the virtual guest.
+* `ipv4_address` - Public IPv4 address of the virtual guest.
+* `ip_address_id_private` - Unique ID for the private ID address assigned to the virtual_guest.
+* `ipv4_address_private` - Private IPv4 address of the virtual guest.
+* `ip_address_id` - Unique ID for the public ID address assigned to the virtual_guest.
