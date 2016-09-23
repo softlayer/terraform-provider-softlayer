@@ -10,6 +10,16 @@ data "softlayer_ssh_key" "public_key" {
 }
 ```
 
+This can then be used by other resources in the same configuration, e.g. by interpolating the ID, where an ID is required:
+
+```hcl
+resource "softlayer_virtual_guest" "vm1" {
+    ...
+    ssh_keys = ["${data.softlayer_ssh_key.public_key.id}"]
+    ...
+}
+```
+
 ## Argument Reference
 
 * `label` - (Required) The label of the SSH key, as it was defined in SoftLayer
