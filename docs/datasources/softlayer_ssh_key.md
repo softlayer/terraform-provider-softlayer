@@ -1,6 +1,6 @@
 # `softlayer_ssh_key`
 
-Use this data source to get the ID or other details of an existing SSH key, for use in other resources.
+Use this data source to import the details of an *existing* SSH key as a read-only data source.
 
 ## Example Usage
 
@@ -10,7 +10,10 @@ data "softlayer_ssh_key" "public_key" {
 }
 ```
 
-This can then be used by other resources in the same configuration, e.g. by interpolating the ID, where an ID is required:
+The fields of the data source can then be referenced by other resources within the same configuration using
+interpolation syntax. For example, when specifying SSH keys in a softlayer_virtual_guest resource configuration,
+the numeric "IDs" are often unknown. Using the above data source as an example, it would be possible to
+reference the `id` property in a softlayer_virtual_guest resource:
 
 ```hcl
 resource "softlayer_virtual_guest" "vm1" {
