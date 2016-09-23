@@ -32,13 +32,7 @@ func resourceSoftLayerSSHKey() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-
-			"name": &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-				Removed:  "Use 'label' instead",
-			},
-
+			
 			"public_key": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,

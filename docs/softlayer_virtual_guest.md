@@ -117,7 +117,6 @@ The following arguments are supported:
     * SSH keys to install on the computing instance upon provisioning.
     * *Default*: nil
     * *Optional*
-    * *Conflicts with* `ssh_key_labels`
 
     **Note:** Don't know the ID(s) for your SSH keys?  See [here](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_ssh_key.md) for a way to reference your SSH keys by their labels
 

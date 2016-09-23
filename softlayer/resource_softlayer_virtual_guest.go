@@ -192,13 +192,6 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeInt},
 			},
 
-			"ssh_key_labels": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-				Removed:  fmt.Sprintf("Use the interpolation method described at %s", datasourceSshKeyDoc),
-			},
-
 			"user_data": {
 				Type:     schema.TypeString,
 				Optional: true,

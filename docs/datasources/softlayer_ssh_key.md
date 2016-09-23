@@ -29,8 +29,8 @@ resource "softlayer_virtual_guest" "vm1" {
 * `most_recent` - (Optional) If more than SSH key matches the label, use the most recent key
 
 NOTE: If more or less than a single match is returned by the search, Terraform will fail.
-Ensure that your search is specific enough to return a single SSH key only,
-or use most_recent to choose the most recent one.
+Ensure that your label is specific enough to return a single SSH key only,
+or use *most_recent* to choose the most recent one.
 
 ## Attributes Reference
 
