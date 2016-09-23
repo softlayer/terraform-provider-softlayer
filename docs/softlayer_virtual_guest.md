@@ -76,10 +76,34 @@ The following arguments are supported:
     * *Default*: nil
     * *Optional*
 * `os_reference_code` | *string*
-    * An operating system reference code that will be used to provision the computing instance.
+    * An operating system reference code that will be used to provision the computing instance. To get a complete list of the os reference codes, you can use the _softlayer-go_ library like this:
+    ```
+    package main
+
+    import (
+    	"log"
+
+    	"github.com/softlayer/softlayer-go/session"
+    	"github.com/softlayer/softlayer-go/services"
+    )
+
+    // Get all os reference codes
+    func main() {
+    	sess := session.New() // See docs. Requires creds set in .softlayer or env.
+    	service := services.GetVirtualGuestBlockDeviceTemplateGroupService(sess)
+    	descs, err := service.Mask("referenceCode").GetVhdImportSoftwareDescriptions()
+    	if err != nil {
+    		log.Fatal(err)
+    	}
+
+    	for _, desc := range descs {
+    		log.Println(*desc.ReferenceCode)
+    	}
+    }
+    ```
     * **Conflicts with** `image_id`.
 * `image_id` | *int*
-    * The image template id to be used to provision the computing instance. Note this is not the global identifier (uuid), but the image template group id that should point to a valid global identifier.
+    * The image template id to be used to provision the computing instance. Note this is not the global identifier (uuid), but the image template group id that should point to a valid global identifier. You can get the image template id by navigating on the portal to _Devices > Manage > Images_, clicking on the desired image, and taking note of the id number in the browser URL location.
     * **Conflicts with** `os_reference_code`.
 * `network_speed` | *int*
     * Specifies the connection speed for the instance's network components.
