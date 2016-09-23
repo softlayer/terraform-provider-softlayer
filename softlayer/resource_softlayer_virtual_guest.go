@@ -2,7 +2,6 @@ package softlayer
 
 import (
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -13,13 +12,14 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
-	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/helpers/product"
 	"github.com/softlayer/softlayer-go/helpers/virtual"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
+
+const datasourceSshKeyDoc = "https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_ssh_key.md"
 
 func resourceSoftLayerVirtualGuest() *schema.Resource {
 	return &schema.Resource{
@@ -187,17 +187,16 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 			},
 
 			"ssh_keys": {
-				Type:          schema.TypeList,
-				Optional:      true,
-				Elem:          &schema.Schema{Type: schema.TypeInt},
-				ConflictsWith: []string{"ssh_key_labels"},
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeInt},
 			},
 
 			"ssh_key_labels": {
-				Type:          schema.TypeList,
-				Optional:      true,
-				Elem:          &schema.Schema{Type: schema.TypeString},
-				ConflictsWith: []string{"ssh_keys"},
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				Removed:  fmt.Sprintf("Use the interpolation method described at %s", datasourceSshKeyDoc),
 			},
 
 			"user_data": {
@@ -374,37 +373,6 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 			opts.SshKeys = append(opts.SshKeys, datatypes.Security_Ssh_Key{
 				Id: sl.Int(ssh_key.(int)),
 			})
-		}
-	}
-
-	// Do the same but starting with the labels.
-	ssh_key_labels := d.Get("ssh_key_labels").([]interface{})
-	if len(ssh_key_labels) > 0 {
-		accountService := services.GetAccountService(meta.(*session.Session))
-		sshKeys, err := accountService.Filter(
-			filter.Path("sshKeys.label").In(ssh_key_labels...).Build(),
-		).GetSshKeys()
-		if err != nil {
-			return opts, err
-		}
-
-		if len(sshKeys) == 0 {
-			return opts, errors.New(
-				"No ssh keys were found in the SoftLayer account to match with the labels provided")
-		}
-
-		opts.SshKeys = make([]datatypes.Security_Ssh_Key, 0, len(ssh_key_labels))
-		for _, ssh_key_label := range ssh_key_labels {
-			for _, sshKey := range sshKeys {
-				if sl.Get(sshKey.Label, "") == ssh_key_label {
-					opts.SshKeys = append(opts.SshKeys, datatypes.Security_Ssh_Key{Id: sshKey.Id})
-					break
-				}
-			}
-		}
-
-		if len(opts.SshKeys) == 0 {
-			return opts, errors.New("No ssh keys matched the labels provided")
 		}
 	}
 
