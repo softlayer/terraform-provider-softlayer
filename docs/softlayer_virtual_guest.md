@@ -93,19 +93,15 @@ The following arguments are supported:
     * *Optional*
 * `front_end_vlan` | *map*
     * Public VLAN which is to be used for the public network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans).
-    * *Default*: nil
     * *Optional*
 * `back_end_vlan` | *map*
     * Private VLAN which is to be used for the private network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans).
-    * *Default*: nil
     * *Optional*
 * `front_end_subnet` | *string*
     * Public subnet which is to be used for the public network interface of the instance. Accepted values are primary public networks and can be found [here](https://control.softlayer.com/network/subnets).
-    * *Default*: nil
     * *Optional*
 * `back_end_subnet` | *string*
     * Public subnet which is to be used for the private network interface of the instance. Accepted values are primary private networks and can be found [here](https://control.softlayer.com/network/subnets).
-    * *Default*: nil
     * *Optional*
 * `disks` | *array* of numeric disk sizes.
     * Block device and disk image settings for the computing instance
@@ -113,25 +109,15 @@ The following arguments are supported:
     * *Default*: The smallest available capacity for the primary disk will be used. If an image template is specified the disk capacity will be be provided by the template.
 * `user_data` | *string*
     * Arbitrary data to be made available to the computing instance.
-    * *Default*: nil
     * *Optional*
 * `ssh_keys` | *array* of numbers
-    * SSH keys to install on the computing instance upon provisioning.
-    * *Default*: nil
+    * SSH key _IDs_ to install on the computing instance upon provisioning.
     * *Optional*
-    * **Note:** Don't know the ID(s) for your SSH keys? See [here](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_ssh_key.md) for a way to reference your SSH keys by their labels.
 
-* `ipv4_address` | *string*
-    * Uses editObject call, template data [defined here](https://sldn.softlayer.com/reference/datatypes/SoftLayer_Virtual_Guest).
-    * *Default*: nil
-    * *Optional*
-* `ipv4_address_private` | *string*
-    * Uses editObject call, template data [defined here](https://sldn.softlayer.com/reference/datatypes/SoftLayer_Virtual_Guest).
-    * *Default*: nil
-    * *Optional*
+    **Note:** Don't know the ID(s) for your SSH keys? See [here](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_ssh_key.md) for a way to reference your SSH keys by their labels.
+
 * `post_install_script_uri` | *string*
     * As defined in the [SoftLayer_Virtual_Guest_SupplementalCreateObjectOptions](https://sldn.softlayer.com/reference/datatypes/SoftLayer_Virtual_Guest_SupplementalCreateObjectOptions).
-    * *Default*: nil
     * *Optional*
 
 ## Attributes Reference
