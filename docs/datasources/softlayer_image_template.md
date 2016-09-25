@@ -30,6 +30,4 @@ resource "softlayer_virtual_guest" "vm1" {
 
 ## Attributes Reference
 
-`id` is set to the ID of the image template.  In addition, the following attributes are exported:
-
-* `global_id` - The global identifier for the image template.
+`id` is set to the ID of the image template

@@ -21,8 +21,8 @@ func TestAccSoftLayerImageTemplateDataSource_Basic(t *testing.T) {
 					),
 					resource.TestCheckResourceAttr(
 						"data.softlayer_image_template.tfacc_img_tmpl",
-						"global_id",
-						"9e039233-9160-4172-8c5a-ed909a008a93",
+						"id",
+						"988251",
 					),
 				),
 			},

@@ -1,10 +1,10 @@
 package softlayer
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 )
@@ -25,12 +25,6 @@ func dataSourceSoftLayerImageTemplate() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 			},
-
-			"global_id": {
-				Description: "The global identifier of the image template",
-				Type:        schema.TypeString,
-				Computed:    true,
-			},
 		},
 	}
 }
@@ -42,8 +36,7 @@ func dataSourceSoftLayerImageTemplateRead(d *schema.ResourceData, meta interface
 	name := d.Get("name").(string)
 
 	imageTemplates, err := service.
-		Filter(filter.Build(filter.Path("name").Eq(name))).
-		Mask("id,name,globalIdentifier").
+		Mask("id,name").
 		GetBlockDeviceTemplateGroups()
 
 	if err != nil {
@@ -51,14 +44,15 @@ func dataSourceSoftLayerImageTemplateRead(d *schema.ResourceData, meta interface
 	}
 
 	if len(imageTemplates) == 0 {
-		return fmt.Errorf("No image template found with name [%s]", name)
+		return errors.New("The SoftLayer account has no image templates.")
 	}
 
-	imageTemplate := imageTemplates[0]
+	for _, imageTemplate := range imageTemplates {
+		if imageTemplate.Name != nil && *imageTemplate.Name == name {
+			d.SetId(fmt.Sprintf("%d", *imageTemplate.Id))
+			return nil
+		}
+	}
 
-	d.SetId(fmt.Sprintf("%d", *imageTemplate.Id))
-	d.Set("name", name)
-	d.Set("global_id", *imageTemplate.GlobalIdentifier)
-
-	return nil
+	return fmt.Errorf("Could not find image template with name [%s]", name)
 }
