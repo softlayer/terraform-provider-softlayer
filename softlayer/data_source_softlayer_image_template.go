@@ -13,6 +13,8 @@ func dataSourceSoftLayerImageTemplate() *schema.Resource {
 	return &schema.Resource{
 		Read: dataSourceSoftLayerImageTemplateRead,
 
+		// TODO: based on need add properties for visibility, type of image,
+		// notes, size, shared on accounts if needed
 		Schema: map[string]*schema.Schema{
 			"id": {
 				Description: "The internal id of the image template",
