@@ -1,6 +1,7 @@
 package softlayer
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform/helper/resource"
@@ -19,10 +20,10 @@ func TestAccSoftLayerImageTemplateDataSource_Basic(t *testing.T) {
 						"name",
 						"jumpbox",
 					),
-					resource.TestCheckResourceAttr(
+					resource.TestMatchResourceAttr(
 						"data.softlayer_image_template.tfacc_img_tmpl",
 						"id",
-						"988251",
+						regexp.MustCompile("^[0-9]+$"),
 					),
 				),
 			},
