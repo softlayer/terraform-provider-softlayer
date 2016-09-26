@@ -2,7 +2,6 @@ package softlayer
 
 import (
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -13,13 +12,14 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
-	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/helpers/product"
 	"github.com/softlayer/softlayer-go/helpers/virtual"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
+
+const datasourceSshKeyDoc = "https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_ssh_key.md"
 
 func resourceSoftLayerVirtualGuest() *schema.Resource {
 	return &schema.Resource{
@@ -50,7 +50,8 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 
 			"hourly_billing": {
 				Type:     schema.TypeBool,
-				Required: true,
+				Optional: true,
+				Default:  true,
 				ForceNew: true,
 			},
 
@@ -163,7 +164,7 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 			"network_speed": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  1000,
+				Default:  100,
 			},
 
 			"ipv4_address": {
@@ -187,17 +188,9 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 			},
 
 			"ssh_keys": {
-				Type:          schema.TypeList,
-				Optional:      true,
-				Elem:          &schema.Schema{Type: schema.TypeInt},
-				ConflictsWith: []string{"ssh_key_labels"},
-			},
-
-			"ssh_key_labels": {
-				Type:          schema.TypeList,
-				Optional:      true,
-				Elem:          &schema.Schema{Type: schema.TypeString},
-				ConflictsWith: []string{"ssh_keys"},
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeInt},
 			},
 
 			"user_data": {
@@ -207,7 +200,8 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 
 			"local_disk": {
 				Type:     schema.TypeBool,
-				Required: true,
+				Optional: true,
+				Default:  false,
 				ForceNew: true,
 			},
 
@@ -219,7 +213,7 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 			},
 
 			"image_id": {
-				Type:          schema.TypeString,
+				Type:          schema.TypeInt,
 				Optional:      true,
 				ForceNew:      true,
 				ConflictsWith: []string{"os_reference_code"},
@@ -287,9 +281,23 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 		opts.DedicatedAccountHostOnlyFlag = sl.Bool(dedicatedAcctHostOnly.(bool))
 	}
 
-	if globalIdentifier, ok := d.GetOk("image_id"); ok {
+	if imgId, ok := d.GetOk("image_id"); ok {
+		imageId := imgId.(int)
+		service := services.
+			GetVirtualGuestBlockDeviceTemplateGroupService(meta.(*session.Session))
+
+		image, err := service.
+			Mask("id,globalIdentifier").Id(imageId).
+			GetObject()
+		if err != nil {
+			return opts, fmt.Errorf("Error looking up image %d: %s", imageId, err)
+		} else if image.GlobalIdentifier == nil {
+			return opts, fmt.Errorf(
+				"Image template %d does not have a global identifier", imageId)
+		}
+
 		opts.BlockDeviceTemplateGroup = &datatypes.Virtual_Guest_Block_Device_Template_Group{
-			GlobalIdentifier: sl.String(globalIdentifier.(string)),
+			GlobalIdentifier: image.GlobalIdentifier,
 		}
 	}
 
@@ -374,37 +382,6 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 			opts.SshKeys = append(opts.SshKeys, datatypes.Security_Ssh_Key{
 				Id: sl.Int(ssh_key.(int)),
 			})
-		}
-	}
-
-	// Do the same but starting with the labels.
-	ssh_key_labels := d.Get("ssh_key_labels").([]interface{})
-	if len(ssh_key_labels) > 0 {
-		accountService := services.GetAccountService(meta.(*session.Session))
-		sshKeys, err := accountService.Filter(
-			filter.Path("sshKeys.label").In(ssh_key_labels...).Build(),
-		).GetSshKeys()
-		if err != nil {
-			return opts, err
-		}
-
-		if len(sshKeys) == 0 {
-			return opts, errors.New(
-				"No ssh keys were found in the SoftLayer account to match with the labels provided")
-		}
-
-		opts.SshKeys = make([]datatypes.Security_Ssh_Key, 0, len(ssh_key_labels))
-		for _, ssh_key_label := range ssh_key_labels {
-			for _, sshKey := range sshKeys {
-				if sl.Get(sshKey.Label, "") == ssh_key_label {
-					opts.SshKeys = append(opts.SshKeys, datatypes.Security_Ssh_Key{Id: sshKey.Id})
-					break
-				}
-			}
-		}
-
-		if len(opts.SshKeys) == 0 {
-			return opts, errors.New("No ssh keys matched the labels provided")
 		}
 	}
 

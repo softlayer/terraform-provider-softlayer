@@ -39,6 +39,10 @@ func Provider() terraform.ResourceProvider {
 			},
 		},
 
+		DataSourcesMap: map[string]*schema.Resource{
+			"softlayer_ssh_key": dataSourceSoftLayerSSHKey(),
+		},
+
 		ResourcesMap: map[string]*schema.Resource{
 			"softlayer_virtual_guest":          resourceSoftLayerVirtualGuest(),
 			"softlayer_ssh_key":                resourceSoftLayerSSHKey(),
