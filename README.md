@@ -23,7 +23,11 @@ Go to the [documentation directory](docs/).
 
 ### Setup
 
-You should have the correct source in your _$GOPATH_ for both terraform and softlayer-go. _$GOPATH/bin_ should also be in your _$PATH_.
+Make sure you have your [_$GOPATH_ environment variable set](https://golang.org/doc/code.html#GOPATH).
+
+_$GOPATH/bin_ should also be in your _$PATH_ (e.g. `export PATH=$GOPATH/bin:PATH`).
+
+Now you need to get the main dependencies.
 
 To get _softlayer-go_:
 
