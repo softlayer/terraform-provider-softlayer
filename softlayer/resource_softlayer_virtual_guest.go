@@ -19,8 +19,6 @@ import (
 	"github.com/softlayer/softlayer-go/sl"
 )
 
-const datasourceSshKeyDoc = "https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_ssh_key.md"
-
 func resourceSoftLayerVirtualGuest() *schema.Resource {
 	return &schema.Resource{
 		Create:   resourceSoftLayerVirtualGuestCreate,
