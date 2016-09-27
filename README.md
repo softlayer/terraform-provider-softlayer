@@ -28,7 +28,7 @@ You should have the correct source in your _$GOPATH_ for both terraform and soft
 To get _softlayer-go_:
 
 ```
-go get github.com/softlayer/softlayer-go
+go get github.com/softlayer/softlayer-go/...
 ```
 
 To get _terraform_:
