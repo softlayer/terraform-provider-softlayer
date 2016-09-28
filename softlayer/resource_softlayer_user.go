@@ -15,6 +15,8 @@ import (
 	"github.com/softlayer/softlayer-go/sl"
 )
 
+const userCustomerCancelStatus = "CANCEL_PENDING"
+
 func resourceSoftLayerUser() *schema.Resource {
 	return &schema.Resource{
 		Create:   resourceSoftLayerUserCreate,
@@ -74,16 +76,14 @@ func resourceSoftLayerUser() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			// TODO Support more intuitive string values for timezone and user_status
 			"timezone": &schema.Schema{
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Required: true,
 			},
 			"user_status": &schema.Schema{
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Optional: true,
-				// Active by default
-				Default: 1001,
+				Default:  "ACTIVE",
 			},
 			"password": &schema.Schema{
 				Type:     schema.TypeString,
@@ -138,7 +138,18 @@ func getPermissions(d *schema.ResourceData) []datatypes.User_Customer_CustomerPe
 }
 
 func resourceSoftLayerUserCreate(d *schema.ResourceData, meta interface{}) error {
-	service := services.GetUserCustomerService(meta.(*session.Session))
+	sess := meta.(*session.Session)
+	service := services.GetUserCustomerService(sess)
+
+	timezoneID, err := getTimezoneIDByName(sess, d.Get("timezone").(string))
+	if err != nil {
+		return err
+	}
+
+	userStatusID, err := getUserStatusIDByName(sess, d.Get("user_status").(string))
+	if err != nil {
+		return err
+	}
 
 	// Build up our creation options
 	opts := datatypes.User_Customer{
@@ -151,8 +162,8 @@ func resourceSoftLayerUserCreate(d *schema.ResourceData, meta interface{}) error
 		City:         sl.String(d.Get("city").(string)),
 		State:        sl.String(d.Get("state").(string)),
 		Country:      sl.String(d.Get("country").(string)),
-		TimezoneId:   sl.Int(d.Get("timezone").(int)),
-		UserStatusId: sl.Int(d.Get("user_status").(int)),
+		TimezoneId:   &timezoneID,
+		UserStatusId: &userStatusID,
 	}
 
 	if address2, ok := d.GetOk("address2"); ok {
@@ -222,8 +233,8 @@ func resourceSoftLayerUserRead(d *schema.ResourceData, meta interface{}) error {
 		"city",
 		"state",
 		"country",
-		"timezoneId",
-		"userStatusId",
+		"timezone.shortName",
+		"userStatus.keyName",
 		"permissions.keyName",
 		"apiAuthenticationKeys.authenticationKey",
 	}, ";")
@@ -251,8 +262,8 @@ func resourceSoftLayerUserRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("city", sluserObj.City)
 	d.Set("state", sluserObj.State)
 	d.Set("country", sluserObj.Country)
-	d.Set("timezone", sluserObj.TimezoneId)
-	d.Set("user_status", sluserObj.UserStatusId)
+	d.Set("timezone", sluserObj.Timezone.ShortName)
+	d.Set("user_status", sluserObj.UserStatus.KeyName)
 
 	permissions := make([]string, 0, len(sluserObj.Permissions))
 	for _, elem := range sluserObj.Permissions {
@@ -273,7 +284,8 @@ func resourceSoftLayerUserRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error {
-	service := services.GetUserCustomerService(meta.(*session.Session))
+	sess := meta.(*session.Session)
+	service := services.GetUserCustomerService(sess)
 
 	sluid, _ := strconv.Atoi(d.Id())
 
@@ -289,8 +301,8 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 		"city",
 		"state",
 		"country",
-		"timezoneId",
-		"userStatusId",
+		"timezone.shortName",
+		"userStatus.keyMame",
 		"permissions.keyName",
 		"apiAuthenticationKeys.authenticationKey",
 		"apiAuthenticationKeys.id",
@@ -330,10 +342,18 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 		userObj.Country = sl.String(d.Get("country").(string))
 	}
 	if d.HasChange("timezone") {
-		userObj.TimezoneId = sl.Int(d.Get("timezone").(int))
+		tzID, err := getTimezoneIDByName(sess, d.Get("timezone").(string))
+		if err != nil {
+			return err
+		}
+		userObj.TimezoneId = &tzID
 	}
 	if d.HasChange("user_status") {
-		userObj.UserStatusId = sl.Int(d.Get("user_status").(int))
+		userStatusID, err := getUserStatusIDByName(sess, d.Get("user_status").(string))
+		if err != nil {
+			return err
+		}
+		userObj.UserStatusId = &userStatusID
 	}
 
 	_, err = service.EditObject(&userObj)
@@ -404,16 +424,22 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 }
 
 func resourceSoftLayerUserDelete(d *schema.ResourceData, meta interface{}) error {
-	service := services.GetUserCustomerService(meta.(*session.Session))
+	sess := meta.(*session.Session)
+	service := services.GetUserCustomerService(sess)
 
 	id, _ := strconv.Atoi(d.Id())
 
+	userCancelStatusID, err := getUserStatusIDByName(sess, userCustomerCancelStatus)
+	if err != nil {
+		return err
+	}
+
 	user := datatypes.User_Customer{
-		UserStatusId: sl.Int(1021),
+		UserStatusId: &userCancelStatusID,
 	}
 
 	log.Printf("[INFO] Deleting SoftLayer user: %d", id)
-	_, err := service.Id(id).EditObject(&user)
+	_, err = service.Id(id).EditObject(&user)
 	if err != nil {
 		return fmt.Errorf("Error deleting SoftLayer user: %s", err)
 	}
@@ -430,4 +456,42 @@ func resourceSoftLayerUserExists(d *schema.ResourceData, meta interface{}) (bool
 	result, err := service.Id(id).GetObject()
 
 	return result.Id != nil && *result.Id == id && err == nil, nil
+}
+
+func getTimezoneIDByName(sess *session.Session, shortName string) (int, error) {
+	zones, err := services.GetLocaleTimezoneService(sess).
+		Mask("id,shortName").
+		GetAllObjects()
+
+	if err != nil {
+		return -1, err
+	}
+
+	for _, zone := range zones {
+		if *zone.ShortName == shortName {
+			return *zone.Id, nil
+		}
+	}
+
+	return -1, fmt.Errorf("Timezone %s could not be found", shortName)
+
+}
+
+func getUserStatusIDByName(sess *session.Session, name string) (int, error) {
+	statuses, err := services.GetUserCustomerStatusService(sess).
+		Mask("id,keyName").
+		GetAllObjects()
+
+	if err != nil {
+		return -1, err
+	}
+
+	for _, status := range statuses {
+		if *status.KeyName == name {
+			return *status.Id, nil
+		}
+	}
+
+	return -1, fmt.Errorf("User status %s could not be found", name)
+
 }
