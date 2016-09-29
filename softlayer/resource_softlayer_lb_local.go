@@ -362,7 +362,6 @@ func setLocalLBSecurityCert(sess *session.Session, vipID int, certID int) error 
 
 	var success bool
 
-	// Bypass the SDK method in order to use the custom struct
 	if certID == 0 {
 		vip.SecurityCertificateId = nil
 	} else {
