@@ -105,6 +105,52 @@ func resourceSoftLayerGlobalIpRead(d *schema.ResourceData, meta interface{}) err
         return nil
 }
 
+func resourceSoftLayerGlobalIpUpdate(d *schema.ResourceData, meta interface{}) error {
+        sess := meta.(*session.Session)
+        service := services.GetNetworkSubnetIpAddressGlobalService(sess)
+
+        globalIpId, err := strconv.Atoi(d.Id())
+        if err != nil {
+                return fmt.Errorf("Not a valid global ip ID, must be an integer: %s", err)
+        }
+
+        opts := datatypes.Network_Subnet_IpAddress_Global{}
+
+        //if d.HasChange("routes_to") {
+        //      opts.IpAddress.IpAddress = sl.String(d.Get("routes_to").(string))
+        //}
+
+        _, err := service.Id(globalIpId).route(sl.String(d.Get("routes_to").(string)))
+
+        if err != nil {
+                return fmt.Errorf("Error editing Global Ip: %s", err)
+        }
+        return nil
+}
+
+func resourceSoftLayerGlobalIpDelete(d *schema.ResourceData, meta interface{}) error {
+        sess := meta.(*session.Session)
+        service := services.GetNetworkSubnetIpAddressGlobalService(sess)
+
+        globalIpId, err := strconv.Atoi(d.Id())
+        if err != nil {
+                return fmt.Errorf("Not a valid global ip ID, must be an integer: %s", err)
+        }
+
+        billingItem, err := service.Id(globalIpId).GetBillingItem()
+        if err != nil {
+                return fmt.Errorf("Error deleting global ip: %s", err)
+        }
+
+        if billingItem.Id == nil {
+                return nil
+        }
+
+        _, err = services.GetBillingItemService(sess).Id(*billingItem.Id).CancelService()
+
+        return err
+}
+
 func resourceSoftLayerGlobalIpExists(d *schema.ResourceData, meta interface{}) (bool, error) {
         sess := meta.(*session.Session)
         service := services.GetNetworkSubnetIpAddressGlobalService(sess)
