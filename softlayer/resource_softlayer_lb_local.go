@@ -49,8 +49,9 @@ func resourceSoftLayerLbLocal() *schema.Resource {
 			},
 			"ha_enabled": {
 				Type:     schema.TypeBool,
-				Required: true,
+				Optional: true,
 				ForceNew: true,
+				Default:  false,
 			},
 			"security_certificate_id": {
 				Type:     schema.TypeInt,
@@ -114,6 +115,9 @@ func resourceSoftLayerLbLocalCreate(d *schema.ResourceData, meta interface{}) er
 			keyFormatter = "LOAD_BALANCER_DEDICATED_WITH_SSL_OFFLOAD_%d_CONNECTIONS"
 		}
 	} else {
+		if d.Get("ha_enabled").(bool) {
+			return fmt.Errorf("High Availability is not supported for shared local load balancers")
+		}
 		categoryCode = product.ProxyLoadBalancerCategoryCode
 		if _, ok := d.GetOk("security_certificate_id"); ok {
 			d.Set("ssl_enabled", true)
