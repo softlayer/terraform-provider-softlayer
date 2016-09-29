@@ -200,19 +200,11 @@ func resourceSoftLayerLbLocalUpdate(d *schema.ResourceData, meta interface{}) er
 
 	vipID, _ := strconv.Atoi(d.Id())
 
-	vip := datatypes.Network_Application_Delivery_Controller_LoadBalancer_VirtualIpAddress{
-		SecurityCertificateId: sl.Int(d.Get("security_certificate_id").(int)),
-	}
+	certID := d.Get("security_certificate_id").(int)
 
-	success, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
-		Id(vipID).
-		EditObject(&vip)
+	err := setLocalLBSecurityCert(sess, vipID, certID)
 
 	if err != nil {
-		return fmt.Errorf("Update load balancer failed: %s", err)
-	}
-
-	if !success {
 		return fmt.Errorf("Update load balancer failed: %s", err)
 	}
 
@@ -361,4 +353,34 @@ func findLoadBalancerByOrderId(sess *session.Session, orderId int, dedicated boo
 
 	return datatypes.Network_Application_Delivery_Controller_LoadBalancer_VirtualIpAddress{},
 		fmt.Errorf("Cannot find Application Delivery Controller Load Balancer with order id '%d'", orderId)
+}
+
+func setLocalLBSecurityCert(sess *session.Session, vipID int, certID int) error {
+	var vip struct {
+		SecurityCertificateId *int `json:"securityCertificateId"`
+	}
+
+	var success bool
+
+	// Bypass the SDK method in order to use the custom struct
+	if certID == 0 {
+		vip.SecurityCertificateId = nil
+	} else {
+		vip.SecurityCertificateId = &certID
+	}
+
+	// In order to send a null value, need to invoke DoRequest directly with a custom struct
+	err := sess.DoRequest(
+		"SoftLayer_Network_Application_Delivery_Controller_LoadBalancer_VirtualIpAddress",
+		"editObject",
+		[]interface{}{&vip},
+		&sl.Options{Id: &vipID},
+		&success,
+	)
+
+	if !success && err == nil {
+		return fmt.Errorf("Unable to remove ssl security certificate from load balancer")
+	}
+
+	return err
 }
