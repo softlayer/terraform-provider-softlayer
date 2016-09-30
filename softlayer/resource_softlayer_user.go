@@ -313,7 +313,7 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 
 	// Some fields cannot be updated such as username. Computed fields also cannot be updated
 	// by explicitly providing a value. So only update the fields that are editable.
-	// TODO: For now you may not update the password.
+	// Password changes can also not be fully automated, and are not supported
 	if d.HasChange("first_name") {
 		userObj.FirstName = sl.String(d.Get("first_name").(string))
 	}
