@@ -362,17 +362,22 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 	}
 
 	if d.HasChange("permissions") {
-		// TODO Use set math functions (in schema.Set) to compute the difference, vs clearing and re-adding permissions
 		old, new := d.GetChange("permissions")
 
-		oldPermissions := make([]datatypes.User_Customer_CustomerPermission_Permission, 0, old.(*schema.Set).Len())
-		newPermissions := make([]datatypes.User_Customer_CustomerPermission_Permission, 0, new.(*schema.Set).Len())
+		// 1. Remove old permissions no longer appearing in the new set
+		// 2. Add new permissions not already granted
 
-		for _, elem := range old.(*schema.Set).List() {
+		remove := old.(*schema.Set).Difference(new.(*schema.Set)).List()
+		add := new.(*schema.Set).Difference(old.(*schema.Set)).List()
+
+		oldPermissions := make([]datatypes.User_Customer_CustomerPermission_Permission, 0, len(remove))
+		newPermissions := make([]datatypes.User_Customer_CustomerPermission_Permission, 0, len(add))
+
+		for _, elem := range remove {
 			oldPermissions = append(oldPermissions, makePermission(elem.(string)))
 		}
 
-		for _, elem := range new.(*schema.Set).List() {
+		for _, elem := range add {
 			newPermissions = append(newPermissions, makePermission(elem.(string)))
 		}
 
