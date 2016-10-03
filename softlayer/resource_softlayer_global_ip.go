@@ -100,7 +100,8 @@ func resourceSoftLayerGlobalIpRead(d *schema.ResourceData, meta interface{}) err
         }
 
         d.Set("id", *globalIp.Id)
-        d.Set("routes_to", *globalIp.IpAddress.IpAddress)
+        d.Set("ip_address", *globalIp.IpAddress.IpAddress)
+        d.Set("routes_to", *globalIp.DestinationIpAddress.IpAddress)        
 
         return nil
 }
@@ -113,8 +114,10 @@ func resourceSoftLayerGlobalIpUpdate(d *schema.ResourceData, meta interface{}) e
         if err != nil {
                 return fmt.Errorf("Not a valid global ip ID, must be an integer: %s", err)
         }
-
-       _, err = service.Id(globalIpId).Route(sl.String(d.Get("routes_to").(string)))
+        
+        if d.HasChange("routes_to") {
+                _, err = service.Id(globalIpId).Route(sl.String(d.Get("routes_to").(string)))
+        }        
 
         if err != nil {
                 return fmt.Errorf("Error editing Global Ip: %s", err)
