@@ -2,6 +2,7 @@ package softlayer
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -45,68 +46,68 @@ func resourceSoftLayerScalePolicy() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
+			"id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
-			"name": &schema.Schema{
+			"name": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"scale_type": &schema.Schema{
+			"scale_type": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"scale_amount": &schema.Schema{
+			"scale_amount": {
 				Type:     schema.TypeInt,
 				Required: true,
 			},
-			"cooldown": &schema.Schema{
+			"cooldown": {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
-			"scale_group_id": &schema.Schema{
+			"scale_group_id": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: true,
 			},
-			"triggers": &schema.Schema{
+			"triggers": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"id": &schema.Schema{
+						"id": {
 							Type:     schema.TypeInt,
 							Computed: true,
 						},
-						"type": &schema.Schema{
+						"type": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
 
 						// Conditionally-required fields, based on value of "type"
-						"watches": &schema.Schema{
+						"watches": {
 							Type:     schema.TypeSet,
 							Optional: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"id": &schema.Schema{
+									"id": {
 										Type:     schema.TypeInt,
 										Computed: true,
 									},
-									"metric": &schema.Schema{
+									"metric": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
-									"operator": &schema.Schema{
+									"operator": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
-									"value": &schema.Schema{
+									"value": {
 										Type:     schema.TypeString,
 										Required: true,
 									},
-									"period": &schema.Schema{
+									"period": {
 										Type:     schema.TypeInt,
 										Required: true,
 									},
@@ -115,12 +116,12 @@ func resourceSoftLayerScalePolicy() *schema.Resource {
 							Set: resourceSoftLayerScalePolicyHandlerHash,
 						},
 
-						"date": &schema.Schema{
+						"date": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
 
-						"schedule": &schema.Schema{
+						"schedule": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -185,7 +186,7 @@ func resourceSoftLayerScalePolicyCreate(d *schema.ResourceData, meta interface{}
 		}
 	}
 
-	log.Printf("[INFO] Creating scale policy")
+	log.Println("[INFO] Creating scale policy")
 	res, err := service.CreateObject(&opts)
 	if err != nil {
 		return fmt.Errorf("Error creating Scale Policy: %s $s", err)
@@ -371,7 +372,7 @@ func prepareOneTimeTriggers(d *schema.ResourceData) ([]datatypes.Scale_Policy_Tr
 			// Use UTC time zone for a terraform configuration
 			isUTC := strings.HasSuffix(timeStampString, "+00:00")
 			if !isUTC {
-				return nil, fmt.Errorf("The time zone should be an UTC(+00:00).")
+				return nil, errors.New("The time zone should be an UTC(+00:00).")
 			}
 
 			timeStamp, err := time.Parse(SoftLayerTimeFormat, timeStampString)
@@ -440,7 +441,7 @@ func prepareWatches(d *schema.Set) ([]datatypes.Scale_Policy_Trigger_ResourceUse
 
 		watch.Period = sl.Int(watchMap["period"].(int))
 		if *watch.Period <= 0 {
-			return nil, fmt.Errorf("period shoud be greater than 0.")
+			return nil, errors.New("period shoud be greater than 0.")
 		}
 
 		watch.Value = sl.String(watchMap["value"].(string))

@@ -1,6 +1,7 @@
 package softlayer
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -21,7 +22,7 @@ func TestAccSoftLayerSSHKey_Basic(t *testing.T) {
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckSoftLayerSSHKeyDestroy,
 		Steps: []resource.TestStep{
-			resource.TestStep{
+			{
 				Config: testAccCheckSoftLayerSSHKeyConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerSSHKeyExists("softlayer_ssh_key.testacc_foobar", &key),
@@ -35,7 +36,7 @@ func TestAccSoftLayerSSHKey_Basic(t *testing.T) {
 				),
 			},
 
-			resource.TestStep{
+			{
 				Config: testAccCheckSoftLayerSSHKeyConfig_updated,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerSSHKeyExists("softlayer_ssh_key.testacc_foobar", &key),
@@ -65,7 +66,7 @@ func testAccCheckSoftLayerSSHKeyDestroy(s *terraform.State) error {
 		_, err := service.Id(keyId).GetObject()
 
 		if err == nil {
-			return fmt.Errorf("SSH key still exists")
+			return fmt.Errorf("SSH key %d still exists", keyId)
 		}
 	}
 
@@ -92,7 +93,7 @@ func testAccCheckSoftLayerSSHKeyExists(n string, key *datatypes.Security_Ssh_Key
 		}
 
 		if rs.Primary.ID == "" {
-			return fmt.Errorf("No Record ID is set")
+			return errors.New("No Record ID is set")
 		}
 
 		keyId, _ := strconv.Atoi(rs.Primary.ID)
@@ -105,7 +106,7 @@ func testAccCheckSoftLayerSSHKeyExists(n string, key *datatypes.Security_Ssh_Key
 		}
 
 		if strconv.Itoa(int(*foundKey.Id)) != rs.Primary.ID {
-			return fmt.Errorf("Record not found")
+			return fmt.Errorf("Record %d not found", keyId)
 		}
 
 		*key = foundKey
