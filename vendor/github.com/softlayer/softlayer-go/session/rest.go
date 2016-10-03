@@ -156,6 +156,10 @@ func encodeQuery(opts *sl.Options) string {
 
 func makeHTTPRequest(session *Session, path string, requestType string, requestBody *bytes.Buffer, options *sl.Options) ([]byte, int, error) {
 	client := http.DefaultClient
+	client.Timeout = DefaultTimeout
+	if session.Timeout != 0 {
+		client.Timeout = session.Timeout
+	}
 
 	var url string
 	if session.Endpoint == "" {
@@ -163,7 +167,7 @@ func makeHTTPRequest(session *Session, path string, requestType string, requestB
 	} else {
 		url = url + session.Endpoint
 	}
-	url = url + "/" + path
+	url = fmt.Sprintf("%s/%s", strings.TrimRight(url, "/"), path)
 	req, err := http.NewRequest(requestType, url, requestBody)
 	if err != nil {
 		return nil, 0, err

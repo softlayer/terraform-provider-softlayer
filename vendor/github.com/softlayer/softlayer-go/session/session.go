@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/user"
 	"strings"
+	"time"
 
 	"github.com/softlayer/softlayer-go/config"
 	"github.com/softlayer/softlayer-go/sl"
@@ -65,6 +66,8 @@ type TransportHandler interface {
 		pResult interface{}) error
 }
 
+const DefaultTimeout = time.Second * 60
+
 // Session stores the information required for communication with the SoftLayer
 // API
 type Session struct {
@@ -77,6 +80,12 @@ type Session struct {
 	// Endpoint is the SoftLayer API endpoint to communicate with
 	Endpoint string
 
+	// UserId is the user id for token-based authentication
+	UserId int
+
+	// AuthToken is the token secret for token-based authentication
+	AuthToken string
+
 	// Debug controls logging of request details (URI, parameters, etc.)
 	Debug bool
 
@@ -85,6 +94,11 @@ type Session struct {
 	// (e.g., REST).  Set automatically for a new Session, based on the
 	// provided Endpoint.
 	TransportHandler TransportHandler
+
+	// Timeout specifies a time limit for http requests made by this
+	// session. Requests that take longer that the specified timeout
+	// will result in an error.
+	Timeout time.Duration
 }
 
 // New creates and returns a pointer to a new session object.  It takes up to
@@ -106,8 +120,17 @@ func New(args ...interface{}) *Session {
 	}
 
 	// Default to the environment variables
+
+	// Prioritize SL_USERNAME
+	envFallback("SL_USERNAME", &values[keys["username"]])
 	envFallback("SOFTLAYER_USERNAME", &values[keys["username"]])
+
+	// Prioritize SL_API_KEY
+	envFallback("SL_API_KEY", &values[keys["api_key"]])
 	envFallback("SOFTLAYER_API_KEY", &values[keys["api_key"]])
+
+	// Prioritize SL_ENDPOINT_URL
+	envFallback("SL_ENDPOINT_URL", &values[keys["endpoint_url"]])
 	envFallback("SOFTLAYER_ENDPOINT_URL", &values[keys["endpoint_url"]])
 
 	// Read ~/.softlayer for configuration
@@ -133,15 +156,14 @@ func New(args ...interface{}) *Session {
 	}
 
 	endpointURL := values[keys["endpoint_url"]]
-	if endpointURL == "" || !strings.Contains(endpointURL, "/rest/") {
+	if endpointURL == "" {
 		endpointURL = DefaultEndpoint
 	}
 
 	return &Session{
-		UserName:         values[keys["username"]],
-		APIKey:           values[keys["api_key"]],
-		Endpoint:         endpointURL,
-		TransportHandler: &RestTransport{},
+		UserName: values[keys["username"]],
+		APIKey:   values[keys["api_key"]],
+		Endpoint: endpointURL,
 	}
 }
 
@@ -153,7 +175,7 @@ func New(args ...interface{}) *Session {
 // For a description of parameters, see TransportHandler.DoRequest in this package
 func (r *Session) DoRequest(service string, method string, args []interface{}, options *sl.Options, pResult interface{}) error {
 	if r.TransportHandler == nil {
-		r.TransportHandler = &RestTransport{}
+		r.TransportHandler = getDefaultTransport(r.Endpoint)
 	}
 
 	return r.TransportHandler.DoRequest(r, service, method, args, options, pResult)
@@ -163,4 +185,16 @@ func envFallback(keyName string, value *string) {
 	if *value == "" {
 		*value = os.Getenv(keyName)
 	}
+}
+
+func getDefaultTransport(endpointURL string) TransportHandler {
+	var transportHandler TransportHandler
+
+	if strings.Contains(endpointURL, "/xmlrpc/") {
+		transportHandler = &XmlRpcTransport{}
+	} else {
+		transportHandler = &RestTransport{}
+	}
+
+	return transportHandler
 }
