@@ -3,6 +3,7 @@ package softlayer
 import (
 	"errors"
 	"os"
+	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
@@ -36,6 +37,11 @@ func Provider() terraform.ResourceProvider {
 					return defaultSoftLayerSession.Endpoint, nil
 				},
 				Description: "The endpoint url for the SoftLayer API.",
+			},
+			"timeout": {
+				Type:        schema.TypeInt,
+				Required:    false,
+				Description: "The timeout to set for any SoftLayer API calls made.",
 			},
 		},
 
@@ -74,6 +80,11 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		UserName: d.Get("username").(string),
 		APIKey:   d.Get("api_key").(string),
 		Endpoint: d.Get("endpoint_url").(string),
+	}
+
+	if rawTimeout, ok := d.GetOk("timeout"); ok {
+		timeout := rawTimeout.(int)
+		sess.Timeout = time.Duration(timeout)
 	}
 
 	if sess.UserName == "" || sess.APIKey == "" {

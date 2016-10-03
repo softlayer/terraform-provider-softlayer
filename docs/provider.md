@@ -64,3 +64,12 @@ provider "softlayer" {}
 - **SOFTLAYER_API_KEY** or **SL_API_KEY**: Your API key
 
 You can also put credentials in _~/.softlayer_. See the [softlayer api python client docs](http://softlayer-python.readthedocs.io/en/latest/config_file.html) for details on this configuration file.
+
+Other optional properties you can set in the provider:
+
+```hcl
+provider "softlayer" {
+    endpoint_url = "https://api.softlayer.com/rest/v3" # That is the default anyway
+    timeout = 60 # That is in seconds. The default timeout is one minute.
+}
+```
