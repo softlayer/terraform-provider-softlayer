@@ -15,6 +15,8 @@ import (
 	"github.com/softlayer/softlayer-go/sl"
 )
 
+const userCustomerCancelStatus = 1021
+
 func resourceSoftLayerUser() *schema.Resource {
 	return &schema.Resource{
 		Create:   resourceSoftLayerUserCreate,
@@ -74,16 +76,14 @@ func resourceSoftLayerUser() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			// TODO Support more intuitive string values for timezone and user_status
 			"timezone": &schema.Schema{
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Required: true,
 			},
 			"user_status": &schema.Schema{
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Optional: true,
-				// Active by default
-				Default: 1001,
+				Default:  "ACTIVE",
 			},
 			"password": &schema.Schema{
 				Type:     schema.TypeString,
@@ -138,7 +138,18 @@ func getPermissions(d *schema.ResourceData) []datatypes.User_Customer_CustomerPe
 }
 
 func resourceSoftLayerUserCreate(d *schema.ResourceData, meta interface{}) error {
-	service := services.GetUserCustomerService(meta.(*session.Session))
+	sess := meta.(*session.Session)
+	service := services.GetUserCustomerService(sess)
+
+	timezoneID, err := getTimezoneIDByName(sess, d.Get("timezone").(string))
+	if err != nil {
+		return err
+	}
+
+	userStatusID, err := getUserStatusIDByName(sess, d.Get("user_status").(string))
+	if err != nil {
+		return err
+	}
 
 	// Build up our creation options
 	opts := datatypes.User_Customer{
@@ -151,8 +162,8 @@ func resourceSoftLayerUserCreate(d *schema.ResourceData, meta interface{}) error
 		City:         sl.String(d.Get("city").(string)),
 		State:        sl.String(d.Get("state").(string)),
 		Country:      sl.String(d.Get("country").(string)),
-		TimezoneId:   sl.Int(d.Get("timezone").(int)),
-		UserStatusId: sl.Int(d.Get("user_status").(int)),
+		TimezoneId:   &timezoneID,
+		UserStatusId: &userStatusID,
 	}
 
 	if address2, ok := d.GetOk("address2"); ok {
@@ -222,8 +233,8 @@ func resourceSoftLayerUserRead(d *schema.ResourceData, meta interface{}) error {
 		"city",
 		"state",
 		"country",
-		"timezoneId",
-		"userStatusId",
+		"timezone.shortName",
+		"userStatus.keyName",
 		"permissions.keyName",
 		"apiAuthenticationKeys.authenticationKey",
 	}, ";")
@@ -251,8 +262,8 @@ func resourceSoftLayerUserRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("city", sluserObj.City)
 	d.Set("state", sluserObj.State)
 	d.Set("country", sluserObj.Country)
-	d.Set("timezone", sluserObj.TimezoneId)
-	d.Set("user_status", sluserObj.UserStatusId)
+	d.Set("timezone", sluserObj.Timezone.ShortName)
+	d.Set("user_status", sluserObj.UserStatus.KeyName)
 
 	permissions := make([]string, 0, len(sluserObj.Permissions))
 	for _, elem := range sluserObj.Permissions {
@@ -273,7 +284,8 @@ func resourceSoftLayerUserRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error {
-	service := services.GetUserCustomerService(meta.(*session.Session))
+	sess := meta.(*session.Session)
+	service := services.GetUserCustomerService(sess)
 
 	sluid, _ := strconv.Atoi(d.Id())
 
@@ -289,8 +301,8 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 		"city",
 		"state",
 		"country",
-		"timezoneId",
-		"userStatusId",
+		"timezone.shortName",
+		"userStatus.keyMame",
 		"permissions.keyName",
 		"apiAuthenticationKeys.authenticationKey",
 		"apiAuthenticationKeys.id",
@@ -301,7 +313,7 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 
 	// Some fields cannot be updated such as username. Computed fields also cannot be updated
 	// by explicitly providing a value. So only update the fields that are editable.
-	// TODO: For now you may not update the password.
+	// Password changes can also not be fully automated, and are not supported
 	if d.HasChange("first_name") {
 		userObj.FirstName = sl.String(d.Get("first_name").(string))
 	}
@@ -330,10 +342,18 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 		userObj.Country = sl.String(d.Get("country").(string))
 	}
 	if d.HasChange("timezone") {
-		userObj.TimezoneId = sl.Int(d.Get("timezone").(int))
+		tzID, err := getTimezoneIDByName(sess, d.Get("timezone").(string))
+		if err != nil {
+			return err
+		}
+		userObj.TimezoneId = &tzID
 	}
 	if d.HasChange("user_status") {
-		userObj.UserStatusId = sl.Int(d.Get("user_status").(int))
+		userStatusID, err := getUserStatusIDByName(sess, d.Get("user_status").(string))
+		if err != nil {
+			return err
+		}
+		userObj.UserStatusId = &userStatusID
 	}
 
 	_, err = service.EditObject(&userObj)
@@ -342,17 +362,22 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 	}
 
 	if d.HasChange("permissions") {
-		// TODO Use set math functions (in schema.Set) to compute the difference, vs clearing and re-adding permissions
 		old, new := d.GetChange("permissions")
 
-		oldPermissions := make([]datatypes.User_Customer_CustomerPermission_Permission, 0, old.(*schema.Set).Len())
-		newPermissions := make([]datatypes.User_Customer_CustomerPermission_Permission, 0, new.(*schema.Set).Len())
+		// 1. Remove old permissions no longer appearing in the new set
+		// 2. Add new permissions not already granted
 
-		for _, elem := range old.(*schema.Set).List() {
+		remove := old.(*schema.Set).Difference(new.(*schema.Set)).List()
+		add := new.(*schema.Set).Difference(old.(*schema.Set)).List()
+
+		oldPermissions := make([]datatypes.User_Customer_CustomerPermission_Permission, 0, len(remove))
+		newPermissions := make([]datatypes.User_Customer_CustomerPermission_Permission, 0, len(add))
+
+		for _, elem := range remove {
 			oldPermissions = append(oldPermissions, makePermission(elem.(string)))
 		}
 
-		for _, elem := range new.(*schema.Set).List() {
+		for _, elem := range add {
 			newPermissions = append(newPermissions, makePermission(elem.(string)))
 		}
 
@@ -404,12 +429,13 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 }
 
 func resourceSoftLayerUserDelete(d *schema.ResourceData, meta interface{}) error {
-	service := services.GetUserCustomerService(meta.(*session.Session))
+	sess := meta.(*session.Session)
+	service := services.GetUserCustomerService(sess)
 
 	id, _ := strconv.Atoi(d.Id())
 
 	user := datatypes.User_Customer{
-		UserStatusId: sl.Int(1021),
+		UserStatusId: sl.Int(userCustomerCancelStatus),
 	}
 
 	log.Printf("[INFO] Deleting SoftLayer user: %d", id)
@@ -430,4 +456,42 @@ func resourceSoftLayerUserExists(d *schema.ResourceData, meta interface{}) (bool
 	result, err := service.Id(id).GetObject()
 
 	return result.Id != nil && *result.Id == id && err == nil, nil
+}
+
+func getTimezoneIDByName(sess *session.Session, shortName string) (int, error) {
+	zones, err := services.GetLocaleTimezoneService(sess).
+		Mask("id,shortName").
+		GetAllObjects()
+
+	if err != nil {
+		return -1, err
+	}
+
+	for _, zone := range zones {
+		if *zone.ShortName == shortName {
+			return *zone.Id, nil
+		}
+	}
+
+	return -1, fmt.Errorf("Timezone %s could not be found", shortName)
+
+}
+
+func getUserStatusIDByName(sess *session.Session, name string) (int, error) {
+	statuses, err := services.GetUserCustomerStatusService(sess).
+		Mask("id,keyName").
+		GetAllObjects()
+
+	if err != nil {
+		return -1, err
+	}
+
+	for _, status := range statuses {
+		if *status.KeyName == name {
+			return *status.Id, nil
+		}
+	}
+
+	return -1, fmt.Errorf("User status %s could not be found", name)
+
 }

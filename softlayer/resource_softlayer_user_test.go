@@ -48,9 +48,9 @@ func TestAccSoftLayerUser_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "country", "US"),
 					resource.TestCheckResourceAttr(
-						"softlayer_user.testuser", "timezone", "114"),
+						"softlayer_user.testuser", "timezone", "EST"),
 					resource.TestCheckResourceAttr(
-						"softlayer_user.testuser", "user_status", "1001"),
+						"softlayer_user.testuser", "user_status", "ACTIVE"),
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "password", hash(testAccUserPassword)),
 					resource.TestCheckResourceAttr(
@@ -86,9 +86,9 @@ func TestAccSoftLayerUser_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "country", "CA"),
 					resource.TestCheckResourceAttr(
-						"softlayer_user.testuser", "timezone", "117"),
+						"softlayer_user.testuser", "timezone", "MST"),
 					resource.TestCheckResourceAttr(
-						"softlayer_user.testuser", "user_status", "1002"),
+						"softlayer_user.testuser", "user_status", "INACTIVE"),
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "password", hash(testAccUserPassword)),
 					resource.TestCheckResourceAttr(
@@ -114,10 +114,10 @@ func testAccCheckSoftLayerUserDestroy(s *terraform.State) error {
 		userID, _ := strconv.Atoi(rs.Primary.ID)
 
 		// Try to find the user
-		user, err := client.Id(userID).GetObject()
+		user, err := client.Id(userID).Mask("userStatusId").GetObject()
 
 		// Users are not immediately deleted, but rather placed into a 'cancel_pending' (1021) status
-		if err != nil || *user.UserStatusId != 1021 {
+		if err != nil || *user.UserStatusId != userCustomerCancelStatus {
 			return fmt.Errorf("SoftLayer User still exists")
 		}
 	}
@@ -168,7 +168,7 @@ resource "softlayer_user" "testuser" {
     city = "Atlanta"
     state = "GA"
     country = "US"
-    timezone = 114
+    timezone = "EST"
     password = "%s"
     permissions = [
         "SERVER_ADD",
@@ -189,8 +189,8 @@ resource "softlayer_user" "testuser" {
     city = "Montreal"
     state = "QC"
     country = "CA"
-    timezone = 117
-    user_status = 1002
+    timezone = "MST"
+    user_status = "INACTIVE"
     password = "%s"
     permissions = [
         "SERVER_ADD",

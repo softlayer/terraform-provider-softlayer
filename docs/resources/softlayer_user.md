@@ -26,8 +26,7 @@ resource "softlayer_user" "joe" {
         "RESET_PORTAL_PASSWORD"
     ]
     state        = "GA"
-    timezone     = 114
-    user_status  = 1001
+    timezone     = "EST"
     username     = "joedoe"
 }
 ```
@@ -88,15 +87,15 @@ The following arguments are supported:
 * `state` | *string*
     * User's street address state.
     * **Required**
-* `timezone` | *int*
-    * User's timezone id (no validation checks with the street address).
+* `timezone` | *string*
+    * User's timezone (shortname, e.g., "EST")
       Value is one of [SoftLayer_Locale_Timezone](http://sldn.softlayer.com/reference/datatypes/SoftLayer_Locale_Timezone).
     * **Required**
-* `user_status` | *int*
-    * Status id of user's login status. Value is one of
+* `user_status` | *string*
+    * User's login status. Value is one of
       [SoftLayer_User_Customer_Status](http://sldn.softlayer.com/reference/datatypes/SoftLayer_User_Customer_Status).
     * *Optional*
-    * *Default*: 1001 // means 'active'
+    * *Default*: "ACTIVE"
 * `username` | *string*
     * A name that uniquely identifies a user globally across all SoftLayer
       logins. It is also the login userid. Once a user login is created,
