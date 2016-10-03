@@ -135,6 +135,12 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+
+			"image_template_id": {
+				Type: schema.TypeInt,
+				Optional: true,
+				ForceNew: true,
+			},
 		},
 	}
 }
@@ -203,9 +209,7 @@ func getBareMetalOrderFromResourceData(d *schema.ResourceData, meta interface{})
 
 	if userMetadata, ok := d.GetOk("user_metadata"); ok {
 		hardware.UserData = []datatypes.Hardware_Attribute{
-			{
-				Value: sl.String(userMetadata.(string)),
-			},
+			{Value: sl.String(userMetadata.(string))},
 		}
 	}
 
@@ -224,18 +228,33 @@ func getBareMetalOrderFromResourceData(d *schema.ResourceData, meta interface{})
 }
 
 func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) error {
-	service := services.GetHardwareService(meta.(*session.Session))
+	sess := meta.(*session.Session)
+	hwService := services.GetHardwareService(sess)
+	orderService := services.GetProductOrderService(sess)
+
 
 	hardware, err := getBareMetalOrderFromResourceData(d, meta)
 	if err != nil {
 		return err
 	}
 
+	order, err := hwService.GenerateOrderTemplate(&hardware)
+	if err != nil {
+		return fmt.Errorf(
+			"Encountered problem trying to get the bare metal order template: %s", err)
+	}
+
+	// Set image template id if it exists
+	if rawImageTemplateId, ok := d.GetOk("image_template_id"); ok {
+		imageTemplateId := rawImageTemplateId.(int)
+		order.ImageTemplateId = sl.Int(imageTemplateId)
+	}
+
 	log.Println("[INFO] Ordering bare metal server")
 
-	_, err = service.CreateObject(&hardware)
+	_, err = orderService.PlaceOrder(&order, sl.Bool(false))
 	if err != nil {
-		return fmt.Errorf("Error creating bare metal server: %s", err)
+		return fmt.Errorf("Error ordering bare metal server: %s", err)
 	}
 
 	log.Printf("[INFO] Bare Metal Server ID: %s", d.Id())
