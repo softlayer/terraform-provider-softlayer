@@ -15,7 +15,7 @@ import (
 	"github.com/softlayer/softlayer-go/sl"
 )
 
-const userCustomerCancelStatus = "CANCEL_PENDING"
+const userCustomerCancelStatus = 1021
 
 func resourceSoftLayerUser() *schema.Resource {
 	return &schema.Resource{
@@ -434,17 +434,12 @@ func resourceSoftLayerUserDelete(d *schema.ResourceData, meta interface{}) error
 
 	id, _ := strconv.Atoi(d.Id())
 
-	userCancelStatusID, err := getUserStatusIDByName(sess, userCustomerCancelStatus)
-	if err != nil {
-		return err
-	}
-
 	user := datatypes.User_Customer{
-		UserStatusId: &userCancelStatusID,
+		UserStatusId: sl.Int(userCustomerCancelStatus),
 	}
 
 	log.Printf("[INFO] Deleting SoftLayer user: %d", id)
-	_, err = service.Id(id).EditObject(&user)
+	_, err := service.Id(id).EditObject(&user)
 	if err != nil {
 		return fmt.Errorf("Error deleting SoftLayer user: %s", err)
 	}

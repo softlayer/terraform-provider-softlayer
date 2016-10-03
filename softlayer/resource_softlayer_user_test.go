@@ -114,10 +114,10 @@ func testAccCheckSoftLayerUserDestroy(s *terraform.State) error {
 		userID, _ := strconv.Atoi(rs.Primary.ID)
 
 		// Try to find the user
-		user, err := client.Id(userID).Mask("userStatus[keyName]").GetObject()
+		user, err := client.Id(userID).Mask("userStatusId").GetObject()
 
 		// Users are not immediately deleted, but rather placed into a 'cancel_pending' (1021) status
-		if err != nil || *user.UserStatus.KeyName != userCustomerCancelStatus {
+		if err != nil || *user.UserStatusId != userCustomerCancelStatus {
 			return fmt.Errorf("SoftLayer User still exists")
 		}
 	}
