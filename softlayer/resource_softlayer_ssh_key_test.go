@@ -76,7 +76,7 @@ func testAccCheckSoftLayerSSHKeyAttributes(key *datatypes.Security_Ssh_Key) reso
 	return func(s *terraform.State) error {
 
 		if *key.Label != "testacc_foobar" {
-			return fmt.Errorf("Bad name: %s", key.Label)
+			return fmt.Errorf("Bad name: %s", *key.Label)
 		}
 
 		return nil

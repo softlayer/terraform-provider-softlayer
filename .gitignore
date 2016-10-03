@@ -7,10 +7,6 @@ terraform.tfstate
 bin/
 modules-dev/
 /pkg/
-website/.vagrant
-website/.bundle
-website/build
-website/node_modules
 .vagrant/
 *.backup
 ./*.tfstate
@@ -23,6 +19,4 @@ website/node_modules
 *.iml
 *.test
 *.iml
-terraform-softlayer_*
-
-website/vendor
+terraform-provider-softlayer_*

@@ -378,7 +378,7 @@ func prepareOneTimeTriggers(d *schema.ResourceData) ([]datatypes.Scale_Policy_Tr
 			if err != nil {
 				return nil, err
 			}
-			oneTimeTrigger.Date = &datatypes.Time{timeStamp.In(portalTimeZone)}
+			oneTimeTrigger.Date = &datatypes.Time{Time: timeStamp.In(portalTimeZone)}
 			triggers = append(triggers, oneTimeTrigger)
 		}
 	}
@@ -430,12 +430,12 @@ func prepareWatches(d *schema.Set) ([]datatypes.Scale_Policy_Trigger_ResourceUse
 
 		watch.Metric = sl.String(watchMap["metric"].(string))
 		if *watch.Metric != "host.cpu.percent" && *watch.Metric != "host.network.backend.in.rate" && *watch.Metric != "host.network.backend.out.rate" && *watch.Metric != "host.network.frontend.in.rate" && *watch.Metric != "host.network.frontend.out.rate" {
-			return nil, fmt.Errorf("Invalid metric : %s", watch.Metric)
+			return nil, fmt.Errorf("Invalid metric : %s", *watch.Metric)
 		}
 
 		watch.Operator = sl.String(watchMap["operator"].(string))
 		if *watch.Operator != ">" && *watch.Operator != "<" {
-			return nil, fmt.Errorf("Invalid operator : %s", watch.Operator)
+			return nil, fmt.Errorf("Invalid operator : %s", *watch.Operator)
 		}
 
 		watch.Period = sl.Int(watchMap["period"].(int))
@@ -524,7 +524,7 @@ func resourceSoftLayerScalePolicyTriggerHash(v interface{}) int {
 			buf.WriteString(fmt.Sprintf("%s-", watch["metric"].(string)))
 			buf.WriteString(fmt.Sprintf("%s-", watch["operator"].(string)))
 			buf.WriteString(fmt.Sprintf("%s-", watch["value"].(string)))
-			buf.WriteString(fmt.Sprintf("%s-", watch["period"].(int)))
+			buf.WriteString(fmt.Sprintf("%d-", watch["period"].(int)))
 		}
 	}
 	return hashcode.String(buf.String())
@@ -536,6 +536,6 @@ func resourceSoftLayerScalePolicyHandlerHash(v interface{}) int {
 	buf.WriteString(fmt.Sprintf("%s-", watch["metric"].(string)))
 	buf.WriteString(fmt.Sprintf("%s-", watch["operator"].(string)))
 	buf.WriteString(fmt.Sprintf("%s-", watch["value"].(string)))
-	buf.WriteString(fmt.Sprintf("%s-", watch["period"].(int)))
+	buf.WriteString(fmt.Sprintf("%d-", watch["period"].(int)))
 	return hashcode.String(buf.String())
 }
