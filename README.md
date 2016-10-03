@@ -3,7 +3,7 @@
 ## Install
 
 ```
-$ go get github.com/softlayer/terraform-provider-softlayer
+$ go get -u github.com/softlayer/terraform-provider-softlayer
 ```
 
 Create or edit this file to specify the location of the terraform softlayer provider binary:
