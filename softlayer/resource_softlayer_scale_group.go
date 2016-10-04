@@ -245,7 +245,7 @@ func buildScaleVlansFromResourceData(d *schema.Set, meta interface{}) ([]datatyp
 
 		if len(networkVlans) < 1 {
 			return nil, fmt.Errorf(
-				"Unable to locate the specified vlan: %d.%s",
+				"Invalid vlan: could not find specified vlan with number %d and router %s.",
 				vlanNumber, primaryRouterHostname)
 		}
 
