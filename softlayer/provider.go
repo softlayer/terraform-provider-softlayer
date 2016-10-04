@@ -40,7 +40,7 @@ func Provider() terraform.ResourceProvider {
 			},
 			"timeout": {
 				Type:        schema.TypeInt,
-				Required:    false,
+				Optional:    true,
 				Description: "The timeout (in seconds) to set for any SoftLayer API calls made.",
 			},
 		},
