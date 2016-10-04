@@ -283,7 +283,7 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 	}
 
 	result, err := service.Id(id).Mask(
-		"hostname,domain" +
+		"hostname,domain," +
 			"primaryIpAddress,primaryBackendIpAddress,privateNetworkOnlyFlag," +
 			"userData[value]," +
 			"hourlyBillingFlag," +
@@ -316,7 +316,9 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 		d.Set("public_vlan_id", *result.PrimaryNetworkComponent.NetworkVlan.Id)
 	}
 
-	d.Set("private_vlan_id", *result.PrimaryBackendNetworkComponent.NetworkVlan.Id)
+	if result.PrimaryBackendNetworkComponent.NetworkVlan != nil {
+		d.Set("private_vlan_id", *result.PrimaryBackendNetworkComponent.NetworkVlan.Id)
+	}
 
 	userData := result.UserData
 	if len(userData) > 0 && userData[0].Value != nil {
@@ -365,10 +367,10 @@ func WaitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interfa
 			service := services.GetAccountService(meta.(*session.Session))
 			bms, err := service.Filter(
 				filter.Build(
-					filter.Path("hostname").Eq(hostname),
-					filter.Path("domain").Eq(domain),
+					filter.Path("hardware.hostname").Eq(hostname),
+					filter.Path("hardware.domain").Eq(domain),
 				),
-			).Mask("id,provisionDate").GetBareMetalInstances()
+			).Mask("id,provisionDate").GetHardware()
 			if err != nil {
 				return nil, "", fmt.Errorf("Problem fetching bare metal servers matching %s.%s: %s", hostname, domain, err)
 			}
