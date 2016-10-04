@@ -76,7 +76,7 @@ The following arguments are supported:
 * `user_metadata` | *string*
     * Arbitrary data to be made available to the computing instance.
     * *Optional*
-* `ssh_keys_ids` | *array* of numbers
+* `ssh_key_ids` | *array* of numbers
     * SSH key _IDs_ to install on the computing instance upon provisioning.
     * *Optional*
 
