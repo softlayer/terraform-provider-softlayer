@@ -13,7 +13,6 @@ import (
         "github.com/softlayer/softlayer-go/sl"
         "log"
         "strconv"
-        "strings"
         "time"
 )
 
@@ -21,7 +20,7 @@ const (
         AdditionalServicesPackageType                  = "ADDITIONAL_SERVICES"
         AdditionalServicesGlobalIpAddressesPackageType = "ADDITIONAL_SERVICES_GLOBAL_IP_ADDRESSES"
 
-        GlobalIpMask = "id,ipAddress.ipAddressname[ipAddress]"
+        GlobalIpMask = "id,ipAddress[ipAddress],destinationIpAddress[ipAddress]"
 )
 
 func resourceSoftLayerGlobalIp() *schema.Resource {
@@ -54,8 +53,7 @@ func resourceSoftLayerGlobalIp() *schema.Resource {
 
 func resourceSoftLayerGlobalIpCreate(d *schema.ResourceData, meta interface{}) error {
         sess := meta.(*session.Session)
-        //destinationIpAddress := d.Get("routes_to").(string)
-
+        
         // Find price items with AdditionalServicesGlobalIpAddresses
         productOrderContainer, err := buildGlobalIpProductOrderContainer(d, sess, AdditionalServicesGlobalIpAddressesPackageType)
         if err != nil {
@@ -91,7 +89,7 @@ func resourceSoftLayerGlobalIpRead(d *schema.ResourceData, meta interface{}) err
 
         globalIp, err := service.Id(globalIpId).Mask(GlobalIpMask).GetObject()
         if err != nil {
-                if strings.Contains(err.Error(), "404 Not Found") {
+                if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
                         d.SetId("")
                         return nil
                 }
@@ -117,11 +115,11 @@ func resourceSoftLayerGlobalIpUpdate(d *schema.ResourceData, meta interface{}) e
         
         if d.HasChange("routes_to") {
                 _, err = service.Id(globalIpId).Route(sl.String(d.Get("routes_to").(string)))
+                if err != nil {
+                        return fmt.Errorf("Error editing Global Ip: %s", err)
+                }
         }        
 
-        if err != nil {
-                return fmt.Errorf("Error editing Global Ip: %s", err)
-        }
         return resourceSoftLayerGlobalIpRead(d, meta)
 }
 
@@ -158,6 +156,9 @@ func resourceSoftLayerGlobalIpExists(d *schema.ResourceData, meta interface{}) (
         }
 
         result, err := service.Id(globalIpId).GetObject()
+        if err != nil {
+                return false, fmt.Errorf("Error retrieving global ip: %s", err)
+        }
         return result.Id != nil && err == nil && *result.Id == globalIpId, nil
 }
 
@@ -194,11 +195,9 @@ func findGlobalIpByOrderId(sess *session.Session, orderId int) (datatypes.Networ
                 return datatypes.Network_Subnet_IpAddress_Global{}, err
         }
 
-        var result, ok = pendingResult.(datatypes.Network_Subnet_IpAddress_Global)
-
-        if ok {
+        if result, ok := pendingResult.(datatypes.Network_Subnet_IpAddress_Global); ok {
                 return result, nil
-        }
+        }        
 
         return datatypes.Network_Subnet_IpAddress_Global{},
                 fmt.Errorf("Cannot find global ip with order id '%d'", orderId)
