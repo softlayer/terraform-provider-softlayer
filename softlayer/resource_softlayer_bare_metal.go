@@ -24,6 +24,11 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
+			"id": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+
 			"hostname": {
 				Type:     schema.TypeString,
 				Required: true,
