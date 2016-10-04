@@ -1,7 +1,6 @@
 package softlayer
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -20,7 +19,6 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 	return &schema.Resource{
 		Create:   resourceSoftLayerBareMetalCreate,
 		Read:     resourceSoftLayerBareMetalRead,
-		Update:   resourceSoftLayerBareMetalUpdate,
 		Delete:   resourceSoftLayerBareMetalDelete,
 		Exists:   resourceSoftLayerBareMetalExists,
 		Importer: &schema.ResourceImporter{},
@@ -42,7 +40,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Type:          schema.TypeString,
 				Optional:      true,
 				ForceNew:      true,
-				ConflictsWith: []string{"image_id"},
+				ConflictsWith: []string{"image_template_id"},
 			},
 
 			"hourly_billing": {
@@ -137,9 +135,10 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 			},
 
 			"image_template_id": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				ForceNew: true,
+				Type:          schema.TypeInt,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"os_reference_code"},
 			},
 		},
 	}
@@ -279,10 +278,10 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 	}
 
 	result, err := service.Id(id).Mask(
-		"hostname,domain,processorCoreAmount,memoryCapacity," +
+		"hostname,domain" +
 			"primaryIpAddress,primaryBackendIpAddress,privateNetworkOnlyFlag," +
+			"userData[value]," +
 			"hourlyBillingFlag," +
-			"userData[value],hardDrives[capacity]," +
 			"datacenter[id,name,longName]," +
 			"primaryNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],maxSpeed]," +
 			"primaryBackendNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],maxSpeed]",
@@ -300,8 +299,6 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 	}
 
 	d.Set("network_speed", *result.PrimaryNetworkComponent.MaxSpeed)
-	d.Set("cpu", *result.ProcessorCoreAmount)
-	d.Set("ram", *result.MemoryCapacity)
 	if result.PrimaryIpAddress != nil {
 		d.Set("public_ipv4_address", *result.PrimaryIpAddress)
 	}
@@ -317,19 +314,11 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 	d.Set("private_vlan_id", *result.PrimaryBackendNetworkComponent.NetworkVlan.Id)
 
 	userData := result.UserData
-	if userData != nil && len(userData) > 0 {
-		d.Set("user_data", userData)
+	if len(userData) > 0 && userData[0].Value != nil {
+		d.Set("user_data", *userData[0].Value)
 	}
 
 	return nil
-}
-
-func resourceSoftLayerBareMetalUpdate(d *schema.ResourceData, meta interface{}) error {
-	return errors.New(
-		"Update is not supported for this resource." +
-			"This method should never have been called." +
-			" This indicates a bug in the resource schema.",
-	)
 }
 
 func resourceSoftLayerBareMetalDelete(d *schema.ResourceData, meta interface{}) error {

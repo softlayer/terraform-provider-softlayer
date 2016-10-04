@@ -6,9 +6,9 @@ PLUGIN=provider-softlayer
 default: test
 
 tools:
-	go get github.com/kardianos/govendor
-	go get github.com/mitchellh/gox
-	go get golang.org/x/tools/cmd/cover
+	@go get github.com/kardianos/govendor
+	@go get github.com/mitchellh/gox
+	@go get golang.org/x/tools/cmd/cover
 
 # bin generates the releaseable binary for your os and architecture
 bin: fmtcheck vet tools
