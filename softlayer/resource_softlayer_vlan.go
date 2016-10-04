@@ -1,6 +1,7 @@
 package softlayer
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -37,65 +38,65 @@ func resourceSoftLayerVlan() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
+			"id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
-			"datacenter": &schema.Schema{
+			"datacenter": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
-			"type": &schema.Schema{
+			"type": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-				ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+				ValidateFunc: func(v interface{}, k string) (ws []string, errs []error) {
 					vlanType := v.(string)
 					if vlanType != "PRIVATE" && vlanType != "PUBLIC" {
-						errors = append(errors, fmt.Errorf(
-							"Invalid vlan: vlanType should be either 'PRIVATE' or 'PUBLIC'"))
+						errs = append(errs, errors.New(
+							"vlan type should be either 'PRIVATE' or 'PUBLIC'"))
 					}
 					return
 				},
 			},
-			"primary_subnet_size": &schema.Schema{
+			"primary_subnet_size": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: true,
 			},
-			"name": &schema.Schema{
+			"name": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"primary_router_hostname": &schema.Schema{
+			"primary_router_hostname": {
 				Type:     schema.TypeString,
 				Computed: true,
 				Optional: true,
 				ForceNew: true,
 			},
-			"vlan_number": &schema.Schema{
+			"vlan_number": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
-			"softlayer_managed": &schema.Schema{
+			"softlayer_managed": {
 				Type:     schema.TypeBool,
 				Computed: true,
 			},
-			"child_resource_count": &schema.Schema{
+			"child_resource_count": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
-			"subnets": &schema.Schema{
+			"subnets": {
 				Type:     schema.TypeSet,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"subnet": &schema.Schema{
+						"subnet": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"subnet_type": &schema.Schema{
+						"subnet_type": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -327,7 +328,7 @@ func buildVlanProductOrderContainer(d *schema.ResourceData, sess *session.Sessio
 
 	if datacenter == "" {
 		return &datatypes.Container_Product_Order_Network_Vlan{},
-			fmt.Errorf("datacenter name is empty.")
+			errors.New("datacenter name is empty.")
 	}
 
 	dc, err := location.GetDatacenterByName(sess, datacenter, "id")

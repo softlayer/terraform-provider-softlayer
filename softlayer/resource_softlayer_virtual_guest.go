@@ -499,7 +499,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	if userData != nil && len(userData) > 0 {
 		data, err := base64.StdEncoding.DecodeString(*userData[0].Value)
 		if err != nil {
-			log.Printf("Can't base64 decode user data %s. error: %s", userData, err)
+			log.Printf("Can't base64 decode user data %s. error: %s", *userData[0].Value, err)
 			d.Set("user_data", userData)
 		} else {
 			d.Set("user_data", string(data))

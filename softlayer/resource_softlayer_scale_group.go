@@ -245,9 +245,8 @@ func buildScaleVlansFromResourceData(d *schema.Set, meta interface{}) ([]datatyp
 
 		if len(networkVlans) < 1 {
 			return nil, fmt.Errorf(
-				"Unable to locate a vlan matching the provided router hostname and vlan number: %s/%s",
-				primaryRouterHostname,
-				vlanNumber)
+				"Invalid vlan: could not find specified vlan with number %d and router %s.",
+				vlanNumber, primaryRouterHostname)
 		}
 
 		scaleNetworkVlans = append(
@@ -683,5 +682,5 @@ func getLocationGroupRegionalId(sess *session.Session, locationGroupRegionalName
 		}
 	}
 
-	return -1, fmt.Errorf("Invalid regional_group_id:", locationGroupRegionalName)
+	return -1, fmt.Errorf("Invalid regional_group_id: %s", locationGroupRegionalName)
 }
