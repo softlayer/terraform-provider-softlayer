@@ -4,7 +4,7 @@ Provides a `bare_metal` resource. This allows bare metals to be created, updated
 
 ```hcl
 # Create a new bare metal
-resource "softlayer_virtual_guest" "twc_terraform_sample" {
+resource "softlayer_bare_metal" "twc_terraform_sample" {
     hostname = "twc-terraform-sample-name"
     domain = "bar.example.com"
     os_reference_code = "UBUNTU_16_64"
