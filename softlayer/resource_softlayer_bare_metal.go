@@ -336,19 +336,35 @@ func resourceSoftLayerBareMetalDelete(d *schema.ResourceData, meta interface{}) 
 		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
 
-	_, err = WaitForNoActiveTransactions(d, meta)
-
+	_, err = WaitForNoBareMetalActiveTransactions(id, meta)
 	if err != nil {
-		return fmt.Errorf("Error deleting bare metal server, couldn't wait for zero active transactions: %s", err)
+		return fmt.Errorf("Error deleting bare metal server while waiting for zero active transactions: %s", err)
 	}
 
 	_, err = service.Id(id).DeleteObject()
-
 	if err != nil {
 		return fmt.Errorf("Error deleting bare metal server: %s", err)
 	}
 
 	return nil
+}
+
+func resourceSoftLayerBareMetalExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	service := services.GetHardwareService(meta.(*session.Session))
+
+	id, err := strconv.Atoi(d.Id())
+	if err != nil {
+		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
+	}
+
+	result, err := service.Id(id).GetObject()
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); !ok || apiErr.StatusCode != 404 {
+			return false, fmt.Errorf("Error trying to retrieve the Bare Metal server: %s", err)
+		}
+	}
+
+	return err == nil && result.Id != nil && *result.Id == id, nil
 }
 
 // Bare metal creation does not return a bare metal object with an Id.
@@ -389,20 +405,29 @@ func WaitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interfa
 	return stateConf.WaitForState()
 }
 
-func resourceSoftLayerBareMetalExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	service := services.GetHardwareService(meta.(*session.Session))
+func WaitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}, error) {
+	log.Printf("Waiting for server (%d) to have zero active transactions", id)
+	service := services.GetHardwareServerService(meta.(*session.Session))
 
-	id, err := strconv.Atoi(d.Id())
-	if err != nil {
-		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"", "active"},
+		Target:  []string{"idle"},
+		Refresh: func() (interface{}, string, error) {
+			bm, err := service.Id(id).Mask("id,activeTransactionCount").GetObject()
+			if err != nil {
+				return nil, "", fmt.Errorf("Couldn't get active transactions: %s", err)
+			}
+
+			if bm.ActiveTransactionCount != nil && *bm.ActiveTransactionCount == 0 {
+				return bm, "idle", nil
+			} else {
+				return bm, "active", nil
+			}
+		},
+		Timeout:    10 * time.Minute,
+		Delay:      10 * time.Second,
+		MinTimeout: 10 * time.Second,
 	}
 
-	result, err := service.Id(id).GetObject()
-	if err != nil {
-		if apiErr, ok := err.(sl.Error); !ok || apiErr.StatusCode != 404 {
-			return false, fmt.Errorf("Error trying to retrieve the Bare Metal server: %s", err)
-		}
-	}
-
-	return err == nil && result.Id != nil && *result.Id == id, nil
+	return stateConf.WaitForState()
 }
