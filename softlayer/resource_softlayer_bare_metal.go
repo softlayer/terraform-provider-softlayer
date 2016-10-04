@@ -137,7 +137,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 			},
 
 			"image_template_id": {
-				Type: schema.TypeInt,
+				Type:     schema.TypeInt,
 				Optional: true,
 				ForceNew: true,
 			},
@@ -231,7 +231,6 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 	sess := meta.(*session.Session)
 	hwService := services.GetHardwareService(sess)
 	orderService := services.GetProductOrderService(sess)
-
 
 	hardware, err := getBareMetalOrderFromResourceData(d, meta)
 	if err != nil {
