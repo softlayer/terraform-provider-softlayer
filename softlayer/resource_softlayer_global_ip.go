@@ -6,7 +6,6 @@ import (
         "github.com/hashicorp/terraform/helper/schema"
         "github.com/softlayer/softlayer-go/datatypes"
         "github.com/softlayer/softlayer-go/filter"
-        "github.com/softlayer/softlayer-go/helpers/location"
         "github.com/softlayer/softlayer-go/helpers/product"
         "github.com/softlayer/softlayer-go/services"
         "github.com/softlayer/softlayer-go/session"
@@ -159,7 +158,7 @@ func resourceSoftLayerGlobalIpExists(d *schema.ResourceData, meta interface{}) (
         if err != nil {
                 return false, fmt.Errorf("Error retrieving global ip: %s", err)
         }
-        return result.Id != nil && err == nil && *result.Id == globalIpId, nil
+        return result.Id != nil && *result.Id == globalIpId, nil
 }
 
 func findGlobalIpByOrderId(sess *session.Session, orderId int) (datatypes.Network_Subnet_IpAddress_Global, error) {
@@ -204,20 +203,8 @@ func findGlobalIpByOrderId(sess *session.Session, orderId int) (datatypes.Networ
 }
 
 func buildGlobalIpProductOrderContainer(d *schema.ResourceData, sess *session.Session, packageType string) (
-        *datatypes.Container_Product_Order_Network_Subnet, error) {
-        // hard coding the data center
-        datacenter := "sjc03"
-
-        if datacenter == "" {
-                return &datatypes.Container_Product_Order_Network_Subnet{},
-                        fmt.Errorf("datacenter name is empty.")
-        }
-
-        dc, err := location.GetDatacenterByName(sess, datacenter, "id")
-        if err != nil {
-                return &datatypes.Container_Product_Order_Network_Subnet{}, err
-        }
-
+        *datatypes.Container_Product_Order_Network_Subnet, error) {    
+   
         // 1. Get a package
         pkg, err := product.GetPackageByType(sess, packageType)
         if err != nil {
@@ -250,7 +237,6 @@ func buildGlobalIpProductOrderContainer(d *schema.ResourceData, sess *session.Se
         productOrderContainer := datatypes.Container_Product_Order_Network_Subnet{
                 Container_Product_Order: datatypes.Container_Product_Order{
                         PackageId: pkg.Id,
-                        Location:  sl.String(strconv.Itoa(*dc.Id)),
                         Prices: []datatypes.Product_Item_Price{
                                 {
                                         Id: globalIpItems[0].Prices[0].Id,
