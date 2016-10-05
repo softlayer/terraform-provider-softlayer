@@ -329,7 +329,8 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 }
 
 func resourceSoftLayerBareMetalDelete(d *schema.ResourceData, meta interface{}) error {
-	service := services.GetHardwareService(meta.(*session.Session))
+	sess := meta.(*session.Session)
+	service := services.GetHardwareService(sess)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -341,9 +342,17 @@ func resourceSoftLayerBareMetalDelete(d *schema.ResourceData, meta interface{}) 
 		return fmt.Errorf("Error deleting bare metal server while waiting for zero active transactions: %s", err)
 	}
 
-	_, err = service.Id(id).DeleteObject()
+	billingItem, err := service.Id(id).GetBillingItem()
 	if err != nil {
-		return fmt.Errorf("Error deleting bare metal server: %s", err)
+		return fmt.Errorf("Error getting billing item for bare metal server: %s", err)
+	}
+
+	billingItemService := services.GetBillingItemService(sess)
+	_, err = billingItemService.Id(*billingItem.Id).CancelItem(
+		sl.Bool(true), sl.Bool(true), sl.String("No longer required"), sl.String("Please cancel this server"),
+	)
+	if err != nil {
+		return fmt.Errorf("Error canceling the bare metal server (%d): %s", id, err)
 	}
 
 	return nil
