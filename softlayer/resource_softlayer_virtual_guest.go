@@ -216,6 +216,13 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				ForceNew:      true,
 				ConflictsWith: []string{"os_reference_code"},
 			},
+
+			"tags": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				Set:      schema.HashString,
+			},
 		},
 	}
 }
@@ -397,14 +404,20 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 	log.Println("[INFO] Creating virtual machine")
 
 	guest, err := service.CreateObject(&opts)
-
 	if err != nil {
 		return fmt.Errorf("Error creating virtual guest: %s", err)
 	}
 
-	d.SetId(fmt.Sprintf("%d", *guest.Id))
+	id := *guest.Id
+	d.SetId(fmt.Sprintf("%d", id))
 
 	log.Printf("[INFO] Virtual Machine ID: %s", d.Id())
+
+	// Set tags
+	err = setGuestTags(id, d, meta)
+	if err != nil {
+		return err
+	}
 
 	// wait for machine availability
 	_, err = WaitForNoActiveTransactions(d, meta)
@@ -438,7 +451,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		"hostname,domain,startCpus,maxMemory,dedicatedAccountHostOnlyFlag," +
 			"primaryIpAddress,primaryBackendIpAddress,privateNetworkOnlyFlag," +
 			"hourlyBillingFlag,localDiskFlag," +
-			"userData[value]," +
+			"userData[value],tagReferences[id,tag[name]]," +
 			"datacenter[id,name,longName]," +
 			"primaryNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]," +
 			"primaryBackendNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]",
@@ -506,6 +519,15 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		}
 	}
 
+	tagReferences := result.TagReferences
+	if len(tagReferences) > 0 {
+		tags := []string{}
+		for _, tagRef := range tagReferences {
+			tags = append(tags, *tagRef.Tag.Name)
+		}
+		d.Set("tags", tags)
+	}
+
 	return nil
 }
 
@@ -538,10 +560,17 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 
 	// Set user data if provided and not empty
 	if d.HasChange("user_data") {
-		// TODO: Check if user metadata needs to be base64 encoded
 		_, err := service.Id(id).SetUserMetadata([]string{d.Get("user_data").(string)})
 		if err != nil {
 			return fmt.Errorf("Couldn't update user data for virtual guest: %s", err)
+		}
+	}
+
+	// Update tags
+	if d.HasChange("tags") {
+		err := setGuestTags(id, d, meta)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -708,4 +737,33 @@ func resourceSoftLayerVirtualGuestExists(d *schema.ResourceData, meta interface{
 
 	result, err := service.Id(guestId).GetObject()
 	return result.Id != nil && err == nil && *result.Id == guestId, nil
+}
+
+func getTags(d *schema.ResourceData) string {
+	tagSet := d.Get("tags").(*schema.Set)
+
+	if tagSet.Len() == 0 {
+		return ""
+	}
+
+	tags := make([]string, 0, tagSet.Len())
+	for _, elem := range tagSet.List() {
+		tag := elem.(string)
+		tags = append(tags, tag)
+	}
+	return strings.Join(tags, ",")
+}
+
+func setGuestTags(id int, d *schema.ResourceData, meta interface{}) error {
+	service := services.GetVirtualGuestService(meta.(*session.Session))
+
+	tags := getTags(d)
+	if tags != "" {
+		_, err := service.Id(id).SetTags(sl.String(tags))
+		if err != nil {
+			return fmt.Errorf("Could not set tags on virtual guest %d", id)
+		}
+	}
+
+	return nil
 }

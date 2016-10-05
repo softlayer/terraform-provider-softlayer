@@ -263,7 +263,7 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 	log.Printf("[INFO] Bare Metal Server ID: %s", d.Id())
 
 	// wait for machine availability
-	bm, err := WaitForBareMetalProvision(&hardware, meta)
+	bm, err := waitForBareMetalProvision(&hardware, meta)
 	if err != nil {
 		return fmt.Errorf(
 			"Error waiting for bare metal server (%s) to become ready: %s", d.Id(), err)
@@ -337,7 +337,7 @@ func resourceSoftLayerBareMetalDelete(d *schema.ResourceData, meta interface{}) 
 		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
 
-	_, err = WaitForNoBareMetalActiveTransactions(id, meta)
+	_, err = waitForNoBareMetalActiveTransactions(id, meta)
 	if err != nil {
 		return fmt.Errorf("Error deleting bare metal server while waiting for zero active transactions: %s", err)
 	}
@@ -380,7 +380,7 @@ func resourceSoftLayerBareMetalExists(d *schema.ResourceData, meta interface{}) 
 // Have to wait on provision date to become available on server that matches
 // hostname and domain.
 // http://sldn.softlayer.com/blog/bpotter/ordering-bare-metal-servers-using-softlayer-api
-func WaitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interface{}, error) {
+func waitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interface{}, error) {
 	hostname := *d.Hostname
 	domain := *d.Domain
 	log.Printf("Waiting for server (%s.%s) to have to be provisioned", hostname, domain)
@@ -414,7 +414,7 @@ func WaitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interfa
 	return stateConf.WaitForState()
 }
 
-func WaitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}, error) {
+func waitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}, error) {
 	log.Printf("Waiting for server (%d) to have zero active transactions", id)
 	service := services.GetHardwareServerService(meta.(*session.Session))
 
