@@ -28,7 +28,16 @@ func TestAccSoftLayerGlobalIp_Basic(t *testing.T) {
                                         resource.TestCheckResourceAttr(
                                                 "softlayer_global_ip.test-global-ip", "routes_to", "119.81.82.163"),
                                 ),
-                        },                        
+                        }, 
+                        
+                        resource.TestStep{
+                                Config: testAccCheckSoftLayerGlobalIpConfig_updated,
+                                Check: resource.ComposeTestCheckFunc(
+                                        testAccCheckSoftLayerGlobalIpExists("softlayer_global_ip.updated-test-global-ip", &globalIp),
+                                        resource.TestCheckResourceAttr(
+                                                "softlayer_global_ip.updated-test-global-ip", "routes_to", "119.81.82.160"),
+                                ),
+                        },
                 },
         })
 }
@@ -98,5 +107,10 @@ func testAccCheckSoftLayerGlobalIpExists(n string, globalIp *datatypes.Network_S
 
 const testAccCheckSoftLayerGlobalIpConfig_basic = `
 resource "softlayer_global_ip" "test-global-ip" {
+    routes_to = "119.81.82.163"
+}`
+
+const testAccCheckSoftLayerGlobalIpConfig_updated = `
+resource "softlayer_global_ip" "updated-test-global-ip" {
     routes_to = "119.81.82.160"
 }`
