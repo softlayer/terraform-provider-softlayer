@@ -56,7 +56,7 @@ func TestAccSoftLayerBareMetal_Basic(t *testing.T) {
 				Config:  testAccCheckSoftLayerBareMetalConfig_update,
 				Destroy: false,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckSoftLayerVirtualGuestExists("softlayer_bare_metal.terraform-acceptance-test-1", &bareMetal),
+					testAccCheckSoftLayerBareMetalExists("softlayer_bare_metal.terraform-acceptance-test-1", &bareMetal),
 					CheckStringSet(
 						"softlayer_bare_metal.terraform-acceptance-test-1",
 						"tags", []string{"mesos-master"},

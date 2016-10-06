@@ -44,7 +44,7 @@ resource "softlayer_virtual_guest" "terraform-sample-BDTGroup" {
    local_disk = false
    image_id = 12345
    tags = [
-     "collectd"
+     "collectd",
      "mesos-master"
    ]
 }
