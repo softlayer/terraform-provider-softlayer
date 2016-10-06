@@ -90,7 +90,7 @@ The following arguments are supported:
     * As defined in the [SoftLayer_Virtual_Guest_SupplementalCreateObjectOptions](https://sldn.softlayer.com/reference/datatypes/SoftLayer_Virtual_Guest_SupplementalCreateObjectOptions).
     * *Optional*
 *   `tags` | *array* of strings
-    * Set tags on this bare metal server. The characters permitted are A-Z, 0-9, whitespace, _ (underscore), - (hypen), . (period), and : (colon). All other characters will be stripped away.
+    * Set tags on this bare metal server. The characters permitted are A-Z, 0-9, whitespace, _ (underscore), - (hyphen), . (period), and : (colon). All other characters will be stripped away.
     * *Optional*
 
 ## Attributes Reference
