@@ -19,6 +19,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 	return &schema.Resource{
 		Create:   resourceSoftLayerBareMetalCreate,
 		Read:     resourceSoftLayerBareMetalRead,
+		Update:   resourceSoftLayerBareMetalUpdate,
 		Delete:   resourceSoftLayerBareMetalDelete,
 		Exists:   resourceSoftLayerBareMetalExists,
 		Importer: &schema.ResourceImporter{},
@@ -145,6 +146,13 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew:      true,
 				ConflictsWith: []string{"os_reference_code"},
 			},
+
+			"tags": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				Set:      schema.HashString,
+			},
 		},
 	}
 }
@@ -269,7 +277,14 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 			"Error waiting for bare metal server (%s) to become ready: %s", d.Id(), err)
 	}
 
-	d.SetId(fmt.Sprintf("%d", *bm.(datatypes.Hardware).Id))
+	id := *bm.(datatypes.Hardware).Id
+	d.SetId(fmt.Sprintf("%d", id))
+
+	// Set tags
+	err = setHardwareTags(id, d, meta)
+	if err != nil {
+		return err
+	}
 
 	return resourceSoftLayerBareMetalRead(d, meta)
 }
@@ -285,7 +300,7 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 	result, err := service.Id(id).Mask(
 		"hostname,domain," +
 			"primaryIpAddress,primaryBackendIpAddress,privateNetworkOnlyFlag," +
-			"userData[value]," +
+			"userData[value],tagReferences[id,tag[name]]," +
 			"hourlyBillingFlag," +
 			"datacenter[id,name,longName]," +
 			"primaryNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],maxSpeed]," +
@@ -323,6 +338,28 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 	userData := result.UserData
 	if len(userData) > 0 && userData[0].Value != nil {
 		d.Set("user_data", *userData[0].Value)
+	}
+
+	tagReferences := result.TagReferences
+	if len(tagReferences) > 0 {
+		tags := []string{}
+		for _, tagRef := range tagReferences {
+			tags = append(tags, *tagRef.Tag.Name)
+		}
+		d.Set("tags", tags)
+	}
+
+	return nil
+}
+
+func resourceSoftLayerBareMetalUpdate(d *schema.ResourceData, meta interface{}) error {
+	id, _ := strconv.Atoi(d.Id())
+
+	if d.HasChange("tags") {
+		err := setHardwareTags(id, d, meta)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -439,4 +476,18 @@ func waitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}
 	}
 
 	return stateConf.WaitForState()
+}
+
+func setHardwareTags(id int, d *schema.ResourceData, meta interface{}) error {
+	service := services.GetHardwareService(meta.(*session.Session))
+
+	tags := getTags(d)
+	if tags != "" {
+		_, err := service.Id(id).SetTags(sl.String(tags))
+		if err != nil {
+			return fmt.Errorf("Could not set tags on bare metal server %d", id)
+		}
+	}
+
+	return nil
 }

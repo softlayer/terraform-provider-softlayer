@@ -32,6 +32,8 @@ func TestAccSoftLayerBareMetal_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_bare_metal.terraform-acceptance-test-1", "domain", "bar.example.com"),
 					resource.TestCheckResourceAttr(
+						"softlayer_bare_metal.terraform-acceptance-test-1", "os_reference_code", "UBUNTU_16_64"),
+					resource.TestCheckResourceAttr(
 						"softlayer_bare_metal.terraform-acceptance-test-1", "datacenter", "dal01"),
 					resource.TestCheckResourceAttr(
 						"softlayer_bare_metal.terraform-acceptance-test-1", "network_speed", "100"),
@@ -43,6 +45,22 @@ func TestAccSoftLayerBareMetal_Basic(t *testing.T) {
 						"softlayer_bare_metal.terraform-acceptance-test-1", "user_metadata", "{\"value\":\"newvalue\"}"),
 					resource.TestCheckResourceAttr(
 						"softlayer_bare_metal.terraform-acceptance-test-1", "fixed_config_preset", "S1270_8GB_2X1TBSATA_NORAID"),
+					CheckStringSet(
+						"softlayer_bare_metal.terraform-acceptance-test-1",
+						"tags", []string{"collectd"},
+					),
+				),
+			},
+
+			{
+				Config:  testAccCheckSoftLayerBareMetalConfig_update,
+				Destroy: false,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSoftLayerVirtualGuestExists("softlayer_bare_metal.terraform-acceptance-test-1", &bareMetal),
+					CheckStringSet(
+						"softlayer_bare_metal.terraform-acceptance-test-1",
+						"tags", []string{"mesos-master"},
+					),
 				),
 			},
 		},
@@ -115,11 +133,27 @@ resource "softlayer_bare_metal" "terraform-acceptance-test-1" {
     hostname = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "UBUNTU_16_64"
-    datacenter = "ams01"
+    datacenter = "dal01"
+    network_speed = 100
+    hourly_billing = true
+	private_network_only = false
+    user_metadata = "{\"value\":\"newvalue\"}"
+    fixed_config_preset = "S1270_8GB_2X1TBSATA_NORAID"
+    tags = ["collectd"]
+}
+`
+
+const testAccCheckSoftLayerBareMetalConfig_update = `
+resource "softlayer_bare_metal" "terraform-acceptance-test-1" {
+    hostname = "terraform-test"
+    domain = "bar.example.com"
+    os_reference_code = "UBUNTU_16_64"
+    datacenter = "dal01"
     network_speed = 100
     hourly_billing = true
     private_network_only = false
     user_metadata = "{\"value\":\"newvalue\"}"
     fixed_config_preset = "S1270_8GB_2X1TBSATA_NORAID"
+    tags = ["mesos-master"]
 }
 `
