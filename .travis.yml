@@ -1,0 +1,11 @@
+sudo: false
+language: go
+go:
+    - 1.7.1
+
+script:
+    - go get github.com/softlayer/softlayer-go/...
+    - go get github.com/hashicorp/terraform
+    - 'if [ "${TRAVIS_BUILD_DIR}" != "${GOPATH}/src/github.com/softlayer/terraform-provider-softlayer" ]; then ln -s "${TRAVIS_BUILD_DIR}" "${GOPATH}/src/github.com/softlayer/terraform-provider-softlayer"; fi'
+    - make test
+
