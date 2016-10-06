@@ -28,7 +28,7 @@ func TestAccSoftLayerBareMetal_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerBareMetalExists("softlayer_bare_metal.terraform-acceptance-test-1", &bareMetal),
 					resource.TestCheckResourceAttr(
-						"softlayer_bare_metal.terraform-acceptance-test-1", "name", "terraform-test"),
+						"softlayer_bare_metal.terraform-acceptance-test-1", "hostname", "terraform-test"),
 					resource.TestCheckResourceAttr(
 						"softlayer_bare_metal.terraform-acceptance-test-1", "domain", "bar.example.com"),
 					resource.TestCheckResourceAttr(
@@ -112,13 +112,13 @@ func testAccCheckSoftLayerBareMetalExists(n string, bareMetal *datatypes.Hardwar
 
 const testAccCheckSoftLayerBareMetalConfig_basic = `
 resource "softlayer_bare_metal" "terraform-acceptance-test-1" {
-    name = "terraform-test"
+    hostname = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "UBUNTU_16_64"
     datacenter = "ams01"
     network_speed = 100
     hourly_billing = true
-	private_network_only = false
+    private_network_only = false
     user_metadata = "{\"value\":\"newvalue\"}"
     fixed_config_preset = "S1270_8GB_2X1TBSATA_NORAID"
 }
