@@ -155,7 +155,7 @@ func resourceSoftLayerLbLocalServiceUpdate(d *schema.ResourceData, meta interfac
 	svcID, _ := strconv.Atoi(d.Id())
 	svc, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerServiceService(sess).
 		Id(svcID).
-		Mask("id,serviceGroup[id,routingTypeId,routingMethodId,virtualServer[id,,allocation,port,virtualIpAddress[id]]]").
+		Mask("id,serviceGroup[id,routingTypeId,routingMethodId,virtualServer[id,allocation,port,virtualIpAddress[id]]]").
 		GetObject()
 
 	if err != nil {
