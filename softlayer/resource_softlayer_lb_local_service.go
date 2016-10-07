@@ -132,8 +132,8 @@ func resourceSoftLayerLbLocalServiceCreate(d *schema.ResourceData, meta interfac
 		Id(sgID).
 		Mask("mask[id,port,ipAddressId]").
 		Filter(filter.New(
-			filter.Path("port").Eq(d.Get("port")),
-			filter.Path("ipAddressId").Eq(d.Get("ip_address_id"))).Build()).
+			filter.Path("services.port").Eq(d.Get("port")),
+			filter.Path("services.ipAddressId").Eq(d.Get("ip_address_id"))).Build()).
 		GetServices()
 
 	if err != nil || len(svcs) == 0 {
