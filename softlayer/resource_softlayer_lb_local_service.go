@@ -116,32 +116,7 @@ func resourceSoftLayerLbLocalServiceCreate(d *schema.ResourceData, meta interfac
 
 	log.Println("[INFO] Creating load balancer service")
 
-	stateConf := &resource.StateChangeConf{
-		Pending: []string{"pending"},
-		Target:  []string{"complete"},
-		Refresh: func() (interface{}, string, error) {
-			_, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
-				Id(vipID).
-				EditObject(&vip)
-
-			if apiErr, ok := err.(sl.Error); ok {
-				// 500 could mean that the LB is busy with another transaction. Retry
-				if apiErr.StatusCode == 500 {
-					return false, "pending", nil
-				}
-
-				// Any other error is unexpected. Abort
-				return false, "", err
-			}
-
-			return true, "complete", nil
-		},
-		Timeout:    10 * time.Minute,
-		Delay:      5 * time.Second,
-		MinTimeout: 3 * time.Second,
-	}
-
-	_, err = stateConf.WaitForState()
+	err = updateLoadBalancerService(sess, vipID, &vip)
 
 	if err != nil {
 		return fmt.Errorf("Error creating load balancer service: %s", err)
@@ -228,32 +203,7 @@ func resourceSoftLayerLbLocalServiceUpdate(d *schema.ResourceData, meta interfac
 
 	log.Println("[INFO] Updating load balancer service")
 
-	stateConf := &resource.StateChangeConf{
-		Pending: []string{"pending"},
-		Target:  []string{"complete"},
-		Refresh: func() (interface{}, string, error) {
-			_, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
-				Id(vipID).
-				EditObject(&vip)
-
-			if apiErr, ok := err.(sl.Error); ok {
-				// 500 could mean that the LB is busy with another transaction. Retry
-				if apiErr.StatusCode == 500 {
-					return false, "pending", nil
-				}
-
-				// Any other error is unexpected. Abort
-				return false, "", err
-			}
-
-			return true, "complete", nil
-		},
-		Timeout:    10 * time.Minute,
-		Delay:      5 * time.Second,
-		MinTimeout: 3 * time.Second,
-	}
-
-	_, err = stateConf.WaitForState()
+	err = updateLoadBalancerService(sess, vipID, &vip)
 
 	if err != nil {
 		return fmt.Errorf("Error updating load balancer service: %s", err)
@@ -308,7 +258,7 @@ func resourceSoftLayerLbLocalServiceDelete(d *schema.ResourceData, meta interfac
 					return true, "complete", nil
 				default:
 					// Any other error is unexpected. Abort
-					return false, "error", err
+					return false, "", err
 				}
 			}
 
@@ -362,4 +312,35 @@ func getHealthCheckTypeId(sess *session.Session, healthCheckTypeName string) (in
 	}
 
 	return *healthCheckTypes[0].Id, nil
+}
+
+func updateLoadBalancerService(sess *session.Session, vipID int, vip *datatypes.Network_Application_Delivery_Controller_LoadBalancer_VirtualIpAddress) error {
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"pending"},
+		Target:  []string{"complete"},
+		Refresh: func() (interface{}, string, error) {
+			_, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
+				Id(vipID).
+				EditObject(vip)
+
+			if apiErr, ok := err.(sl.Error); ok {
+				// 500 could mean that the LB is busy with another transaction. Retry
+				if apiErr.StatusCode == 500 {
+					return false, "pending", nil
+				}
+
+				// Any other error is unexpected. Abort
+				return false, "", err
+			}
+
+			return true, "complete", nil
+		},
+		Timeout:    10 * time.Minute,
+		Delay:      5 * time.Second,
+		MinTimeout: 3 * time.Second,
+	}
+
+	_, err := stateConf.WaitForState()
+
+	return err
 }
