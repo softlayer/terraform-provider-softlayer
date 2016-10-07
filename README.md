@@ -1,6 +1,6 @@
 # terraform-provider-softlayer
 
-[![Chat on gitter](https://img.shields.io/gitter/room/softlayer/terraform-provider-softlayer.svg?maxAge=2592000)](https://gitter.im/softlayer/terraform-provider-softlayer)
+[![Chat on gitter](https://img.shields.io/gitter/room/softlayer/terraform-provider-softlayer.svg?maxAge=2592000)](https://gitter.im/softlayer/terraform-provider-softlayer) [![Build Status](https://travis-ci.org/softlayer/terraform-provider-softlayer.svg?branch=master)](https://travis-ci.org/softlayer/terraform-provider-softlayer)
 
 ## Install
 
