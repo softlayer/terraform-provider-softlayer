@@ -269,7 +269,7 @@ func resourceSoftLayerLbLocalServiceRead(d *schema.ResourceData, meta interface{
 
 	svc, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerServiceService(sess).
 		Id(svcID).
-		Mask("ipAddressId,port,healthChecks[type[keyname]],groupReferences[weight]").
+		Mask("ipAddressId,enabled,port,healthChecks[type[keyname]],groupReferences[weight]").
 		GetObject()
 
 	if err != nil {
@@ -280,6 +280,7 @@ func resourceSoftLayerLbLocalServiceRead(d *schema.ResourceData, meta interface{
 	d.Set("port", *svc.Port)
 	d.Set("health_check_type", *svc.HealthChecks[0].Type.Keyname)
 	d.Set("weight", *svc.GroupReferences[0].Weight)
+	d.Set("enabled", (*svc.Enabled == 1))
 
 	return nil
 }
