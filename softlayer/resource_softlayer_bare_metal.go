@@ -322,7 +322,7 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 
 	userData := result.UserData
 	if len(userData) > 0 && userData[0].Value != nil {
-		d.Set("user_data", *userData[0].Value)
+		d.Set("user_metadata", *userData[0].Value)
 	}
 
 	return nil
@@ -419,12 +419,12 @@ func WaitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}
 	service := services.GetHardwareServerService(meta.(*session.Session))
 
 	stateConf := &resource.StateChangeConf{
-		Pending: []string{"", "active"},
+		Pending: []string{"retry", "active"},
 		Target:  []string{"idle"},
 		Refresh: func() (interface{}, string, error) {
 			bm, err := service.Id(id).Mask("id,activeTransactionCount").GetObject()
 			if err != nil {
-				return nil, "", fmt.Errorf("Couldn't get active transactions: %s", err)
+				return nil, "retry", nil
 			}
 
 			if bm.ActiveTransactionCount != nil && *bm.ActiveTransactionCount == 0 {
