@@ -1,48 +1,24 @@
-# `softlayer_virtual_guest`
+# `softlayer_bare_metal`
 
-Provides a `virtual_guest` resource. This allows virtual guests to be created, updated and deleted.
+Provides a `bare_metal` resource. This allows bare metals to be created, updated and deleted.
 
 ```hcl
-# Create a new virtual guest using image "Debian"
-resource "softlayer_virtual_guest" "twc_terraform_sample" {
-    name = "twc-terraform-sample-name"
+# Create a new bare metal
+resource "softlayer_bare_metal" "twc_terraform_sample" {
+    hostname = "twc-terraform-sample-name"
     domain = "bar.example.com"
-    os_reference_code = "DEBIAN_7_64"
-    datacenter = "wdc01"
-    network_speed = 10
-    hourly_billing = true
-    private_network_only = false
-    cpu = 1
-    ram = 1024
-    disks = [25, 10, 20]
-    user_data = "{\"value\":\"newvalue\"}"
-    dedicated_acct_host_only = true
-    local_disk = false
-    front_end_vlan {
-       vlan_number = 1144
-       primary_router_hostname = "fcr03a.wdc01"
-    }
-    back_end_vlan {
-       vlan_number = 978
-       primary_router_hostname = "bcr03a.wdc01"
-    }
-    front_end_subnet = "50.97.46.160/28"
-    back_end_subnet = "10.56.109.128/26"
-}
-```
-
-```hcl
-# Create a new virtual guest using block device template
-resource "softlayer_virtual_guest" "terraform-sample-BDTGroup" {
-   name = "terraform-sample-blockDeviceTemplateGroup"
-   domain = "bar.example.com"
-   datacenter = "ams01"
-   public_network_speed = 10
-   hourly_billing = false
-   cpu = 1
-   ram = 1024
-   local_disk = false
-   image_id = 12345
+    os_reference_code = "UBUNTU_16_64"
+    datacenter = "dal01"
+    network_speed = 100 # Optional
+    hourly_billing = true # Optional
+    private_network_only = false # Optional
+    user_metadata = "{\"value\":\"newvalue\"}" # Optional
+    public_vlan_id = 12345678 # Optional
+    private_vlan_id = 87654321 # Optional
+    public_subnet = "50.97.46.160/28" # Optional
+    private_subnet = "10.56.109.128/26" # Optional
+    fixed_config_preset = "S1270_8GB_2X1TBSATA_NORAID"
+    image_template_id = 12345 # Optional
 }
 ```
 
@@ -50,38 +26,29 @@ resource "softlayer_virtual_guest" "terraform-sample-BDTGroup" {
 
 The following arguments are supported:
 
-* `name` | *string*
+* `hostname` | *string*
     * Hostname for the computing instance.
     * **Required**
 * `domain` | *string*
     * Domain for the computing instance.
     * **Required**
-* `cpu` | *int*
-    * The number of CPU cores to allocate.
-    * **Required**
-* `ram` | *int*
-    * The amount of memory to allocate in megabytes.
-    * **Required**
 * `datacenter` | *string*
     * Specifies which datacenter the instance is to be provisioned in.
+    * **Required**
+* `fixed_config_preset` | *string*
+    * The configuration preset that the bare metal server will be provisioned with. This governs the type of cpu, number of cores, amount of ram, and hard drives which the bare metal server will have. [Take a look at the available presets](https://api.softlayer.com/rest/v3/SoftLayer_Hardware/getCreateObjectOptions.json) (use your api key as the password), and find the key called _fixedConfigurationPresets_. Under that, the presets will be identified by the *keyName*s.
     * **Required**
 * `hourly_billing` | *boolean*
     * Specifies the billing type for the instance. When true the computing instance will be billed on hourly usage, otherwise it will be billed on a monthly basis.
     * *Default*: true
     * *Optional*
-* `local_disk` | *boolean*
-    * Specifies the disk type for the instance. When true the disks for the computing instance will be provisioned on the host which it runs, otherwise SAN disks will be provisioned.
-    * *Default*: false
-    * *Optional*
-* `dedicated_acct_host_only` | *boolean*
-    * Specifies whether or not the instance must only run on hosts with instances from the same account
-    * *Default*: false
-    * *Optional*
 * `os_reference_code` | *string*
     * An operating system reference code that will be used to provision the computing instance. [Get a complete list of the os reference codes available](https://api.softlayer.com/rest/v3/SoftLayer_Virtual_Guest_Block_Device_Template_Group/getVhdImportSoftwareDescriptions.json?objectMask=referenceCode) (use your api key as the password).
-    * **Conflicts with** `image_id`.
-* `image_id` | *int*
+    * *Optional*
+    * **Conflicts with** `image_template_id`.
+* `image_template_id` | *int*
     * The image template id to be used to provision the computing instance. Note this is not the global identifier (uuid), but the image template group id that should point to a valid global identifier. You can get the image template id by navigating on the portal to _Devices > Manage > Images_, clicking on the desired image, and taking note of the id number in the browser URL location.
+    * *Optional*
     * **Conflicts with** `os_reference_code`.
 
     **Note:** Don't know the ID(s) for your image templates? [You can reference them by name, too](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_image_template.md).
@@ -94,26 +61,22 @@ The following arguments are supported:
     * Specifies whether or not the instance only has access to the private network. When true this flag specifies that a compute instance is to only have access to the private network.
     * *Default*: False
     * *Optional*
-* `front_end_vlan` | *map*
-    * Public VLAN which is to be used for the public network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans).
+* `public_vlan_id` | *int*
+    * Public VLAN which is to be used for the public network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans). Click on the desired VLAN and note the id number in the URL.
     * *Optional*
-* `back_end_vlan` | *map*
-    * Private VLAN which is to be used for the private network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans).
+* `private_vlan_id` | *int*
+    * Private VLAN which is to be used for the private network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans). Click on the desired VLAN and note the id number in the URL.
     * *Optional*
-* `front_end_subnet` | *string*
+* `public_subnet` | *string*
     * Public subnet which is to be used for the public network interface of the instance. Accepted values are primary public networks and can be found [here](https://control.softlayer.com/network/subnets).
     * *Optional*
-* `back_end_subnet` | *string*
+* `private_subnet` | *string*
     * Private subnet which is to be used for the private network interface of the instance. Accepted values are primary private networks and can be found [here](https://control.softlayer.com/network/subnets).
     * *Optional*
-* `disks` | *array* of numeric disk sizes (in GBs).
-    * Block device and disk image settings for the computing instance
-    * *Optional*
-    * *Default*: The smallest available capacity for the primary disk will be used. If an image template is specified the disk capacity will be be provided by the template.
-* `user_data` | *string*
+* `user_metadata` | *string*
     * Arbitrary data to be made available to the computing instance.
     * *Optional*
-* `ssh_keys` | *array* of numbers
+* `ssh_key_ids` | *array* of numbers
     * SSH key _IDs_ to install on the computing instance upon provisioning.
     * *Optional*
 
@@ -127,8 +90,6 @@ The following arguments are supported:
 
 The following attributes are exported:
 
-* `id` - id of the virtual guest.
-* `ipv4_address` - Public IPv4 address of the virtual guest.
-* `ip_address_id_private` - Unique ID for the private ID address assigned to the virtual_guest.
-* `ipv4_address_private` - Private IPv4 address of the virtual guest.
-* `ip_address_id` - Unique ID for the public ID address assigned to the virtual_guest.
+* `id` - id of the bare metal.
+* `public_ipv4_address` - Public IPv4 address of the bare metal server.
+* `private_ipv4_address` - Private IPv4 address of the bare metal server.
