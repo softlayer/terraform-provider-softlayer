@@ -19,6 +19,10 @@ resource "softlayer_bare_metal" "twc_terraform_sample" {
     private_subnet = "10.56.109.128/26" # Optional
     fixed_config_preset = "S1270_8GB_2X1TBSATA_NORAID"
     image_template_id = 12345 # Optional
+    tags = [
+      "collectd",
+      "mesos-master"
+    ]
 }
 ```
 
@@ -84,6 +88,9 @@ The following arguments are supported:
 
 * `post_install_script_uri` | *string*
     * As defined in the [SoftLayer_Virtual_Guest_SupplementalCreateObjectOptions](https://sldn.softlayer.com/reference/datatypes/SoftLayer_Virtual_Guest_SupplementalCreateObjectOptions).
+    * *Optional*
+*   `tags` | *array* of strings
+    * Set tags on this bare metal server. The characters permitted are A-Z, 0-9, whitespace, _ (underscore), - (hyphen), . (period), and : (colon). All other characters will be stripped away.
     * *Optional*
 
 ## Attributes Reference

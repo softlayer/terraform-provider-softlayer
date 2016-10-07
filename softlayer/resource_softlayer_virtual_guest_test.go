@@ -32,7 +32,7 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "domain", "bar.example.com"),
 					resource.TestCheckResourceAttr(
-						"softlayer_virtual_guest.terraform-acceptance-test-1", "datacenter", "ams01"),
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "datacenter", "wdc01"),
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "network_speed", "10"),
 					resource.TestCheckResourceAttr(
@@ -55,21 +55,24 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "local_disk", "false"),
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "dedicated_acct_host_only", "true"),
-					// TODO: As agreed, will be enabled when VLAN support is implemented: https://github.com/TheWeatherCompany/softlayer-go/issues/3
-					//					resource.TestCheckResourceAttr(
-					//						"softlayer_virtual_guest.terraform-acceptance-test-1", "frontend_vlan_id", "1085155"),
-					//					resource.TestCheckResourceAttr(
-					//						"softlayer_virtual_guest.terraform-acceptance-test-1", "backend_vlan_id", "1085157"),
+					CheckStringSet(
+						"softlayer_virtual_guest.terraform-acceptance-test-1",
+						"tags", []string{"collectd"},
+					),
 				),
 			},
 
 			{
-				Config:  testAccCheckSoftLayerVirtualGuestConfig_userDataUpdate,
+				Config:  testAccCheckSoftLayerVirtualGuestConfig_update,
 				Destroy: false,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerVirtualGuestExists("softlayer_virtual_guest.terraform-acceptance-test-1", &guest),
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "user_data", "updatedData"),
+					CheckStringSet(
+						"softlayer_virtual_guest.terraform-acceptance-test-1",
+						"tags", []string{"mesos-master"},
+					),
 				),
 			},
 
@@ -186,7 +189,7 @@ func testAccCheckSoftLayerVirtualGuestExists(n string, guest *datatypes.Virtual_
 			return err
 		}
 
-		fmt.Printf("The ID is %d", id)
+		fmt.Printf("The ID is %d\n", id)
 
 		if *retrieveVirtGuest.Id != id {
 			return errors.New("Virtual guest not found")
@@ -198,12 +201,50 @@ func testAccCheckSoftLayerVirtualGuestExists(n string, guest *datatypes.Virtual_
 	}
 }
 
+func CheckStringSet(n string, name string, set []string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[n]
+		if !ok {
+			return fmt.Errorf("Not found: %s", n)
+		}
+
+		values := []string{}
+		setLengthKey := fmt.Sprintf("%s.#", name)
+		prefix := fmt.Sprintf("%s.", name)
+		for k, v := range rs.Primary.Attributes {
+			if k != setLengthKey && strings.HasPrefix(k, prefix) {
+				values = append(values, v)
+			}
+		}
+
+		if len(values) == 0 {
+			return fmt.Errorf("Could not find %s.%s", n, name)
+		}
+
+		for _, s := range set {
+			found := false
+			for _, v := range values {
+				if s == v {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				return fmt.Errorf("%s was not found in the set %s", s, name)
+			}
+		}
+
+		return nil
+	}
+}
+
 const testAccCheckSoftLayerVirtualGuestConfig_basic = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     name = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "ams01"
+    datacenter = "wdc01"
     network_speed = 10
     hourly_billing = true
 	private_network_only = false
@@ -211,23 +252,25 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     ram = 1024
     disks = [25, 10, 20]
     user_data = "{\"value\":\"newvalue\"}"
+    tags = ["collectd"]
     dedicated_acct_host_only = true
     local_disk = false
 }
 `
 
-const testAccCheckSoftLayerVirtualGuestConfig_userDataUpdate = `
+const testAccCheckSoftLayerVirtualGuestConfig_update = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     name = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "ams01"
+    datacenter = "wdc01"
     network_speed = 10
     hourly_billing = true
     cpu = 1
     ram = 1024
     disks = [25, 10, 20]
     user_data = "updatedData"
+    tags = ["mesos-master"]
     dedicated_acct_host_only = true
     local_disk = false
 }
@@ -238,13 +281,14 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     name = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "ams01"
+    datacenter = "wdc01"
     network_speed = 100
     hourly_billing = true
     cpu = 1
     ram = 2048
     disks = [25, 10, 20]
     user_data = "updatedData"
+    tags = ["mesos-master"]
     dedicated_acct_host_only = true
     local_disk = false
 }
@@ -255,13 +299,14 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     name = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "ams01"
+    datacenter = "wdc01"
     network_speed = 100
     hourly_billing = true
     cpu = 2
     ram = 2048
     disks = [25, 10, 20]
     user_data = "updatedData"
+    tags = ["mesos-master"]
     dedicated_acct_host_only = true
     local_disk = false
 }
@@ -272,7 +317,7 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-pISU" {
     name = "terraform-test-pISU"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "ams01"
+    datacenter = "wdc01"
     network_speed = 10
     hourly_billing = true
 	private_network_only = false
@@ -290,7 +335,7 @@ const testAccCheckSoftLayerVirtualGuestConfig_blockDeviceTemplateGroup = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-BDTGroup" {
     name = "terraform-test-blockDeviceTemplateGroup"
     domain = "bar.example.com"
-    datacenter = "ams01"
+    datacenter = "wdc01"
     network_speed = 10
     hourly_billing = false
     cpu = 1

@@ -19,6 +19,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 	return &schema.Resource{
 		Create:   resourceSoftLayerBareMetalCreate,
 		Read:     resourceSoftLayerBareMetalRead,
+		Update:   resourceSoftLayerBareMetalUpdate,
 		Delete:   resourceSoftLayerBareMetalDelete,
 		Exists:   resourceSoftLayerBareMetalExists,
 		Importer: &schema.ResourceImporter{},
@@ -145,6 +146,13 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew:      true,
 				ConflictsWith: []string{"os_reference_code"},
 			},
+
+			"tags": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				Set:      schema.HashString,
+			},
 		},
 	}
 }
@@ -263,13 +271,20 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 	log.Printf("[INFO] Bare Metal Server ID: %s", d.Id())
 
 	// wait for machine availability
-	bm, err := WaitForBareMetalProvision(&hardware, meta)
+	bm, err := waitForBareMetalProvision(&hardware, meta)
 	if err != nil {
 		return fmt.Errorf(
 			"Error waiting for bare metal server (%s) to become ready: %s", d.Id(), err)
 	}
 
-	d.SetId(fmt.Sprintf("%d", *bm.(datatypes.Hardware).Id))
+	id := *bm.(datatypes.Hardware).Id
+	d.SetId(fmt.Sprintf("%d", id))
+
+	// Set tags
+	err = setHardwareTags(id, d, meta)
+	if err != nil {
+		return err
+	}
 
 	return resourceSoftLayerBareMetalRead(d, meta)
 }
@@ -285,7 +300,7 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 	result, err := service.Id(id).Mask(
 		"hostname,domain," +
 			"primaryIpAddress,primaryBackendIpAddress,privateNetworkOnlyFlag," +
-			"userData[value]," +
+			"userData[value],tagReferences[id,tag[name]]," +
 			"hourlyBillingFlag," +
 			"datacenter[id,name,longName]," +
 			"primaryNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],maxSpeed]," +
@@ -325,6 +340,29 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 		d.Set("user_metadata", *userData[0].Value)
 	}
 
+	tagReferences := result.TagReferences
+	tagReferencesLen := len(tagReferences)
+	if tagReferencesLen > 0 {
+		tags := make([]string, 0, tagReferencesLen)
+		for _, tagRef := range tagReferences {
+			tags = append(tags, *tagRef.Tag.Name)
+		}
+		d.Set("tags", tags)
+	}
+
+	return nil
+}
+
+func resourceSoftLayerBareMetalUpdate(d *schema.ResourceData, meta interface{}) error {
+	id, _ := strconv.Atoi(d.Id())
+
+	if d.HasChange("tags") {
+		err := setHardwareTags(id, d, meta)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -337,7 +375,7 @@ func resourceSoftLayerBareMetalDelete(d *schema.ResourceData, meta interface{}) 
 		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
 
-	_, err = WaitForNoBareMetalActiveTransactions(id, meta)
+	_, err = waitForNoBareMetalActiveTransactions(id, meta)
 	if err != nil {
 		return fmt.Errorf("Error deleting bare metal server while waiting for zero active transactions: %s", err)
 	}
@@ -380,7 +418,7 @@ func resourceSoftLayerBareMetalExists(d *schema.ResourceData, meta interface{}) 
 // Have to wait on provision date to become available on server that matches
 // hostname and domain.
 // http://sldn.softlayer.com/blog/bpotter/ordering-bare-metal-servers-using-softlayer-api
-func WaitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interface{}, error) {
+func waitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interface{}, error) {
 	hostname := *d.Hostname
 	domain := *d.Domain
 	log.Printf("Waiting for server (%s.%s) to have to be provisioned", hostname, domain)
@@ -414,7 +452,7 @@ func WaitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interfa
 	return stateConf.WaitForState()
 }
 
-func WaitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}, error) {
+func waitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}, error) {
 	log.Printf("Waiting for server (%d) to have zero active transactions", id)
 	service := services.GetHardwareServerService(meta.(*session.Session))
 
@@ -439,4 +477,18 @@ func WaitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}
 	}
 
 	return stateConf.WaitForState()
+}
+
+func setHardwareTags(id int, d *schema.ResourceData, meta interface{}) error {
+	service := services.GetHardwareService(meta.(*session.Session))
+
+	tags := getTags(d)
+	if tags != "" {
+		_, err := service.Id(id).SetTags(sl.String(tags))
+		if err != nil {
+			return fmt.Errorf("Could not set tags on bare metal server %d", id)
+		}
+	}
+
+	return nil
 }
