@@ -31,9 +31,9 @@ const testAccCheckSoftLayerLbLocalServiceConfig_basic = `
 resource "softlayer_virtual_guest" "test_server_1" {
     name = "terraform-test"
     domain = "bar.example.com"
-    image = "DEBIAN_7_64"
+    os_reference_code = "DEBIAN_7_64"
     datacenter = "tok02"
-    public_network_speed = 10
+    network_speed = 10
     hourly_billing = true
     private_network_only = false
     cpu = 1
@@ -45,9 +45,10 @@ resource "softlayer_virtual_guest" "test_server_1" {
 }
 
 resource "softlayer_lb_local" "testacc_foobar_lb" {
-    connections = 15000
+    connections = 250
     datacenter    = "tok02"
     ha_enabled  = false
+    dedicated = false
 }
 
 resource "softlayer_lb_local_service_group" "test_service_group" {
