@@ -341,8 +341,9 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 	}
 
 	tagReferences := result.TagReferences
-	if len(tagReferences) > 0 {
-		tags := []string{}
+	tagReferencesLen := len(tagReferences)
+	if tagReferencesLen > 0 {
+		tags := make([]string, 0, tagReferencesLen)
 		for _, tagRef := range tagReferences {
 			tags = append(tags, *tagRef.Tag.Name)
 		}
