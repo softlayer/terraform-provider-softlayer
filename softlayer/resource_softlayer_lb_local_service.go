@@ -1,11 +1,12 @@
 package softlayer
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"strconv"
+	"time"
 
+	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/filter"
@@ -115,16 +116,10 @@ func resourceSoftLayerLbLocalServiceCreate(d *schema.ResourceData, meta interfac
 
 	log.Println("[INFO] Creating load balancer service")
 
-	success, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
-		Id(vipID).
-		EditObject(&vip)
+	err = updateLoadBalancerService(sess, vipID, &vip)
 
 	if err != nil {
 		return fmt.Errorf("Error creating load balancer service: %s", err)
-	}
-
-	if !success {
-		return errors.New("Error creating load balancer service")
 	}
 
 	// Retrieve the newly created object, to obtain its ID
@@ -132,8 +127,8 @@ func resourceSoftLayerLbLocalServiceCreate(d *schema.ResourceData, meta interfac
 		Id(sgID).
 		Mask("mask[id,port,ipAddressId]").
 		Filter(filter.New(
-			filter.Path("port").Eq(d.Get("port")),
-			filter.Path("ipAddressId").Eq(d.Get("ip_address_id"))).Build()).
+			filter.Path("services.port").Eq(d.Get("port")),
+			filter.Path("services.ipAddressId").Eq(d.Get("ip_address_id"))).Build()).
 		GetServices()
 
 	if err != nil || len(svcs) == 0 {
@@ -208,16 +203,10 @@ func resourceSoftLayerLbLocalServiceUpdate(d *schema.ResourceData, meta interfac
 
 	log.Println("[INFO] Updating load balancer service")
 
-	success, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
-		Id(vipID).
-		EditObject(&vip)
+	err = updateLoadBalancerService(sess, vipID, &vip)
 
 	if err != nil {
 		return fmt.Errorf("Error updating load balancer service: %s", err)
-	}
-
-	if !success {
-		return errors.New("Error updating load balancer service")
 	}
 
 	return resourceSoftLayerLbLocalServiceRead(d, meta)
@@ -230,7 +219,7 @@ func resourceSoftLayerLbLocalServiceRead(d *schema.ResourceData, meta interface{
 
 	svc, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerServiceService(sess).
 		Id(svcID).
-		Mask("ipAddressId,port,healthChecks[type[keyname]],groupReferences[weight]").
+		Mask("ipAddressId,enabled,port,healthChecks[type[keyname]],groupReferences[weight]").
 		GetObject()
 
 	if err != nil {
@@ -241,6 +230,7 @@ func resourceSoftLayerLbLocalServiceRead(d *schema.ResourceData, meta interface{
 	d.Set("port", *svc.Port)
 	d.Set("health_check_type", *svc.HealthChecks[0].Type.Keyname)
 	d.Set("weight", *svc.GroupReferences[0].Weight)
+	d.Set("enabled", (*svc.Enabled == 1))
 
 	return nil
 }
@@ -250,9 +240,36 @@ func resourceSoftLayerLbLocalServiceDelete(d *schema.ResourceData, meta interfac
 
 	svcID, _ := strconv.Atoi(d.Id())
 
-	err := services.GetNetworkApplicationDeliveryControllerLoadBalancerServiceService(sess).
-		Id(svcID).
-		DeleteObject()
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"pending"},
+		Target:  []string{"complete"},
+		Refresh: func() (interface{}, string, error) {
+			err := services.GetNetworkApplicationDeliveryControllerLoadBalancerServiceService(sess).
+				Id(svcID).
+				DeleteObject()
+
+			if apiErr, ok := err.(sl.Error); ok {
+				switch {
+				case apiErr.StatusCode == 500 && apiErr.Exception == "SoftLayer_Exception_Network_Timeout":
+					// 500/Network_Timeout could mean that the LB is busy with another transaction. Retry
+					return false, "pending", nil
+				case apiErr.StatusCode == 404:
+					// 404 - service was deleted on the previous attempt
+					return true, "complete", nil
+				default:
+					// Any other error is unexpected. Abort
+					return false, "", err
+				}
+			}
+
+			return true, "complete", nil
+		},
+		Timeout:    10 * time.Minute,
+		Delay:      5 * time.Second,
+		MinTimeout: 3 * time.Second,
+	}
+
+	_, err := stateConf.WaitForState()
 
 	if err != nil {
 		return fmt.Errorf("Error deleting service: %s", err)
@@ -295,4 +312,35 @@ func getHealthCheckTypeId(sess *session.Session, healthCheckTypeName string) (in
 	}
 
 	return *healthCheckTypes[0].Id, nil
+}
+
+func updateLoadBalancerService(sess *session.Session, vipID int, vip *datatypes.Network_Application_Delivery_Controller_LoadBalancer_VirtualIpAddress) error {
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"pending"},
+		Target:  []string{"complete"},
+		Refresh: func() (interface{}, string, error) {
+			_, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
+				Id(vipID).
+				EditObject(vip)
+
+			if apiErr, ok := err.(sl.Error); ok {
+				// 500 could mean that the LB is busy with another transaction. Retry
+				if apiErr.StatusCode == 500 {
+					return false, "pending", nil
+				}
+
+				// Any other error is unexpected. Abort
+				return false, "", err
+			}
+
+			return true, "complete", nil
+		},
+		Timeout:    10 * time.Minute,
+		Delay:      5 * time.Second,
+		MinTimeout: 3 * time.Second,
+	}
+
+	_, err := stateConf.WaitForState()
+
+	return err
 }
