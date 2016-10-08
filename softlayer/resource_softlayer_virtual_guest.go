@@ -496,7 +496,9 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 
 	backEndVlan := d.Get("back_end_vlan").(map[string]interface{})
 	resultBackEndVlan := result.PrimaryBackendNetworkComponent.NetworkVlan
-	backEndVlan["primary_router_hostname"] = *resultBackEndVlan.PrimaryRouter.Hostname
+	if resultBackEndVlan.PrimaryRouter.Hostname != nil {
+		backEndVlan["primary_router_hostname"] = *resultBackEndVlan.PrimaryRouter.Hostname
+	}
 	backEndVlan["vlan_number"] = strconv.Itoa(*resultBackEndVlan.VlanNumber)
 	d.Set("back_end_vlan", backEndVlan)
 
