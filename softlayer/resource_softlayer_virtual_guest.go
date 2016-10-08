@@ -661,7 +661,7 @@ func WaitForUpgradeTransactionsToAppear(d *schema.ResourceData, meta interface{}
 		},
 		Timeout:    5 * time.Minute,
 		Delay:      5 * time.Second,
-		MinTimeout: 3 * time.Second,
+		MinTimeout: 5 * time.Second,
 	}
 
 	return stateConf.WaitForState()
@@ -690,9 +690,9 @@ func WaitForPublicIpAvailable(d *schema.ResourceData, meta interface{}) (interfa
 				return result, "available", nil
 			}
 		},
-		Timeout:    30 * time.Minute,
+		Timeout:    45 * time.Minute,
 		Delay:      10 * time.Second,
-		MinTimeout: 3 * time.Second,
+		MinTimeout: 10 * time.Second,
 	}
 
 	return stateConf.WaitForState()
@@ -720,9 +720,9 @@ func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (inte
 				return transactions, "active", nil
 			}
 		},
-		Timeout:    10 * time.Minute,
+		Timeout:    45 * time.Minute,
 		Delay:      10 * time.Second,
-		MinTimeout: 3 * time.Second,
+		MinTimeout: 10 * time.Second,
 	}
 
 	return stateConf.WaitForState()
