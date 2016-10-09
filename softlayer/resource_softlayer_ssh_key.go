@@ -23,28 +23,31 @@ func resourceSoftLayerSSHKey() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
+			"id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
 
-			"label": &schema.Schema{
+			"label": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
 
-			"public_key": &schema.Schema{
+			"public_key": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return strings.TrimSpace(old) == strings.TrimSpace(new)
+				},
 			},
 
-			"fingerprint": &schema.Schema{
+			"fingerprint": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
 
-			"notes": &schema.Schema{
+			"notes": {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  nil,
@@ -98,7 +101,7 @@ func resourceSoftLayerSSHKeyRead(d *schema.ResourceData, meta interface{}) error
 
 	d.Set("id", *key.Id)
 	d.Set("label", *key.Label)
-	d.Set("public_key", strings.TrimSpace(*key.Key))
+	d.Set("public_key", *key.Key)
 	d.Set("fingerprint", *key.Fingerprint)
 
 	if key.Notes != nil {
