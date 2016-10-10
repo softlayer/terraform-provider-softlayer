@@ -6,7 +6,7 @@ DEST_BIN=terraform-provider-softlayer
 
 echo "Compiling for OS: $XC_OS and ARCH: $XC_ARCH"
 
-gox -os="${XC_OS}" -arch="${XC_ARCH}" -output="${DEST_BIN}_{{.OS}}_{{.Arch}}"
+gox -os="${XC_OS}" -arch="${XC_ARCH}" -output="${DEST_BIN}_{{.OS}}_{{.Arch}}" -ldflags="-s -w"
 
 if [ $? != 0 ] ; then
     echo "Failed to compile, bailing."

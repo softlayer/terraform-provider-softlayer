@@ -16,7 +16,7 @@ bin: fmtcheck vet tools
 
 # meant as a pre-step before publishing cross-platform binaries
 bins: fmtcheck vet tools
-	gox -os="linux darwin windows" -arch="amd64 arm" 
+	gox -os="linux darwin windows" -arch="amd64 arm" -ldflags="-s -w"
 
 # test runs the unit tests
 test: fmtcheck vet
