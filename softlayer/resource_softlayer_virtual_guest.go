@@ -496,7 +496,9 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 
 	backEndVlan := d.Get("back_end_vlan").(map[string]interface{})
 	resultBackEndVlan := result.PrimaryBackendNetworkComponent.NetworkVlan
-	backEndVlan["primary_router_hostname"] = *resultBackEndVlan.PrimaryRouter.Hostname
+	if resultBackEndVlan.PrimaryRouter.Hostname != nil {
+		backEndVlan["primary_router_hostname"] = *resultBackEndVlan.PrimaryRouter.Hostname
+	}
 	backEndVlan["vlan_number"] = strconv.Itoa(*resultBackEndVlan.VlanNumber)
 	d.Set("back_end_vlan", backEndVlan)
 
@@ -644,19 +646,25 @@ func WaitForUpgradeTransactionsToAppear(d *schema.ResourceData, meta interface{}
 	}
 
 	stateConf := &resource.StateChangeConf{
-		Pending: []string{"pending_upgrade"},
+		Pending: []string{"retry", "pending_upgrade"},
 		Target:  []string{"upgrade_started"},
 		Refresh: func() (interface{}, string, error) {
 			service := services.GetVirtualGuestService(meta.(*session.Session))
 			transactions, err := service.Id(id).GetActiveTransactions()
 			if err != nil {
-				return nil, "", fmt.Errorf("Couldn't fetch active transactions: %s", err)
+				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
+					return nil, "", fmt.Errorf("Couldn't fetch active transactions: %s", err)
+				}
+
+				return false, "retry", nil
 			}
+
 			for _, transaction := range transactions {
 				if strings.Contains(*transaction.TransactionStatus.Name, "UPGRADE") {
 					return transactions, "upgrade_started", nil
 				}
 			}
+
 			return transactions, "pending_upgrade", nil
 		},
 		Timeout:    5 * time.Minute,
@@ -670,20 +678,27 @@ func WaitForUpgradeTransactionsToAppear(d *schema.ResourceData, meta interface{}
 func WaitForPublicIpAvailable(d *schema.ResourceData, meta interface{}) (interface{}, error) {
 	log.Printf("Waiting for server (%s) to get a public IP", d.Id())
 
+	id, err := strconv.Atoi(d.Id())
+	if err != nil {
+		return nil, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
+	}
+
 	stateConf := &resource.StateChangeConf{
-		Pending: []string{"", "unavailable"},
+		Pending: []string{"retry", "unavailable"},
 		Target:  []string{"available"},
 		Refresh: func() (interface{}, string, error) {
 			fmt.Println("Refreshing server state...")
 			service := services.GetVirtualGuestService(meta.(*session.Session))
-			id, err := strconv.Atoi(d.Id())
-			if err != nil {
-				return nil, "", fmt.Errorf("Not a valid ID, must be an integer: %s", err)
-			}
+
 			result, err := service.Id(id).GetObject()
 			if err != nil {
-				return nil, "", fmt.Errorf("Error retrieving virtual guest: %s", err)
+				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
+					return nil, "", fmt.Errorf("Error retrieving virtual guest: %s", err)
+				}
+
+				return false, "retry", nil
 			}
+
 			if result.PrimaryIpAddress == nil || *result.PrimaryIpAddress == "" {
 				return result, "unavailable", nil
 			} else {
@@ -706,14 +721,19 @@ func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (inte
 	}
 
 	stateConf := &resource.StateChangeConf{
-		Pending: []string{"", "active"},
+		Pending: []string{"retry", "active"},
 		Target:  []string{"idle"},
 		Refresh: func() (interface{}, string, error) {
 			service := services.GetVirtualGuestService(meta.(*session.Session))
 			transactions, err := service.Id(id).GetActiveTransactions()
 			if err != nil {
-				return nil, "", fmt.Errorf("Couldn't get active transactions: %s", err)
+				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
+					return nil, "", fmt.Errorf("Couldn't get active transactions: %s", err)
+				}
+
+				return false, "retry", nil
 			}
+
 			if len(transactions) == 0 {
 				return transactions, "idle", nil
 			} else {

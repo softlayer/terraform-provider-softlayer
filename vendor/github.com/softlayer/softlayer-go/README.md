@@ -1,4 +1,8 @@
-# gopherlayer
+# softlayer-go
+
+[![Build Status](https://travis-ci.org/softlayer/softlayer-go.svg?branch=master)](https://travis-ci.org/softlayer/softlayer-go)
+[![GoDoc](https://godoc.org/github.com/softlayer/softlayer-go?status.svg)](https://godoc.org/github.com/softlayer/softlayer-go)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 
 SoftLayer API Client for the Go language
 
@@ -25,6 +29,8 @@ accountService := services.GetAccountService(sess)
 account, err := accountService.getObject()
 ```
 
+[More examples](https://github.com/softlayer/softlayer-go/tree/master/examples)
+
 ### Sessions
 
 In addition to the example above, sessions can also be created using values
@@ -34,12 +40,15 @@ set in the environment, or from the local config file:
 sess := session.New()
 ```
 
-In this example, the username and API key are read from the environment
-variables `SOFTLAYER_USERNAME`, `SOFTLAYER_API_KEY`. If these are not set,
-the values from the local `~/.softlayer` file are used.
+In this usage, the username, API key, and endpoint are read from specific environment
+variables, then the local configuration file (~/.softlayer).  First match ends
+the search:
 
-The endpoint url is looked up in the `SOFTLAYER_ENDPOINT_URL` environment variable
-and then in `~/.softlayer`. Otherwise it defaults to `https://api.softlayer.com/rest/v3`.
+* Username: `env.SL_USERNAME` || `env.SOFTLAYER_USERNAME` || `config.username`
+* API Key: `env.SL_API_KEY` || `env.SOFTLAYER_API_KEY` || `config.api_key`
+* Endpoint: `env.SL_ENDPOINT_URL` || `env.SOFTLAYER_ENDPOINT_URL` || `config.endpoint_url`
+
+*Note:* Endpoint defaults to `https://api.softlayer.com/rest/v3` if not configured through any of the above methods
 
 ### Instance methods
 
@@ -124,7 +133,7 @@ accountServiceWithMaskAndFilter = accountService.Mask("id;hostname").
 Result limits are specified as separate `Limit` and `Offset` values:
 
 ```go
-accountSerice.
+accountService.
 	Offset(100).      // start at the 100th element in the list
 	Limit(25).        // limit to 25 results
 	GetVirtualGuests()
@@ -218,6 +227,70 @@ To enable debug output:
 
 ```go
 session.Debug = true
+```
+
+### Password-based authentication
+
+Password-based authentication (via requesting a token from the API) is
+only supported when talking to the API using the XML-RPC transport protocol.
+
+To use the XML-RPC protocol, simply specify an XML-RPC endpoint url:
+
+```go
+func main() {
+    // Create a session specifying an XML-RPC endpoint url.
+    sess := &session.Session{
+        Endpoint: "https://api.softlayer.com/xmlrpc/v3",
+    }
+
+    // Get a token from the api using your username and password
+    userService := services.GetUserCustomerService(sess)
+    token, err := userService.GetPortalLoginToken(username, password, nil, nil)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Add user id and token to the session.
+    sess.UserId = *token.UserId
+    sess.AuthToken = *token.Hash
+
+    // You have a complete authenticated session now.
+    // Call any api from this point on as normal...
+    keys, err := userService.Id(sess.UserId).GetApiAuthenticationKeys()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Println("API Key:", *keys[0].AuthenticationKey)
+}
+```
+
+## Development
+
+### Setup
+
+To get _softlayer-go_:
+
+```
+go get github.com/softlayer/softlayer-go/...
+```
+
+### Build
+
+```
+make
+```
+
+### Test
+
+```
+make test
+```
+
+### Updating dependencies
+
+```
+make update_deps
 ```
 
 ## Copyright
