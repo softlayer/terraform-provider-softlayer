@@ -19,16 +19,10 @@ resource "softlayer_lb_vpx" "test_vpx" {
     version = "10.1"
     plan = "Standard"
     ip_count = 2
-    front_end_vlan {
-      vlan_number = 1251
-      primary_router_hostname = "fcr01a.dal06"
-    }
-    back_end_vlan {
-       vlan_number = 1540
-       primary_router_hostname = "bcr01a.dal06"
-    }
-    front_end_subnet = "23.246.226.248/29"
-    back_end_subnet = "10.107.180.0/26"
+    public_vlan_id = 1251234
+    private_vlan_id = 1540786
+    public_subnet = "23.246.226.248/29"
+    private_subnet = "10.107.180.0/26"
 }
 ```
 
@@ -44,13 +38,13 @@ resource "softlayer_lb_vpx" "test_vpx" {
     * (Required) The VPX Load Balancer plan. Accepted values are `Standard` and `Platinum`.
 * `ip_count` | *int*
     * (Required) The number of static public IP addresses assigned to the VPX Load Balancer. Accepted values are `2`, `4`, `8`, and `16`.
-* `front_end_vlan` | *map*
-    * (Optional) Public VLAN which is to be used for the public network interface of the VPX Load Balancer. Accepted values can be found [here](https://control.softlayer.com/network/vlans).
-* `back_end_vlan` | *map*
-    * (Optional) Private VLAN which is to be used for the private network interface of the VPX Load Balancer. Accepted values can be found [here](https://control.softlayer.com/network/vlans).
-* `front_end_subnet` | *string*
+* `public_vlan_id` | *int*
+    * (Optional) Public VLAN id which is to be used for the public network interface of the VPX Load Balancer. Accepted values can be found [here](https://control.softlayer.com/network/vlans).  Click on the desired VLAN and note the ID on the resulting URL. Or, you can also [refer to a VLAN by name using a data source](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_vlan.md).
+* `private_vlan_id` | *int*
+    * (Optional) Private VLAN id which is to be used for the private network interface of the VPX Load Balancer. Accepted values can be found [here](https://control.softlayer.com/network/vlans).  Click on the desired VLAN and note the ID on the resulting URL. Or, you can also [refer to a VLAN by name using a data source](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_vlan.md).
+* `public_subnet` | *string*
     * (Optional) Public subnet which is to be used for the public network interface of the VPX Load Balancer. Accepted values are primary public networks and can be found [here](https://control.softlayer.com/network/subnets).
-* `back_end_subnet` | *string*
+* `private_subnet` | *string*
     * (Optional) Public subnet which is to be used for the private network interface of the VPX Load Balancer. Accepted values are primary private networks and can be found [here](https://control.softlayer.com/network/subnets).
 
 ## Attributes Reference

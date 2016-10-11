@@ -18,21 +18,14 @@ resource "softlayer_virtual_guest" "twc_terraform_sample" {
     user_data = "{\"value\":\"newvalue\"}"
     dedicated_acct_host_only = true
     local_disk = false
-    front_end_vlan {
-       vlan_number = 1144
-       primary_router_hostname = "fcr03a.wdc01"
-    }
-    back_end_vlan {
-       vlan_number = 978
-       primary_router_hostname = "bcr03a.wdc01"
-    }
-    front_end_subnet = "50.97.46.160/28"
-    back_end_subnet = "10.56.109.128/26"
+    public_vlan_id = 1391277
+    private_vlan_id = 7721931
 }
 ```
 
 ```hcl
-# Create a new virtual guest using block device template and tags
+# Create a new virtual guest using block device template, tags,
+# and subnets
 resource "softlayer_virtual_guest" "terraform-sample-BDTGroup" {
    name = "terraform-sample-blockDeviceTemplateGroup"
    domain = "bar.example.com"
@@ -47,6 +40,8 @@ resource "softlayer_virtual_guest" "terraform-sample-BDTGroup" {
      "collectd",
      "mesos-master"
    ]
+   public_subnet = "50.97.46.160/28"
+   private_subnet = "10.56.109.128/26"
 }
 ```
 
@@ -98,16 +93,16 @@ The following arguments are supported:
     * Specifies whether or not the instance only has access to the private network. When true this flag specifies that a compute instance is to only have access to the private network.
     * *Default*: False
     * *Optional*
-*   `front_end_vlan` | *map*
-    * Public VLAN which is to be used for the public network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans).
+*   `public_vlan_id` | *int*
+    * Public VLAN id which is to be used for the public network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans). Click on the desired VLAN and note the ID on the resulting URL. Or, you can also [refer to a VLAN by name using a data source](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_vlan.md).
     * *Optional*
-*   `back_end_vlan` | *map*
-    * Private VLAN which is to be used for the private network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans).
+*   `private_vlan_id` | *int*
+    * Private VLAN id which is to be used for the private network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans). Click on the desired VLAN and note the ID on the resulting URL. Or, you can also [refer to a VLAN by name using a data source](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_vlan.md).
     * *Optional*
-*   `front_end_subnet` | *string*
+*   `public_subnet` | *string*
     * Public subnet which is to be used for the public network interface of the instance. Accepted values are primary public networks and can be found [here](https://control.softlayer.com/network/subnets).
     * *Optional*
-*   `back_end_subnet` | *string*
+*   `private_subnet` | *string*
     * Private subnet which is to be used for the private network interface of the instance. Accepted values are primary private networks and can be found [here](https://control.softlayer.com/network/subnets).
     * *Optional*
 *   `disks` | *array* of numeric disk sizes (in GBs).

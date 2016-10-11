@@ -45,75 +45,75 @@ func resourceSoftLayerScaleGroup() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
+			"id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
 
-			"name": &schema.Schema{
+			"name": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
 
-			"regional_group": &schema.Schema{
+			"regional_group": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"minimum_member_count": &schema.Schema{
+			"minimum_member_count": {
 				Type:     schema.TypeInt,
 				Required: true,
 			},
 
-			"maximum_member_count": &schema.Schema{
+			"maximum_member_count": {
 				Type:     schema.TypeInt,
 				Required: true,
 			},
 
-			"cooldown": &schema.Schema{
+			"cooldown": {
 				Type:     schema.TypeInt,
 				Required: true,
 			},
 
-			"termination_policy": &schema.Schema{
+			"termination_policy": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
 
-			"virtual_server_id": &schema.Schema{
+			"virtual_server_id": {
 				Type:     schema.TypeInt,
 				Required: true,
 			},
 
-			"port": &schema.Schema{
+			"port": {
 				Type:     schema.TypeInt,
 				Required: true,
 			},
 
-			"health_check": &schema.Schema{
+			"health_check": {
 				Type:     schema.TypeMap,
 				Required: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"type": &schema.Schema{
+						"type": {
 							Type:     schema.TypeString,
 							Required: false,
 						},
 
 						// Conditionally-required fields, based on value of "type"
-						"custom_method": &schema.Schema{
+						"custom_method": {
 							Type:     schema.TypeString,
 							Optional: true,
 							// TODO: Must be GET or HEAD
 						},
 
-						"custom_request": &schema.Schema{
+						"custom_request": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
 
-						"custom_response": &schema.Schema{
+						"custom_response": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -124,28 +124,16 @@ func resourceSoftLayerScaleGroup() *schema.Resource {
 
 			// This has to be a TypeList, because TypeMap does not handle non-primitive
 			// members properly.
-			"virtual_guest_member_template": &schema.Schema{
+			"virtual_guest_member_template": {
 				Type:     schema.TypeList,
 				Required: true,
 				Elem:     getModifiedVirtualGuestResource(),
 			},
 
-			"network_vlans": &schema.Schema{
-				Type:     schema.TypeSet,
+			"network_vlan_ids": {
+				Type:     schema.TypeList,
 				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"vlan_number": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-						},
-
-						"primary_router_hostname": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-						},
-					},
-				},
+				Elem:     &schema.Schema{Type: schema.TypeInt},
 			},
 		},
 	}
@@ -216,44 +204,15 @@ func buildHealthCheckFromResourceData(d map[string]interface{}) (datatypes.Netwo
 }
 
 // Helper method to parse network vlan information in the resource schema format to the SoftLayer datatypes
-func buildScaleVlansFromResourceData(d *schema.Set, meta interface{}) ([]datatypes.Scale_Network_Vlan, error) {
-	sess := meta.(*session.Session)
-	service := services.GetAccountService(sess)
+func buildScaleVlansFromResourceData(v interface{}, meta interface{}) ([]datatypes.Scale_Network_Vlan, error) {
+	vlanIds := v.([]int)
+	scaleNetworkVlans := make([]datatypes.Scale_Network_Vlan, 0, len(vlanIds))
 
-	scaleNetworkVlans := make([]datatypes.Scale_Network_Vlan, 0, d.Len())
-
-	for _, elem := range d.List() {
-		elem := elem.(map[string]interface{})
-
-		vlanNumber, err := strconv.Atoi(elem["vlan_number"].(string))
-		if err != nil {
-			return nil, fmt.Errorf("Vlan number must be an integer: %s", elem["vlan_number"])
-		}
-
-		primaryRouterHostname := elem["primary_router_hostname"].(string)
-
-		filter := fmt.Sprintf(
-			`{"networkVlans":{"primaryRouter":{"hostname":{"operation":"%s"}},`+
-				`"vlanNumber":{"operation":%d}}}`,
-			primaryRouterHostname,
-			vlanNumber)
-
-		networkVlans, err := service.Mask("id").Filter(filter).GetNetworkVlans()
-		if err != nil {
-			return nil, fmt.Errorf("Error looking up Vlan: %s", err)
-		}
-
-		if len(networkVlans) < 1 {
-			return nil, fmt.Errorf(
-				"Invalid vlan: could not find specified vlan with number %d and router %s.",
-				vlanNumber, primaryRouterHostname)
-		}
-
+	for _, vlanId := range vlanIds {
 		scaleNetworkVlans = append(
 			scaleNetworkVlans,
-			datatypes.Scale_Network_Vlan{
-				NetworkVlanId: networkVlans[0].Id,
-			})
+			datatypes.Scale_Network_Vlan{NetworkVlanId: &vlanId},
+		)
 	}
 
 	return scaleNetworkVlans, nil
@@ -262,7 +221,7 @@ func buildScaleVlansFromResourceData(d *schema.Set, meta interface{}) ([]datatyp
 func getVirtualGuestTemplate(vGuestTemplateList []interface{}, meta interface{}) (datatypes.Virtual_Guest, error) {
 	if len(vGuestTemplateList) != 1 {
 		return datatypes.Virtual_Guest{},
-			fmt.Errorf("Only one virtual_guest_member_template can be provided")
+			errors.New("Only one virtual_guest_member_template can be provided")
 	}
 
 	// Retrieve the map of virtual_guest_member_template attributes
@@ -295,7 +254,7 @@ func resourceSoftLayerScaleGroupCreate(d *schema.ResourceData, meta interface{})
 		return fmt.Errorf("Error while parsing virtual_guest_member_template values: %s", err)
 	}
 
-	scaleNetworkVlans, err := buildScaleVlansFromResourceData(d.Get("network_vlans").(*schema.Set), meta)
+	scaleNetworkVlans, err := buildScaleVlansFromResourceData(d.Get("network_vlan_ids").([]int), meta)
 	if err != nil {
 		return fmt.Errorf("Error while parsing network vlan values: %s", err)
 	}
@@ -402,17 +361,11 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 	d.Set("health_check", currentHealthCheck)
 
 	// Network Vlans
-	networkVlans := &schema.Set{F: resourceSoftLayerScaleGroupNetworkVlanHash}
-
-	for _, elem := range slGroupObj.NetworkVlans {
-		vlan := make(map[string]interface{})
-
-		vlan["vlan_number"] = strconv.Itoa(*elem.NetworkVlan.VlanNumber)
-		vlan["primary_router_hostname"] = *elem.NetworkVlan.PrimaryRouter.Hostname
-
-		networkVlans.Add(vlan)
+	vlanIds := make([]int, len(slGroupObj.NetworkVlans))
+	for _, vlan := range slGroupObj.NetworkVlans {
+		vlanIds = append(vlanIds, *vlan.Id)
 	}
-	d.Set("network_vlans", networkVlans)
+	d.Set("network_vlan_ids", vlanIds)
 
 	virtualGuestTemplate := populateMemberTemplateResourceData(*slGroupObj.VirtualGuestMemberTemplate)
 	d.Set("virtual_guest_member_template", virtualGuestTemplate)
@@ -510,50 +463,32 @@ func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{})
 
 	groupObj.LoadBalancers[0].HealthCheck = &healthCheck
 
-	if d.HasChange("network_vlans") {
+	if d.HasChange("network_vlan_ids") {
 		// Vlans require special handling:
 		//
 		// 1. Delete any scale_network_vlans which no longer appear in the updated configuration
 		// 2. Pass the updated list of vlans to the Scale_Group.editObject function.  SoftLayer determines
 		// which Vlans are new, and which already exist.
 
-		o, n := d.GetChange("network_vlans")
+		oldIds, newIds := d.GetChange("network_vlan_ids")
 
 		// Delete entries from 'old' set not appearing in new (old - new)
-		for _, elem := range o.(*schema.Set).Difference(n.(*schema.Set)).List() {
-			elem := elem.(map[string]interface{})
-
-			// Get the ID of the scale_network_vlan entries to be deleted
-			primaryRouterHostname := elem["primary_router_hostname"].(string)
-			vlanNumber := elem["vlan_number"].(string)
-
-			filter := fmt.Sprintf(
-				`{"networkVlans":{"primaryRouter":{"hostname":{"operation":"%s"}},`+
-					`"vlanNumber":{"operation":%s}}}`,
-				primaryRouterHostname,
-				vlanNumber,
-			)
-
-			networkVlans, err := scaleGroupService.Id(*groupObj.Id).Mask("id").Filter(filter).GetNetworkVlans()
-			if err != nil {
-				return fmt.Errorf("Error looking up Vlan: %s", err)
+		for _, o := range oldIds.([]int) {
+			for _, n := range newIds.([]int) {
+				if n == o {
+					goto nextOld
+				}
 			}
 
-			if len(networkVlans) < 1 {
-				return fmt.Errorf(
-					"Unable to locate a vlan matching the provided router hostname and vlan number: %s/%s",
-					primaryRouterHostname,
-					vlanNumber)
-			}
-
-			_, err = scaleNetworkVlanService.Id(*networkVlans[0].Id).DeleteObject()
+			_, err = scaleNetworkVlanService.Id(o).DeleteObject()
 			if err != nil {
 				return fmt.Errorf("Error deleting scale network vlan: %s", err)
 			}
+		nextOld:
 		}
 
 		// Parse the new list of vlans into the appropriate input structure
-		scaleVlans, err := buildScaleVlansFromResourceData(n.(*schema.Set), meta)
+		scaleVlans, err := buildScaleVlansFromResourceData(newIds, meta)
 
 		if err != nil {
 			return fmt.Errorf("Unable to parse network vlan options: %s", err)

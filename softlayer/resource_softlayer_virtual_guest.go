@@ -99,28 +99,34 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"front_end_vlan": {
-				Type:     schema.TypeMap,
+			"public_vlan_id": {
+				Type:     schema.TypeInt,
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"vlan_number": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
+			},
 
-						"primary_router_hostname": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-					},
-				},
+			"front_end_vlan": {
+				Type:     schema.TypeMap,
+				Removed:  "Please use 'public_vlan_id'",
+				Optional: true,
+			},
+
+			"public_subnet": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
 			},
 
 			"front_end_subnet": {
 				Type:     schema.TypeString,
+				Removed:  "Renamed as 'public_subnet'",
+				Optional: true,
+			},
+
+			"private_vlan_id": {
+				Type:     schema.TypeInt,
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
@@ -128,29 +134,21 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 
 			"back_end_vlan": {
 				Type:     schema.TypeMap,
+				Removed:  "Please use 'private_vlan_id'",
 				Optional: true,
-				ForceNew: true,
-				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"vlan_number": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-
-						"primary_router_hostname": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-					},
-				},
 			},
 
-			"back_end_subnet": {
+			"private_subnet": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
+			},
+
+			"back_end_subnet": {
+				Type:     schema.TypeString,
+				Removed:  "Renamed as 'private_subnet'",
+				Optional: true,
 			},
 
 			"disks": {
@@ -310,65 +308,51 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 		opts.OperatingSystemReferenceCode = sl.String(operatingSystemReferenceCode.(string))
 	}
 
-	frontEndVlanNumber := d.Get("front_end_vlan.vlan_number").(string)
-	frontEndSubnet := d.Get("front_end_subnet").(string)
-	backEndVlanNumber := d.Get("back_end_vlan.vlan_number").(string)
-	backEndVlanSubnet := d.Get("back_end_subnet").(string)
+	publicVlanId := d.Get("public_vlan_id").(int)
+	publicSubnet := d.Get("public_subnet").(string)
+	privateVlanId := d.Get("private_vlan_id").(int)
+	privateSubnet := d.Get("private_subnet").(string)
 
-	if len(frontEndVlanNumber) > 0 || len(frontEndSubnet) > 0 {
-		opts.PrimaryNetworkComponent = &datatypes.Virtual_Guest_Network_Component{
-			NetworkVlan: &datatypes.Network_Vlan{},
-		}
+	primaryNetworkComponent := datatypes.Virtual_Guest_Network_Component{
+		NetworkVlan: &datatypes.Network_Vlan{},
 	}
 
-	// Apply frontend VLAN if provided
-	if len(frontEndVlanNumber) > 0 {
-		vlanNumber, err := strconv.Atoi(frontEndVlanNumber)
-		if err != nil {
-			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
-		}
-		frontendVlanId, err := getVlanId(vlanNumber, d.Get("front_end_vlan.primary_router_hostname").(string), meta)
-		if err != nil {
-			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
-		}
-		opts.PrimaryNetworkComponent.NetworkVlan.Id = sl.Int(frontendVlanId)
+	if publicVlanId > 0 {
+		primaryNetworkComponent.NetworkVlan.Id = &publicVlanId
 	}
 
 	// Apply frontend subnet if provided
-	if len(frontEndSubnet) > 0 {
-		primarySubnetId, err := getSubnetId(frontEndSubnet, meta)
+	if publicSubnet != "" {
+		primarySubnetId, err := getSubnetId(publicSubnet, meta)
 		if err != nil {
 			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
 		}
-		opts.PrimaryNetworkComponent.NetworkVlan.PrimarySubnetId = sl.Int(primarySubnetId)
+		primaryNetworkComponent.NetworkVlan.PrimarySubnetId = &primarySubnetId
 	}
 
-	if len(backEndVlanNumber) > 0 || len(backEndVlanSubnet) > 0 {
-		opts.PrimaryBackendNetworkComponent = &datatypes.Virtual_Guest_Network_Component{
-			NetworkVlan: &datatypes.Network_Vlan{},
-		}
+	if publicVlanId > 0 || publicSubnet != "" {
+		opts.PrimaryNetworkComponent = &primaryNetworkComponent
 	}
 
-	// Apply backend VLAN if provided
-	if len(d.Get("back_end_vlan.vlan_number").(string)) > 0 {
-		vlanNumber, err := strconv.Atoi(d.Get("back_end_vlan.vlan_number").(string))
-		if err != nil {
-			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
-		}
-		backendVlanId, err := getVlanId(vlanNumber, d.Get("back_end_vlan.primary_router_hostname").(string), meta)
-		if err != nil {
-			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
-		}
-		opts.PrimaryBackendNetworkComponent.NetworkVlan.Id = sl.Int(backendVlanId)
+	primaryBackendNetworkComponent := datatypes.Virtual_Guest_Network_Component{
+		NetworkVlan: &datatypes.Network_Vlan{},
+	}
+
+	if privateVlanId > 0 {
+		primaryBackendNetworkComponent.NetworkVlan.Id = &privateVlanId
 	}
 
 	// Apply backend subnet if provided
-	if len(backEndVlanSubnet) > 0 {
-		primarySubnetId, err := getSubnetId(backEndVlanSubnet, meta)
+	if privateSubnet != "" {
+		primarySubnetId, err := getSubnetId(privateSubnet, meta)
 		if err != nil {
 			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
 		}
-		opts.PrimaryBackendNetworkComponent.NetworkVlan.PrimarySubnetId = sl.Int(primarySubnetId)
+		primaryBackendNetworkComponent.NetworkVlan.PrimarySubnetId = &primarySubnetId
+	}
+
+	if privateVlanId > 0 || privateSubnet != "" {
+		opts.PrimaryBackendNetworkComponent = &primaryBackendNetworkComponent
 	}
 
 	if userData, ok := d.GetOk("user_data"); ok {
@@ -453,8 +437,10 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 			"hourlyBillingFlag,localDiskFlag," +
 			"userData[value],tagReferences[id,tag[name]]," +
 			"datacenter[id,name,longName]," +
-			"primaryNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]," +
-			"primaryBackendNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]",
+			"primaryNetworkComponent[networkVlan[id]," +
+			"primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]," +
+			"primaryBackendNetworkComponent[networkVlan[id]," +
+			"primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]",
 	).GetObject()
 
 	if err != nil {
@@ -487,28 +473,24 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	d.Set("local_disk", *result.LocalDiskFlag)
 
 	if result.PrimaryNetworkComponent.NetworkVlan != nil {
-		frontEndVlan := d.Get("front_end_vlan").(map[string]interface{})
-		resultFrontEndVlan := result.PrimaryNetworkComponent.NetworkVlan
-		frontEndVlan["primary_router_hostname"] = *resultFrontEndVlan.PrimaryRouter.Hostname
-		frontEndVlan["vlan_number"] = strconv.Itoa(*resultFrontEndVlan.VlanNumber)
-		d.Set("front_end_vlan", frontEndVlan)
+		d.Set("public_vlan_id", *result.PrimaryNetworkComponent.NetworkVlan.Id)
 	}
 
-	backEndVlan := d.Get("back_end_vlan").(map[string]interface{})
-	resultBackEndVlan := result.PrimaryBackendNetworkComponent.NetworkVlan
-	if resultBackEndVlan.PrimaryRouter.Hostname != nil {
-		backEndVlan["primary_router_hostname"] = *resultBackEndVlan.PrimaryRouter.Hostname
-	}
-	backEndVlan["vlan_number"] = strconv.Itoa(*resultBackEndVlan.VlanNumber)
-	d.Set("back_end_vlan", backEndVlan)
+	d.Set("private_vlan_id", *result.PrimaryBackendNetworkComponent.NetworkVlan.Id)
 
 	if result.PrimaryNetworkComponent.PrimaryIpAddressRecord != nil {
-		resultFrontendSubnet := result.PrimaryNetworkComponent.PrimaryIpAddressRecord.Subnet
-		d.Set("front_end_subnet", *resultFrontendSubnet.NetworkIdentifier+"/"+strconv.Itoa(*resultFrontendSubnet.Cidr))
+		publicSubnet := result.PrimaryNetworkComponent.PrimaryIpAddressRecord.Subnet
+		d.Set(
+			"front_end_subnet",
+			fmt.Sprintf("%s/%d", *publicSubnet.NetworkIdentifier, *publicSubnet.Cidr),
+		)
 	}
 
-	resultBackendSubnet := result.PrimaryBackendNetworkComponent.PrimaryIpAddressRecord.Subnet
-	d.Set("back_end_subnet", *resultBackendSubnet.NetworkIdentifier+"/"+strconv.Itoa(*resultBackendSubnet.Cidr))
+	privateSubnet := result.PrimaryBackendNetworkComponent.PrimaryIpAddressRecord.Subnet
+	d.Set(
+		"back_end_subnet",
+		fmt.Sprintf("%s/%d", *privateSubnet.NetworkIdentifier, *privateSubnet.Cidr),
+	)
 
 	userData := result.UserData
 	if userData != nil && len(userData) > 0 {
