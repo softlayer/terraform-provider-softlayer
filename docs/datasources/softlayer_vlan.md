@@ -28,7 +28,7 @@ resource "softlayer_bare_metal" "bm1" {
 
 * `name` - (Required if number nor router hostname are provided) The name of the VLAN as it was defined in SoftLayer. These names can be found from the SoftLayer portal, navigating to [Network > IP Management > VLANs](https://control.softlayer.com/network/vlans).
 * `number` - (Required if name is not provided) The VLAN number as seen on the [SoftLayer portal](https://control.softlayer.com/network/vlans).
-* `router_hostname` - (Required if name is not provided) The VLAN router hostname as seen on the [SoftLayer portal](https://control.softlayer.com/network/vlans).
+* `router_hostname` - (Required if name is not provided) The primary VLAN router hostname as seen on the [SoftLayer portal](https://control.softlayer.com/network/vlans).
 
 ## Attributes Reference
 

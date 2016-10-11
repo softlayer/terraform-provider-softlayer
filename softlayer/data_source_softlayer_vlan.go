@@ -54,8 +54,10 @@ func dataSourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error
 			Mask("id").
 			Filter(filter.Path("networkVlans.name").Eq(name).Build()).
 			GetNetworkVlans()
-		if err != nil || len(networkVlans) == 0 {
+		if err != nil {
 			return fmt.Errorf("Error obtaining VLAN id: %s", err)
+		} else if len(networkVlans) == 0 {
+			return fmt.Errorf("No VLAN was found with the name '%s'", name)
 		}
 
 		d.SetId(fmt.Sprintf("%d", *networkVlans[0].Id))
