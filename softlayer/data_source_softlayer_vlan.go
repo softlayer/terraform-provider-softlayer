@@ -95,8 +95,8 @@ func dataSourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error
 	// Get subnets in cidr format for display
 	if len(vlan.PrimarySubnets) > 0 {
 		subnets := make([]string, len(vlan.PrimarySubnets))
-		for _, subnet := range vlan.PrimarySubnets {
-			subnets = append(subnets, fmt.Sprintf("%s/%d", *subnet.NetworkIdentifier, *subnet.Cidr))
+		for i, subnet := range vlan.PrimarySubnets {
+			subnets[i] = fmt.Sprintf("%s/%d", *subnet.NetworkIdentifier, *subnet.Cidr)
 		}
 
 		d.Set("subnets", subnets)
