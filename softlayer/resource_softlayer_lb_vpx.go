@@ -140,33 +140,6 @@ func resourceSoftLayerLbVpx() *schema.Resource {
 	}
 }
 
-func getVlanId(vlanNumber int, primaryRouterHostname string, meta interface{}) (int, error) {
-	service := services.GetAccountService(meta.(*session.Session))
-
-	networkVlan, err := service.
-		Mask("id").
-		Filter(
-			filter.Build(
-				filter.Path("networkVlans.primaryRouter.hostname").Eq(primaryRouterHostname),
-				filter.Path("networkVlans.vlanNumber").Eq(vlanNumber),
-			),
-		).
-		GetNetworkVlans()
-
-	if err != nil {
-		return 0, fmt.Errorf("Error looking up Vlan: %s", err)
-	}
-
-	if len(networkVlan) < 1 {
-		return 0, fmt.Errorf(
-			"Unable to locate a vlan matching the provided router hostname and vlan number: %s/%d",
-			primaryRouterHostname,
-			vlanNumber)
-	}
-
-	return *networkVlan[0].Id, nil
-}
-
 func getSubnetId(subnet string, meta interface{}) (int, error) {
 	service := services.GetAccountService(meta.(*session.Session))
 
