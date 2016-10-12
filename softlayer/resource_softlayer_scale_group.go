@@ -119,7 +119,6 @@ func resourceSoftLayerScaleGroup() *schema.Resource {
 						},
 					},
 				},
-				Set: resourceSoftLayerScaleGroupNetworkVlanHash,
 			},
 
 			// This has to be a TypeList, because TypeMap does not handle non-primitive
