@@ -117,6 +117,35 @@ func resourceSoftLayerGlobalIpUpdate(d *schema.ResourceData, meta interface{}) e
 		if err != nil {
 			return fmt.Errorf("Error editing Global Ip: %s", err)
 		}
+		stateConf := &resource.StateChangeConf{
+			Pending: []string{"pending"},
+			Target:  []string{"complete"},
+			Refresh: func() (interface{}, string, error) {
+				subnetIpAddress, err := service.Id(globalIpId).GetDestinationIpAddress()
+				if err != nil {
+					return datatypes.Network_Subnet_IpAddress_Global{}, "pending", err
+				}
+
+				if *subnetIpAddress.IpAddress == d.Get("routes_to").(string) {
+					return datatypes.Network_Subnet_IpAddress_Global{}, "complete", nil
+				} else {
+					return nil, "pending", nil
+				}
+			},
+			Timeout:    10 * time.Minute,
+			Delay:      5 * time.Second,
+			MinTimeout: 3 * time.Second,
+		}
+
+		pendingResult, err := stateConf.WaitForState()
+
+		if err != nil {
+			return fmt.Errorf("Error waiting for global ip destination ip address to become active: %s", err)
+		}
+
+		if _, ok := pendingResult.(datatypes.Network_Subnet_IpAddress_Global); ok {
+			return nil
+		}
 	}
 
 	return resourceSoftLayerGlobalIpRead(d, meta)
