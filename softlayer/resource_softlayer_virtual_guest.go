@@ -468,7 +468,13 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		d.Set("datacenter", *result.Datacenter.Name)
 	}
 
-	d.Set("network_speed", *result.PrimaryNetworkComponent.MaxSpeed)
+	d.Set(
+		"network_speed",
+		sl.Get(
+			result.PrimaryNetworkComponent.MaxSpeed,
+			d.Get("network_speed").(int),
+		),
+	)
 	d.Set("cpu", *result.StartCpus)
 	d.Set("ram", *result.MaxMemory)
 	d.Set("dedicated_acct_host_only", *result.DedicatedAccountHostOnlyFlag)
