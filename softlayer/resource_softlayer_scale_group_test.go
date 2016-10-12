@@ -71,8 +71,6 @@ func TestAccSoftLayerScaleGroup_Basic(t *testing.T) {
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.ssh_keys.0", "383111"),
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.user_data", "#!/bin/bash"),
-					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "network_vlans.#", "1"),
 					testAccCheckSoftLayerScaleGroupContainsNetworkVlan(&scalegroup, 1928, "bcr02a.sng01"),
 				),
 			},
@@ -237,11 +235,6 @@ resource "softlayer_scale_group" "sample-http-cluster" {
         ssh_keys = [383111]
         user_data = "#!/bin/bash"
     }
-    network_vlans = {
-            vlan_number = "1928"
-            primary_router_hostname = "bcr02a.sng01"
-    }
-
 }`
 
 const testAccCheckSoftLayerScaleGroupConfig_updated = `
@@ -288,9 +281,5 @@ resource "softlayer_scale_group" "sample-http-cluster" {
         post_install_script_uri = "http://localhost/index.html"
         ssh_keys = [383111]
         user_data = "#!/bin/bash"
-    }
-    network_vlans = {
-        vlan_number = "1928"
-        primary_router_hostname = "bcr02a.sng01"
     }
 }`
