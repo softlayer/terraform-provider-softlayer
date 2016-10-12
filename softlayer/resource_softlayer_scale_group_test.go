@@ -68,8 +68,6 @@ func TestAccSoftLayerScaleGroup_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.post_install_script_uri", ""),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.ssh_keys.0", "383111"),
-					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.user_data", "#!/bin/bash"),
 					testAccCheckSoftLayerScaleGroupContainsNetworkVlan(&scalegroup, 1928, "bcr02a.sng01"),
 				),
@@ -232,7 +230,6 @@ resource "softlayer_scale_group" "sample-http-cluster" {
         disks = [25,100]
         datacenter = "sng01"
         post_install_script_uri = ""
-        ssh_keys = [383111]
         user_data = "#!/bin/bash"
     }
 }`
@@ -279,7 +276,6 @@ resource "softlayer_scale_group" "sample-http-cluster" {
         disks = [25,100]
         datacenter = "sng01"
         post_install_script_uri = "http://localhost/index.html"
-        ssh_keys = [383111]
         user_data = "#!/bin/bash"
     }
 }`
