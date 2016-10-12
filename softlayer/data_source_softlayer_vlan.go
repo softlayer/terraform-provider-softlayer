@@ -38,6 +38,12 @@ func dataSourceSoftLayerVlan() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
+
+			"subnets": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
 		},
 	}
 }
@@ -49,9 +55,12 @@ func dataSourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error
 	name := d.Get("name").(string)
 	number := d.Get("number").(int)
 	routerHostname := d.Get("router_hostname").(string)
+	var vlan *datatypes.Network_Vlan
+	var err error
 
 	if number != 0 && routerHostname != "" {
-		vlan, err := getVlan(number, routerHostname, meta)
+		// Got vlan number and router, get vlan, and compute name
+		vlan, err = getVlan(number, routerHostname, meta)
 		if err != nil {
 			return err
 		}
@@ -61,8 +70,9 @@ func dataSourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error
 			d.Set("name", *vlan.Name)
 		}
 	} else if name != "" {
+		// Got name, get vlan, and compute router hostname and vlan number
 		networkVlans, err := service.
-			Mask("id,vlanNumber,name,primaryRouter[hostname]").
+			Mask("id,vlanNumber,name,primaryRouter[hostname],primarySubnets[networkIdentifier,cidr]").
 			Filter(filter.Path("networkVlans.name").Eq(name).Build()).
 			GetNetworkVlans()
 		if err != nil {
@@ -71,7 +81,7 @@ func dataSourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error
 			return fmt.Errorf("No VLAN was found with the name '%s'", name)
 		}
 
-		vlan := networkVlans[0]
+		vlan = &networkVlans[0]
 		d.SetId(fmt.Sprintf("%d", *vlan.Id))
 		d.Set("number", *vlan.VlanNumber)
 
@@ -82,6 +92,16 @@ func dataSourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error
 		return errors.New("Missing required properties. Need a VLAN name, or the VLAN's number and router hostname.")
 	}
 
+	// Get subnets in cidr format for display
+	if len(vlan.PrimarySubnets) > 0 {
+		subnets := make([]string, len(vlan.PrimarySubnets))
+		for _, subnet := range vlan.PrimarySubnets {
+			subnets = append(subnets, fmt.Sprintf("%s/%d", *subnet.NetworkIdentifier, *subnet.Cidr))
+		}
+
+		d.Set("subnets", subnets)
+	}
+
 	return nil
 }
 
@@ -89,7 +109,7 @@ func getVlan(vlanNumber int, primaryRouterHostname string, meta interface{}) (*d
 	service := services.GetAccountService(meta.(*session.Session))
 
 	networkVlans, err := service.
-		Mask("id,name").
+		Mask("id,name,primarySubnets[networkIdentifier,cidr]").
 		Filter(
 			filter.Build(
 				filter.Path("networkVlans.primaryRouter.hostname").Eq(primaryRouterHostname),
