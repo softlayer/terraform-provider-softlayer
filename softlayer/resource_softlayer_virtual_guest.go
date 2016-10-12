@@ -481,14 +481,14 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	if result.PrimaryNetworkComponent.PrimaryIpAddressRecord != nil {
 		publicSubnet := result.PrimaryNetworkComponent.PrimaryIpAddressRecord.Subnet
 		d.Set(
-			"front_end_subnet",
+			"public_subnet",
 			fmt.Sprintf("%s/%d", *publicSubnet.NetworkIdentifier, *publicSubnet.Cidr),
 		)
 	}
 
 	privateSubnet := result.PrimaryBackendNetworkComponent.PrimaryIpAddressRecord.Subnet
 	d.Set(
-		"back_end_subnet",
+		"private_subnet",
 		fmt.Sprintf("%s/%d", *privateSubnet.NetworkIdentifier, *privateSubnet.Cidr),
 	)
 
