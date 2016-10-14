@@ -98,8 +98,9 @@ func resourceSoftLayerGlobalIpRead(d *schema.ResourceData, meta interface{}) err
 
 	d.Set("id", *globalIp.Id)
 	d.Set("ip_address", *globalIp.IpAddress.IpAddress)
-	d.Set("routes_to", *globalIp.DestinationIpAddress.IpAddress)
-
+	if globalIp.DestinationIpAddress != nil {
+		d.Set("routes_to", *globalIp.DestinationIpAddress.IpAddress)
+	}
 	return nil
 }
 
@@ -112,40 +113,38 @@ func resourceSoftLayerGlobalIpUpdate(d *schema.ResourceData, meta interface{}) e
 		return fmt.Errorf("Not a valid global ip ID, must be an integer: %s", err)
 	}
 
-	if d.HasChange("routes_to") {
-		_, err = service.Id(globalIpId).Route(sl.String(d.Get("routes_to").(string)))
-		if err != nil {
-			return fmt.Errorf("Error editing Global Ip: %s", err)
-		}
-		stateConf := &resource.StateChangeConf{
-			Pending: []string{"pending"},
-			Target:  []string{"complete"},
-			Refresh: func() (interface{}, string, error) {
-				subnetIpAddress, err := service.Id(globalIpId).GetDestinationIpAddress()
-				if err != nil {
-					return datatypes.Network_Subnet_IpAddress_Global{}, "pending", err
-				}
+	_, err = service.Id(globalIpId).Route(sl.String(d.Get("routes_to").(string)))
+	if err != nil {
+		return fmt.Errorf("Error editing Global Ip: %s", err)
+	}
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"pending"},
+		Target:  []string{"complete"},
+		Refresh: func() (interface{}, string, error) {
+			subnetIpAddress, err := service.Id(globalIpId).GetDestinationIpAddress()
+			if err != nil {
+				return datatypes.Network_Subnet_IpAddress_Global{}, "pending", err
+			}
 
-				if *subnetIpAddress.IpAddress == d.Get("routes_to").(string) {
-					return datatypes.Network_Subnet_IpAddress_Global{}, "complete", nil
-				} else {
-					return nil, "pending", nil
-				}
-			},
-			Timeout:    10 * time.Minute,
-			Delay:      5 * time.Second,
-			MinTimeout: 3 * time.Second,
-		}
+			if *subnetIpAddress.IpAddress == d.Get("routes_to").(string) {
+				return datatypes.Network_Subnet_IpAddress_Global{}, "complete", nil
+			} else {
+				return nil, "pending", nil
+			}
+		},
+		Timeout:    10 * time.Minute,
+		Delay:      5 * time.Second,
+		MinTimeout: 3 * time.Second,
+	}
 
-		pendingResult, err := stateConf.WaitForState()
+	pendingResult, err := stateConf.WaitForState()
 
-		if err != nil {
-			return fmt.Errorf("Error waiting for global ip destination ip address to become active: %s", err)
-		}
+	if err != nil {
+		return fmt.Errorf("Error waiting for global ip destination ip address to become active: %s", err)
+	}
 
-		if _, ok := pendingResult.(datatypes.Network_Subnet_IpAddress_Global); ok {
-			return nil
-		}
+	if _, ok := pendingResult.(datatypes.Network_Subnet_IpAddress_Global); ok {
+		return nil
 	}
 
 	return resourceSoftLayerGlobalIpRead(d, meta)
