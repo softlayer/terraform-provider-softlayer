@@ -18,7 +18,7 @@ resource "softlayer_vlan" "test_vlan" {
    datacenter = "lon02"
    type = "PUBLIC"
    primary_subnet_size = 8
-   primary_router_hostname = "fcr01a.lon02"
+   router_hostname = "fcr01a.lon02"
 }
 ```
 
@@ -32,13 +32,13 @@ The following arguments are supported:
 * `type` | *string*
     * Set the type of the VLAN if it is public or private. Accepted values are PRIVATE and PUBLIC.
     * **Required**
-* `primary_subnet_size` | *int*
+* `subnet_size` | *int*
     * Set the size of the primary subnet for the VLAN. Accepted values are 8, 16, 32, and 64.
     * **Required** 
 * `name` | *string*
     * Set the name for the VLAN.
     * **Optional**
-* `primary_router_hostname` | *string*
+* `router_hostname` | *string*
     * Set the hostname of the primary router that the VLAN is associated with.
     * **Optional**
 

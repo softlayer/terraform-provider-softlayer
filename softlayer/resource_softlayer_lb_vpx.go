@@ -34,134 +34,110 @@ func resourceSoftLayerLbVpx() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"name": &schema.Schema{
+			"name": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
 
-			"type": &schema.Schema{
+			"type": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
 
-			"datacenter": &schema.Schema{
+			"datacenter": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"speed": &schema.Schema{
+			"speed": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"version": &schema.Schema{
+			"version": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"plan": &schema.Schema{
+			"plan": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"ip_count": &schema.Schema{
+			"ip_count": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"front_end_vlan": &schema.Schema{
-				Type:     schema.TypeMap,
+			"public_vlan_id": {
+				Type:     schema.TypeInt,
 				Optional: true,
-				ForceNew: true,
 				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"vlan_number": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-						},
-
-						"primary_router_hostname": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-						},
-					},
-				},
+				ForceNew: true,
 			},
 
-			"front_end_subnet": &schema.Schema{
+			"front_end_vlan": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Removed:  "Please use 'public_vlan_id'",
+				ForceNew: true,
+			},
+
+			"public_subnet": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
 			},
 
-			"back_end_vlan": &schema.Schema{
-				Type:     schema.TypeMap,
+			"front_end_subnet": {
+				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"vlan_number": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-						},
-
-						"primary_router_hostname": &schema.Schema{
-							Type:     schema.TypeString,
-							Required: true,
-						},
-					},
-				},
+				Removed:  "Renamed as 'public_subnet'",
 			},
 
-			"back_end_subnet": &schema.Schema{
+			"private_vlan_id": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+			},
+
+			"back_end_vlan": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Removed:  "Please use 'private_vlan_id'",
+				ForceNew: true,
+			},
+
+			"private_subnet": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
 			},
 
-			"vip_pool": &schema.Schema{
+			"back_end_subnet": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Removed:  "Renamed as 'private_subnet'",
+				ForceNew: true,
+			},
+
+			"vip_pool": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 		},
 	}
-}
-
-func getVlanId(vlanNumber int, primaryRouterHostname string, meta interface{}) (int, error) {
-	service := services.GetAccountService(meta.(*session.Session))
-
-	networkVlan, err := service.
-		Mask("id").
-		Filter(
-			filter.Build(
-				filter.Path("networkVlans.primaryRouter.hostname").Eq(primaryRouterHostname),
-				filter.Path("networkVlans.vlanNumber").Eq(vlanNumber),
-			),
-		).
-		GetNetworkVlans()
-
-	if err != nil {
-		return 0, fmt.Errorf("Error looking up Vlan: %s", err)
-	}
-
-	if len(networkVlan) < 1 {
-		return 0, fmt.Errorf(
-			"Unable to locate a vlan matching the provided router hostname and vlan number: %s/%d",
-			primaryRouterHostname,
-			vlanNumber)
-	}
-
-	return *networkVlan[0].Id, nil
 }
 
 func getSubnetId(subnet string, meta interface{}) (int, error) {
@@ -248,11 +224,11 @@ func findVPXPriceItems(version string, speed int, plan string, ipCount int, meta
 	var errorMessages []string
 
 	if nadcItemPrice.Id == nil {
-		errorMessages = append(errorMessages, fmt.Sprintf("VPX version, speed or plan have incorrect values"))
+		errorMessages = append(errorMessages, "VPX version, speed or plan have incorrect values")
 	}
 
 	if ipItemPrice.Id == nil {
-		errorMessages = append(errorMessages, fmt.Sprintf("IP quantity value is incorrect"))
+		errorMessages = append(errorMessages, "IP quantity value is incorrect")
 	}
 
 	if len(errorMessages) > 0 {
@@ -318,56 +294,44 @@ func findVPXByOrderId(orderId int, meta interface{}) (datatypes.Network_Applicat
 
 func prepareHardwareOptions(d *schema.ResourceData, meta interface{}) ([]datatypes.Hardware, error) {
 	hardwareOpts := make([]datatypes.Hardware, 1)
+	publicVlanId := d.Get("public_vlan_id").(int)
+	publicSubnet := d.Get("public_subnet").(string)
 
-	if len(d.Get("front_end_vlan.vlan_number").(string)) > 0 || len(d.Get("front_end_subnet").(string)) > 0 {
+	if publicVlanId > 0 || len(publicSubnet) > 0 {
 		hardwareOpts[0].PrimaryNetworkComponent = &datatypes.Network_Component{}
 	}
 
-	if len(d.Get("front_end_vlan.vlan_number").(string)) > 0 {
-		vlanNumber, err := strconv.Atoi(d.Get("front_end_vlan.vlan_number").(string))
-		if err != nil {
-			return nil, fmt.Errorf("Error creating network application delivery controller: %s", err)
-		}
-		networkVlanId, err := getVlanId(vlanNumber, d.Get("front_end_vlan.primary_router_hostname").(string), meta)
-		if err != nil {
-			return nil, fmt.Errorf("Error creating network application delivery controller: %s", err)
-		}
-		hardwareOpts[0].PrimaryNetworkComponent.NetworkVlanId = sl.Int(networkVlanId)
+	if publicVlanId > 0 {
+		hardwareOpts[0].PrimaryNetworkComponent.NetworkVlanId = &publicVlanId
 	}
 
-	if len(d.Get("front_end_subnet").(string)) > 0 {
-		primarySubnetId, err := getSubnetId(d.Get("front_end_subnet").(string), meta)
+	if len(publicSubnet) > 0 {
+		primarySubnetId, err := getSubnetId(publicSubnet, meta)
 		if err != nil {
 			return nil, fmt.Errorf("Error creating network application delivery controller: %s", err)
 		}
 		hardwareOpts[0].PrimaryNetworkComponent.NetworkVlan = &datatypes.Network_Vlan{
-			PrimarySubnetId: sl.Int(primarySubnetId),
+			PrimarySubnetId: &primarySubnetId,
 		}
 	}
 
-	if len(d.Get("back_end_vlan.vlan_number").(string)) > 0 || len(d.Get("back_end_subnet").(string)) > 0 {
+	privateVlanId := d.Get("private_vlan_id").(int)
+	privateSubnet := d.Get("private_subnet").(string)
+	if privateVlanId > 0 || len(privateSubnet) > 0 {
 		hardwareOpts[0].PrimaryBackendNetworkComponent = &datatypes.Network_Component{}
 	}
 
-	if len(d.Get("back_end_vlan.vlan_number").(string)) > 0 {
-		vlanNumber, err := strconv.Atoi(d.Get("back_end_vlan.vlan_number").(string))
-		if err != nil {
-			return nil, fmt.Errorf("Error creating network application delivery controller: %s", err)
-		}
-		networkVlanId, err := getVlanId(vlanNumber, d.Get("back_end_vlan.primary_router_hostname").(string), meta)
-		if err != nil {
-			return nil, fmt.Errorf("Error creating network application delivery controller: %s", err)
-		}
-		hardwareOpts[0].PrimaryBackendNetworkComponent.NetworkVlanId = sl.Int(networkVlanId)
+	if privateVlanId > 0 {
+		hardwareOpts[0].PrimaryBackendNetworkComponent.NetworkVlanId = &privateVlanId
 	}
 
-	if len(d.Get("back_end_subnet").(string)) > 0 {
-		primarySubnetId, err := getSubnetId(d.Get("back_end_subnet").(string), meta)
+	if len(privateSubnet) > 0 {
+		primarySubnetId, err := getSubnetId(privateSubnet, meta)
 		if err != nil {
 			return nil, fmt.Errorf("Error creating network application delivery controller: %s", err)
 		}
 		hardwareOpts[0].PrimaryBackendNetworkComponent.NetworkVlan = &datatypes.Network_Vlan{
-			PrimarySubnetId: sl.Int(primarySubnetId),
+			PrimarySubnetId: &primarySubnetId,
 		}
 	}
 	return hardwareOpts, nil
@@ -411,7 +375,7 @@ func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) erro
 		return fmt.Errorf("Error Cannot get hardware options '%s'.", err)
 	}
 
-	log.Printf("[INFO] Creating network application delivery controller")
+	log.Println("[INFO] Creating network application delivery controller")
 
 	receipt, err := productOrderService.PlaceOrder(&opts, sl.Bool(false))
 
@@ -508,43 +472,33 @@ func resourceSoftLayerLbVpxRead(d *schema.ResourceData, meta interface{}) error 
 		d.Set("datacenter", *getObjectResult.Datacenter.Name)
 	}
 
-	frontEndVlan := d.Get("front_end_vlan").(map[string]interface{})
-	backEndVlan := d.Get("back_end_vlan").(map[string]interface{})
-	frontEndSubnet := ""
-	backEndSubnet := ""
-
 	for _, vlan := range getObjectResult.NetworkVlans {
-		if vlan.PrimaryRouter != nil && *vlan.PrimaryRouter.Hostname != "" && *vlan.VlanNumber > 0 {
+		if vlan.PrimaryRouter != nil && *vlan.PrimaryRouter.Hostname != "" {
 			isFcr := strings.HasPrefix(*vlan.PrimaryRouter.Hostname, "fcr")
 			isBcr := strings.HasPrefix(*vlan.PrimaryRouter.Hostname, "bcr")
 			if isFcr {
-				frontEndVlan["primary_router_hostname"] = *vlan.PrimaryRouter.Hostname
-				vlanNumber := strconv.Itoa(*vlan.VlanNumber)
-				frontEndVlan["vlan_number"] = vlanNumber
+				d.Set("public_vlan_id", *vlan.Id)
 				if vlan.PrimarySubnets != nil && len(vlan.PrimarySubnets) > 0 {
 					ipAddress := *vlan.PrimarySubnets[0].NetworkIdentifier
-					cidr := strconv.Itoa(*vlan.PrimarySubnets[0].Cidr)
-					frontEndSubnet = ipAddress + "/" + cidr
+					d.Set(
+						"public_subnet",
+						fmt.Sprintf("%s/%d", ipAddress, *vlan.PrimarySubnets[0].Cidr),
+					)
 				}
 			}
 
 			if isBcr {
-				backEndVlan["primary_router_hostname"] = *vlan.PrimaryRouter.Hostname
-				vlanNumber := strconv.Itoa(*vlan.VlanNumber)
-				backEndVlan["vlan_number"] = vlanNumber
+				d.Set("private_vlan_id", *vlan.Id)
 				if vlan.PrimarySubnets != nil && len(vlan.PrimarySubnets) > 0 {
 					ipAddress := *vlan.PrimarySubnets[0].NetworkIdentifier
-					cidr := strconv.Itoa(*vlan.PrimarySubnets[0].Cidr)
-					backEndSubnet = ipAddress + "/" + cidr
+					d.Set(
+						"private_subnet",
+						fmt.Sprintf("%s/%d", ipAddress, *vlan.PrimarySubnets[0].Cidr),
+					)
 				}
 			}
 		}
 	}
-
-	d.Set("front_end_vlan", frontEndVlan)
-	d.Set("back_end_vlan", backEndVlan)
-	d.Set("front_end_subnet", frontEndSubnet)
-	d.Set("back_end_subnet", backEndSubnet)
 
 	vips := make([]string, 0)
 	ipCount := 0

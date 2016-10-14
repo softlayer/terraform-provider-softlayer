@@ -37,10 +37,7 @@ resource "softlayer_scale_group" "test_scale_group" {
       user_data = "#!/bin/bash ..."
     }
     # Optional Fields for scale_group:
-    network_vlans = {
-        vlan_number = "1928"
-        primary_router_hostname = "bcr02a.sng01"
-    }
+    network_vlan_ids = [1234567, 7654321]
 }
 ```
 
@@ -78,8 +75,8 @@ The following arguments are supported:
 * `virtual_guest_member_template` | *array*
     * This is the template to create guest memebers with.
     * **Required**
-* `network_vlans` | *array of map of strings*
-    * Collection of VLANs for this auto scale group.
+* `network_vlan_ids` | *array of numbers*
+    * Collection of VLAN IDs for this auto scale group. Accepted values can be found [here](https://control.softlayer.com/network/vlans). Click on the desired VLAN and note the ID on the resulting URL. Or, you can also [refer to a VLAN by name using a data source](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_vlan.md).
     * *Default*: nil
     * *Optional*
 

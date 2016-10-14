@@ -36,17 +36,13 @@ func TestAccSoftLayerLbVpx_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_lb_vpx.testacc_foobar_vpx", "version", "10.1"),
 					resource.TestCheckResourceAttr(
-						"softlayer_lb_vpx.testacc_foobar_vpx", "front_end_vlan.vlan_number", "1251"),
+						"softlayer_lb_vpx.testacc_foobar_vpx", "public_vlan_id", "1291213"),
 					resource.TestCheckResourceAttr(
-						"softlayer_lb_vpx.testacc_foobar_vpx", "front_end_vlan.primary_router_hostname", "fcr01a.dal06"),
+						"softlayer_lb_vpx.testacc_foobar_vpx", "private_vlan_id", "1258279"),
 					resource.TestCheckResourceAttr(
-						"softlayer_lb_vpx.testacc_foobar_vpx", "back_end_vlan.vlan_number", "1540"),
+						"softlayer_lb_vpx.testacc_foobar_vpx", "public_subnet", "184.172.106.152/29"),
 					resource.TestCheckResourceAttr(
-						"softlayer_lb_vpx.testacc_foobar_vpx", "back_end_vlan.primary_router_hostname", "bcr01a.dal06"),
-					resource.TestCheckResourceAttr(
-						"softlayer_lb_vpx.testacc_foobar_vpx", "front_end_subnet", "192.155.224.208/28"),
-					resource.TestCheckResourceAttr(
-						"softlayer_lb_vpx.testacc_foobar_vpx", "back_end_subnet", "10.107.180.0/26"),
+						"softlayer_lb_vpx.testacc_foobar_vpx", "private_subnet", "10.146.95.64/26"),
 					resource.TestCheckResourceAttr(
 						"softlayer_lb_vpx.testacc_foobar_vpx", "vip_pool.#", "2"),
 				),
@@ -92,14 +88,8 @@ resource "softlayer_lb_vpx" "testacc_foobar_vpx" {
     version = "10.1"
     plan = "Standard"
     ip_count = 2
-    front_end_vlan {
-       vlan_number = 1251
-       primary_router_hostname = "fcr01a.dal06"
-    }
-    back_end_vlan {
-       vlan_number = 1540
-       primary_router_hostname = "bcr01a.dal06"
-    }
-    front_end_subnet = "192.155.224.208/28"
-    back_end_subnet = "10.107.180.0/26"
+    public_vlan_id = 1291213
+    private_vlan_id = 1258279
+    public_subnet = "184.172.106.152/29"
+    private_subnet = "10.146.95.64/26"
 }`

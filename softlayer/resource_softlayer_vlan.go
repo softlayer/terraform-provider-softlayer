@@ -60,16 +60,26 @@ func resourceSoftLayerVlan() *schema.Resource {
 					return
 				},
 			},
-			"primary_subnet_size": {
+			"subnet_size": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: true,
+			},
+			"primary_subnet_size": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Removed:  "Renamed as 'subnet_size'",
 			},
 			"name": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
 			"primary_router_hostname": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Removed:  "Renamed as 'router_hostname'",
+			},
+			"router_hostname": {
 				Type:     schema.TypeString,
 				Computed: true,
 				Optional: true,
@@ -109,13 +119,13 @@ func resourceSoftLayerVlan() *schema.Resource {
 
 func resourceSoftLayerVlanCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
-	router := d.Get("primary_router_hostname").(string)
+	router := d.Get("router_hostname").(string)
 	name := d.Get("name").(string)
 
 	vlanType := d.Get("type").(string)
 	if (vlanType == "PRIVATE" && len(router) > 0 && strings.Contains(router, "fcr")) ||
 		(vlanType == "PUBLIC" && len(router) > 0 && strings.Contains(router, "bcr")) {
-		return fmt.Errorf("Error creating vlan: mismatch between vlan_type '%s' and primary_router_hostname '%s'", vlanType, router)
+		return fmt.Errorf("Error creating vlan: mismatch between vlan_type '%s' and router_hostname '%s'", vlanType, router)
 	}
 
 	// Find price items with AdditionalServicesNetworkVlan
@@ -171,7 +181,7 @@ func resourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("name", sl.Get(vlan.Name, ""))
 
 	if vlan.PrimaryRouter != nil {
-		d.Set("primary_router_hostname", *vlan.PrimaryRouter.Hostname)
+		d.Set("router_hostname", *vlan.PrimaryRouter.Hostname)
 		if strings.HasPrefix(*vlan.PrimaryRouter.Hostname, "fcr") {
 			d.Set("type", "PUBLIC")
 		} else {
@@ -182,11 +192,7 @@ func resourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	if vlan.BillingItem == nil {
-		d.Set("softlayer_managed", true)
-	} else {
-		d.Set("softlayer_managed", false)
-	}
+	d.Set("softlayer_managed", vlan.BillingItem == nil)
 
 	// Subnets
 	subnets := make([]map[string]interface{}, 0)
@@ -200,9 +206,9 @@ func resourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("subnets", subnets)
 
 	if vlan.Subnets != nil && len(vlan.Subnets) > 0 {
-		d.Set("primary_subnet_size", 1<<(uint)(32-*vlan.Subnets[0].Cidr))
+		d.Set("subnet_size", 1<<(uint)(32-*vlan.Subnets[0].Cidr))
 	} else {
-		d.Set("primary_subnet_size", 0)
+		d.Set("subnet_size", 0)
 	}
 
 	return nil
@@ -321,7 +327,7 @@ func findVlanByOrderId(sess *session.Session, orderId int) (datatypes.Network_Vl
 func buildVlanProductOrderContainer(d *schema.ResourceData, sess *session.Session, packageType string) (
 	*datatypes.Container_Product_Order_Network_Vlan, error) {
 	var rt datatypes.Hardware
-	router := d.Get("primary_router_hostname").(string)
+	router := d.Get("router_hostname").(string)
 
 	vlanType := d.Get("type").(string)
 	datacenter := d.Get("datacenter").(string)
@@ -350,7 +356,7 @@ func buildVlanProductOrderContainer(d *schema.ResourceData, sess *session.Sessio
 
 	// 3. Find vlan and subnet prices
 	vlanKeyname := vlanType + "_NETWORK_VLAN"
-	subnetKeyname := strconv.Itoa(d.Get("primary_subnet_size").(int)) + "_STATIC_PUBLIC_IP_ADDRESSES"
+	subnetKeyname := strconv.Itoa(d.Get("subnet_size").(int)) + "_STATIC_PUBLIC_IP_ADDRESSES"
 
 	// 4. Select items with a matching keyname
 	vlanItems := []datatypes.Product_Item{}
