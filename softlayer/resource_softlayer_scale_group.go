@@ -1,7 +1,6 @@
 package softlayer
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -9,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -204,10 +202,11 @@ func buildHealthCheckFromResourceData(d map[string]interface{}) (datatypes.Netwo
 
 // Helper method to parse network vlan information in the resource schema format to the SoftLayer datatypes
 func buildScaleVlansFromResourceData(v interface{}, meta interface{}) ([]datatypes.Scale_Network_Vlan, error) {
-	vlanIds := v.([]int)
+	vlanIds := v.([]interface{})
 	scaleNetworkVlans := make([]datatypes.Scale_Network_Vlan, 0, len(vlanIds))
 
-	for _, vlanId := range vlanIds {
+	for _, iVlanId := range vlanIds {
+		vlanId := iVlanId.(int)
 		scaleNetworkVlans = append(
 			scaleNetworkVlans,
 			datatypes.Scale_Network_Vlan{NetworkVlanId: &vlanId},
@@ -253,7 +252,7 @@ func resourceSoftLayerScaleGroupCreate(d *schema.ResourceData, meta interface{})
 		return fmt.Errorf("Error while parsing virtual_guest_member_template values: %s", err)
 	}
 
-	scaleNetworkVlans, err := buildScaleVlansFromResourceData(d.Get("network_vlan_ids").([]int), meta)
+	scaleNetworkVlans, err := buildScaleVlansFromResourceData(d.Get("network_vlan_ids"), meta)
 	if err != nil {
 		return fmt.Errorf("Error while parsing network vlan values: %s", err)
 	}
@@ -360,11 +359,19 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 	d.Set("health_check", currentHealthCheck)
 
 	// Network Vlans
-	vlanIds := make([]int, len(slGroupObj.NetworkVlans))
-	for _, vlan := range slGroupObj.NetworkVlans {
-		vlanIds = append(vlanIds, *vlan.Id)
+	vlanTotal := len(slGroupObj.NetworkVlans)
+	// Don't refresh vlan ids, unless this is an import operation
+	// to avoid the problem of getting the list out of order from
+	// the original order in the config and trigger a false change/update.
+	// This should be fine as we don't expect this to change after the group
+	// is created. Else, this code needs to be refactored to use a TypeSet.
+	if vlanTotal == 0 {
+		vlanIds := make([]int, vlanTotal)
+		for _, vlan := range slGroupObj.NetworkVlans {
+			vlanIds = append(vlanIds, *vlan.Id)
+		}
+		d.Set("network_vlan_ids", vlanIds)
 	}
-	d.Set("network_vlan_ids", vlanIds)
 
 	virtualGuestTemplate := populateMemberTemplateResourceData(*slGroupObj.VirtualGuestMemberTemplate)
 	d.Set("virtual_guest_member_template", virtualGuestTemplate)
@@ -583,14 +590,6 @@ func resourceSoftLayerScaleGroupExists(d *schema.ResourceData, meta interface{})
 
 	result, err := scaleGroupService.Id(groupId).Mask("id").GetObject()
 	return result.Id != nil && err == nil && *result.Id == groupId, nil
-}
-
-func resourceSoftLayerScaleGroupNetworkVlanHash(v interface{}) int {
-	var buf bytes.Buffer
-	vlan := v.(map[string]interface{})
-	buf.WriteString(fmt.Sprintf("%s-", vlan["vlan_number"].(string)))
-	buf.WriteString(fmt.Sprintf("%s-", vlan["primary_router_hostname"].(string)))
-	return hashcode.String(buf.String())
 }
 
 func getLocationGroupRegionalId(sess *session.Session, locationGroupRegionalName string) (int, error) {
