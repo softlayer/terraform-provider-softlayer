@@ -1,7 +1,10 @@
 package softlayer
 
 import (
+	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -19,6 +22,22 @@ import (
 	"github.com/softlayer/softlayer-go/sl"
 )
 
+func genId() (interface{}, error) {
+	numBytes := 8
+	bytes := make([]byte, numBytes)
+	n, err := rand.Reader.Read(bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	if n != numBytes {
+		return nil, errors.New("generated insufficient random bytes")
+	}
+
+	hexStr := hex.EncodeToString(bytes)
+	return fmt.Sprintf("terraformed-%s", hexStr), nil
+}
+
 func resourceSoftLayerVirtualGuest() *schema.Resource {
 	return &schema.Resource{
 		Create:   resourceSoftLayerVirtualGuestCreate,
@@ -29,9 +48,15 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
+			"id": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: genId,
 			},
 
 			"domain": {
