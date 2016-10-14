@@ -131,6 +131,31 @@ func resourceSoftLayerScaleGroup() *schema.Resource {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeInt},
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					o := strings.TrimRight(strings.TrimLeft(old, " ["), "] ")
+					n := strings.TrimRight(strings.TrimLeft(new, " ["), "] ")
+					oldIds := strings.Split(o, ",")
+					newIds := strings.Split(n, ",")
+					if len(oldIds) != len(newIds) {
+						return false
+					}
+
+					for _, newId := range newIds {
+						found := false
+						for _, oldId := range oldIds {
+							if strings.TrimSpace(newId) == strings.TrimSpace(oldId) {
+								found = true
+								break
+							}
+						}
+
+						if !found {
+							return false
+						}
+					}
+
+					return true
+				},
 			},
 		},
 	}
@@ -385,19 +410,13 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 	}
 
 	// Network Vlans
-	vlanTotal := len(slGroupObj.NetworkVlans)
-	// Don't refresh vlan ids, unless this is an import operation
-	// to avoid the problem of getting the list out of order from
-	// the original order in the config and trigger a false change/update.
-	// This should be fine as we don't expect this to change after the group
-	// is created. Else, this code needs to be refactored to use a TypeSet.
-	if _, ok := d.GetOk("network_vlan_ids"); !ok {
-		vlanIds := make([]int, vlanTotal)
-		for i, vlan := range slGroupObj.NetworkVlans {
-			vlanIds[i] = *vlan.NetworkVlanId
-		}
-		d.Set("network_vlan_ids", vlanIds)
+	// TODO: This might change the order in the list.
+	vlanIds := make([]int, len(slGroupObj.NetworkVlans))
+	for i, vlan := range slGroupObj.NetworkVlans {
+		vlanIds[i] = *vlan.NetworkVlanId
 	}
+	d.Set("network_vlan_ids", vlanIds)
+
 	virtualGuestTemplate := populateMemberTemplateResourceData(*slGroupObj.VirtualGuestMemberTemplate)
 	d.Set("virtual_guest_member_template", virtualGuestTemplate)
 
