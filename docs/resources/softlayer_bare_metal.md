@@ -32,7 +32,7 @@ The following arguments are supported:
 
 * `hostname` | *string*
     * Hostname for the computing instance.
-    * **Required**
+    * **Optional**
 * `domain` | *string*
     * Domain for the computing instance.
     * **Required**
