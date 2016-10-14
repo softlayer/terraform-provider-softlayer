@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 )
@@ -40,13 +41,30 @@ func dataSourceSoftLayerImageTemplateRead(d *schema.ResourceData, meta interface
 	imageTemplates, err := service.
 		Mask("id,name").
 		GetBlockDeviceTemplateGroups()
-
 	if err != nil {
 		return fmt.Errorf("Error looking up image template [%s]: %s", name, err)
 	}
 
 	if len(imageTemplates) == 0 {
 		return errors.New("The SoftLayer account has no image templates.")
+	}
+
+	for _, imageTemplate := range imageTemplates {
+		if imageTemplate.Name != nil && *imageTemplate.Name == name {
+			d.SetId(fmt.Sprintf("%d", *imageTemplate.Id))
+			return nil
+		}
+	}
+
+	// Image not found among private nor shared images in the account.
+	// Looking up in the public images
+	templateService := services.GetVirtualGuestBlockDeviceTemplateGroupService(sess)
+	imageTemplates, err = templateService.
+		Mask("id,name").
+		Filter(filter.Path("name").Eq(name).Build()).
+		GetPublicImages()
+	if err != nil {
+		return fmt.Errorf("Error looking up image template [%s] among the public images: %s", name, err)
 	}
 
 	for _, imageTemplate := range imageTemplates {
