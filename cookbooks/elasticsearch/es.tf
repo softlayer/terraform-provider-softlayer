@@ -4,26 +4,6 @@ output "cluster_address" {
     value = "http://${softlayer_lb_local.es_lb_vip.ip_address}:${var.port}/"
 }
 
-variable node_count {
-    default = 2
-}
-
-variable port {
-    default = 9200
-}
-
-variable backend_subnet {
-    default = "10.56.58.0/26"
-}
-
-variable backend_vlan_number {
-    default = 976
-}
-
-variable backend_primary_router_hostname {
-    default = "bcr03a.wdc01"
-}
-
 resource "softlayer_ssh_key" "es_key" {
     label      = "ES Demo Key"
     public_key = "${file("~/.ssh/es_id_rsa.pub")}"
