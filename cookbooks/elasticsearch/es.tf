@@ -4,6 +4,11 @@ output "cluster_address" {
     value = "http://${softlayer_lb_local.es_lb_vip.ip_address}:${var.port}/"
 }
 
+data "softlayer_vlan" "es_vlan" {
+    number =          "${var.backend_vlan_number}"
+    router_hostname = "${var.backend_primary_router_hostname}"
+}
+
 resource "softlayer_ssh_key" "es_key" {
     label      = "ES Demo Key"
     public_key = "${file("~/.ssh/es_id_rsa.pub")}"
@@ -41,10 +46,7 @@ resource "softlayer_virtual_guest" "es-vm" {
         "${softlayer_ssh_key.es_key.id}"
     ]
 
-    back_end_vlan {
-        vlan_number             = "${var.backend_vlan_number}"
-        primary_router_hostname = "${var.backend_primary_router_hostname}"
-    }
+    private_vlan_id = "${data.softlayer_vlan.es_vlan.id}"
 
     back_end_subnet = "${var.backend_subnet}"
 
