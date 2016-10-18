@@ -411,9 +411,9 @@ func populateMemberTemplateResourceData(template datatypes.Virtual_Guest) map[st
 	}
 
 	if template.BlockDeviceTemplateGroup != nil {
-		d["block_device_template_group_gid"] = sl.Get(template.BlockDeviceTemplateGroup.GlobalIdentifier)
+		d["image_id"] = sl.Get(template.BlockDeviceTemplateGroup.GlobalIdentifier)
 	} else {
-		d["block_device_template_group_gid"] = nil
+		d["image_id"] = nil
 	}
 
 	if len(template.UserData) > 0 {
