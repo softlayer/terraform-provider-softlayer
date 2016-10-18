@@ -48,7 +48,7 @@ resource "softlayer_virtual_guest" "es-vm" {
 
     private_vlan_id = "${data.softlayer_vlan.es_vlan.id}"
 
-    back_end_subnet = "${var.backend_subnet}"
+    private_subnet = "${var.backend_subnet}"
 
     # Note: the private key cannot be password protected
     connection {
