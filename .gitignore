@@ -20,3 +20,4 @@ modules-dev/
 *.test
 *.iml
 terraform-provider-softlayer_*
+cookbooks/**/*.tar.gz

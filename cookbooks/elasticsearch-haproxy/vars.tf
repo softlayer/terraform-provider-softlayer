@@ -7,10 +7,6 @@ variable datacenter {
 }
 
 # Network settings
-variable private_subnet {
-    default = "10.146.95.64/26"
-}
-
 variable private_vlan_number {
     default = 1170
 }
@@ -22,4 +18,9 @@ variable private_router_hostname {
 # SSH Keys
 variable ssh_key_label {
     default = "Renier Personal"
+}
+
+# Kibana package
+variable kibana_package {
+    default = "kibana-4.1.11-linux-x64.tar.gz"
 }
