@@ -386,7 +386,7 @@ func populateMemberTemplateResourceData(template datatypes.Virtual_Guest) map[st
 	d["name"] = *template.Hostname
 	d["domain"] = *template.Domain
 	d["datacenter"] = *template.Datacenter.Name
-	d["public_network_speed"] = *template.NetworkComponents[0].MaxSpeed
+	d["network_speed"] = *template.NetworkComponents[0].MaxSpeed
 	d["cpu"] = *template.StartCpus
 	d["ram"] = *template.MaxMemory
 	d["private_network_only"] = *template.PrivateNetworkOnlyFlag
@@ -395,7 +395,7 @@ func populateMemberTemplateResourceData(template datatypes.Virtual_Guest) map[st
 
 	// Guard against nil values for optional fields in virtual_guest resource
 	d["dedicated_acct_host_only"] = sl.Get(template.DedicatedAccountHostOnlyFlag)
-	d["image"] = sl.Get(template.OperatingSystemReferenceCode)
+	d["os_reference_code"] = sl.Get(template.OperatingSystemReferenceCode)
 	d["post_install_script_uri"] = sl.Get(template.PostInstallScriptUri)
 
 	if template.PrimaryNetworkComponent != nil && template.PrimaryNetworkComponent.NetworkVlan != nil {
