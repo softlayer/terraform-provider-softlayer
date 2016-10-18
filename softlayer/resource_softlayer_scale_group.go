@@ -29,7 +29,7 @@ var SoftLayerScaleGroupObjectMask = []string{
 	"terminationPolicy[keyName]",
 	"virtualGuestMemberTemplate[blockDeviceTemplateGroup,primaryNetworkComponent[networkVlan[id]],primaryBackendNetworkComponent[networkVlan[id]]]",
 	"loadBalancers[id,port,virtualServerId,healthCheck[id]]",
-	"networkVlans[id,networkVlan[vlanNumber,primaryRouter[hostname]]]",
+	"networkVlans[id,networkVlanId,networkVlan[vlanNumber,primaryRouter[hostname]]]",
 	"loadBalancers[healthCheck[healthCheckTypeId,type[keyname],attributes[value,type[id,keyname]]]]",
 }
 
@@ -367,8 +367,8 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 	// is created. Else, this code needs to be refactored to use a TypeSet.
 	if vlanTotal == 0 {
 		vlanIds := make([]int, vlanTotal)
-		for _, vlan := range slGroupObj.NetworkVlans {
-			vlanIds = append(vlanIds, *vlan.Id)
+		for i, vlan := range slGroupObj.NetworkVlans {
+			vlanIds[i] = *vlan.NetworkVlanId
 		}
 		d.Set("network_vlan_ids", vlanIds)
 	}
