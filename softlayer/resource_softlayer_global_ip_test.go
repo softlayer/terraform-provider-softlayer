@@ -26,7 +26,7 @@ func TestAccSoftLayerGlobalIp_Basic(t *testing.T) {
 					testAccCheckSoftLayerGlobalIpExists("softlayer_global_ip.test-global-ip", &globalIp),
 					testAccCheckSoftLayerGlobalIpAttributes(&globalIp),
 					resource.TestCheckResourceAttr(
-						"softlayer_global_ip.test-global-ip", "routes_to", "119.81.82.163"),
+						"softlayer_global_ip.test-global-ip", "routes_to", "169.54.168.98"),
 				),
 			},
 
@@ -35,7 +35,7 @@ func TestAccSoftLayerGlobalIp_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerGlobalIpExists("softlayer_global_ip.updated-test-global-ip", &globalIp),
 					resource.TestCheckResourceAttr(
-						"softlayer_global_ip.updated-test-global-ip", "routes_to", "119.81.82.160"),
+						"softlayer_global_ip.updated-test-global-ip", "routes_to", "169.46.182.149"),
 				),
 			},
 		},
@@ -66,7 +66,7 @@ func testAccCheckSoftLayerGlobalIpDestroy(s *terraform.State) error {
 func testAccCheckSoftLayerGlobalIpAttributes(globalIp *datatypes.Network_Subnet_IpAddress_Global) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 
-		if *globalIp.DestinationIpAddress.IpAddress != "119.81.82.160" {
+		if *globalIp.DestinationIpAddress.IpAddress != "169.46.182.149" {
 			return fmt.Errorf("Bad destination ip address: %s", *globalIp.DestinationIpAddress.IpAddress)
 		}
 
@@ -107,10 +107,10 @@ func testAccCheckSoftLayerGlobalIpExists(n string, globalIp *datatypes.Network_S
 
 const testAccCheckSoftLayerGlobalIpConfig_basic = `
 resource "softlayer_global_ip" "test-global-ip" {
-    routes_to = "119.81.82.163"
+    routes_to = "169.54.168.98"
 }`
 
 const testAccCheckSoftLayerGlobalIpConfig_updated = `
 resource "softlayer_global_ip" "updated-test-global-ip" {
-    routes_to = "119.81.82.160"
+    routes_to = "169.46.182.149"
 }`
