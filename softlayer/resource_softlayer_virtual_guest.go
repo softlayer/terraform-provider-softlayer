@@ -185,7 +185,13 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 			"network_speed": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  100,
+				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+					if !d.Get("private_network_only").(bool) {
+						return o == n
+					}
+					return true
+				},
+				Default: 100,
 			},
 
 			"ipv4_address": {
