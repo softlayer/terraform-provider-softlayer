@@ -293,8 +293,16 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 		Name: sl.String(d.Get("datacenter").(string)),
 	}
 
+	// FIXME: Work around bug in terraform (?)
+	// For properties that have a default value set and a diff suppress function,
+	// it is not using the default value.
+	networkSpeed := d.Get("network_speed").(int)
+	if networkSpeed == 0 {
+		networkSpeed = resourceSoftLayerVirtualGuest().Schema["network_speed"].Default.(int)
+	}
+
 	networkComponent := datatypes.Virtual_Guest_Network_Component{
-		MaxSpeed: sl.Int(d.Get("network_speed").(int)),
+		MaxSpeed: &networkSpeed,
 	}
 
 	opts := datatypes.Virtual_Guest{
