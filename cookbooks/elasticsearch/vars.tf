@@ -7,13 +7,21 @@ variable port {
 }
 
 variable backend_subnet {
-    default = "10.56.58.0/26"
+    default = "10.124.66.64/26"
 }
 
 variable backend_vlan_number {
-    default = 976
+    default = 1113
 }
 
 variable backend_primary_router_hostname {
-    default = "bcr03a.wdc01"
+    default = "bcr06a.wdc01"
+}
+
+variable ssh_key_label {
+    default = "Renier Personal"
+}
+
+variable datacenter {
+    default = "wdc01"
 }

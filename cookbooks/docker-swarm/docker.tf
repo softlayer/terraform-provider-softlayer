@@ -17,11 +17,6 @@ resource "softlayer_virtual_guest" "manager" {
         "${data.softlayer_ssh_key.my_key.id}"
     ]
 
-    # Note: the private key cannot be password protected
-    connection {
-        host  = "${self.ipv4_address}"
-    }
-
     provisioner "remote-exec" {
         script = "docker.sh"
     }
@@ -44,11 +39,6 @@ resource "softlayer_virtual_guest" "worker" {
     ssh_keys = [
         "${data.softlayer_ssh_key.my_key.id}"
     ]
-
-    # Note: the private key cannot be password protected
-    connection {
-        host  = "${self.ipv4_address}"
-    }
 
     provisioner "remote-exec" {
         inline = [

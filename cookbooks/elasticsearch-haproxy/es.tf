@@ -27,11 +27,6 @@ resource "softlayer_virtual_guest" "esk-node" {
     private_vlan_id = "${data.softlayer_vlan.esk_vlan.id}"
     private_subnet  = "${data.softlayer_vlan.esk_vlan.subnets.0}"
 
-    # Note: the private key cannot be password protected
-    connection {
-        host  = "${self.ipv4_address_private}"
-    }
-
     provisioner "file" {
         source = "${var.kibana_package}"
         destination = "/tmp/kibana.tar.gz"
@@ -56,10 +51,6 @@ resource "softlayer_virtual_guest" "haproxy" {
     ssh_keys = [
         "${data.softlayer_ssh_key.esk_key.id}"
     ]
-
-    connection {
-        host = "${self.ipv4_address}"
-    }
 
     provisioner "remote-exec" {
         script = "haproxy.sh"
