@@ -21,3 +21,4 @@ modules-dev/
 *.iml
 terraform-provider-softlayer_*
 cookbooks/**/*.tar.gz
+cookbooks/docker-swarm/token.txt
