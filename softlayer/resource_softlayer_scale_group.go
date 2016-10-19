@@ -81,17 +81,17 @@ func resourceSoftLayerScaleGroup() *schema.Resource {
 
 			"virtual_server_id": {
 				Type:     schema.TypeInt,
-				Required: true,
+				Optional: true,
 			},
 
 			"port": {
 				Type:     schema.TypeInt,
-				Required: true,
+				Optional: true,
 			},
 
 			"health_check": {
 				Type:     schema.TypeMap,
-				Required: true,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"type": {
@@ -278,17 +278,9 @@ func resourceSoftLayerScaleGroupCreate(d *schema.ResourceData, meta interface{})
 		KeyName: sl.String(d.Get("termination_policy").(string)),
 	}
 
-	healthCheckOpts, err := buildHealthCheckFromResourceData(d.Get("health_check").(map[string]interface{}))
+	opts.LoadBalancers, err = buildLoadBalancers(d)
 	if err != nil {
-		return fmt.Errorf("Error while parsing health check options: %s", err)
-	}
-
-	opts.LoadBalancers = []datatypes.Scale_LoadBalancer{
-		{
-			HealthCheck:     &healthCheckOpts,
-			Port:            sl.Int(d.Get("port").(int)),
-			VirtualServerId: sl.Int(d.Get("virtual_server_id").(int)),
-		},
+		return fmt.Errorf("Error creating Scale Group: %s", err)
 	}
 
 	res, err := service.CreateObject(&opts)
@@ -307,6 +299,36 @@ func resourceSoftLayerScaleGroupCreate(d *schema.ResourceData, meta interface{})
 	}
 
 	return resourceSoftLayerScaleGroupRead(d, meta)
+}
+
+func buildLoadBalancers(d *schema.ResourceData) ([]datatypes.Scale_LoadBalancer, error) {
+	isLoadBalancerEmpty := true
+	loadBalancers := []datatypes.Scale_LoadBalancer{{}}
+
+	if virtualServerId, ok := d.GetOk("virtual_server_id"); ok {
+		isLoadBalancerEmpty = false
+		loadBalancers[0].VirtualServerId = sl.Int(virtualServerId.(int))
+	}
+
+	if healthCheck, ok := d.GetOk("health_check"); ok {
+		isLoadBalancerEmpty = false
+		healthCheckOpts, err := buildHealthCheckFromResourceData(healthCheck.(map[string]interface{}))
+		if err != nil {
+			return []datatypes.Scale_LoadBalancer{}, fmt.Errorf("Error while parsing health check options: %s", err)
+		}
+		loadBalancers[0].HealthCheck = &healthCheckOpts
+	}
+
+	if port, ok := d.GetOk("port"); ok {
+		isLoadBalancerEmpty = false
+		loadBalancers[0].Port = sl.Int(port.(int))
+	}
+
+	if isLoadBalancerEmpty {
+		return []datatypes.Scale_LoadBalancer{}, nil
+	} else {
+		return loadBalancers, nil
+	}
 }
 
 func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) error {
@@ -334,29 +356,31 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 	d.Set("cooldown", *slGroupObj.Cooldown)
 	d.Set("status", *slGroupObj.Status.KeyName)
 	d.Set("termination_policy", *slGroupObj.TerminationPolicy.KeyName)
-	d.Set("virtual_server_id", *slGroupObj.LoadBalancers[0].VirtualServerId)
-	d.Set("port", *slGroupObj.LoadBalancers[0].Port)
+	if slGroupObj.LoadBalancers != nil && len(slGroupObj.LoadBalancers) > 0 {
+		d.Set("virtual_server_id", *slGroupObj.LoadBalancers[0].VirtualServerId)
+		d.Set("port", *slGroupObj.LoadBalancers[0].Port)
 
-	// Health Check
-	healthCheckObj := slGroupObj.LoadBalancers[0].HealthCheck
-	currentHealthCheck := d.Get("health_check").(map[string]interface{})
+		// Health Check
+		healthCheckObj := slGroupObj.LoadBalancers[0].HealthCheck
+		currentHealthCheck := d.Get("health_check").(map[string]interface{})
 
-	currentHealthCheck["type"] = *healthCheckObj.Type.Keyname
+		currentHealthCheck["type"] = *healthCheckObj.Type.Keyname
 
-	if *healthCheckObj.Type.Keyname == HEALTH_CHECK_TYPE_HTTP_CUSTOM {
-		for _, elem := range healthCheckObj.Attributes {
-			switch *elem.Type.Keyname {
-			case "HTTP_CUSTOM_TYPE":
-				currentHealthCheck["custom_method"] = *elem.Value
-			case "LOCATION":
-				currentHealthCheck["custom_request"] = *elem.Value
-			case "EXPECTED_RESPONSE":
-				currentHealthCheck["custom_response"] = *elem.Value
+		if *healthCheckObj.Type.Keyname == HEALTH_CHECK_TYPE_HTTP_CUSTOM {
+			for _, elem := range healthCheckObj.Attributes {
+				switch *elem.Type.Keyname {
+				case "HTTP_CUSTOM_TYPE":
+					currentHealthCheck["custom_method"] = *elem.Value
+				case "LOCATION":
+					currentHealthCheck["custom_request"] = *elem.Value
+				case "EXPECTED_RESPONSE":
+					currentHealthCheck["custom_response"] = *elem.Value
+				}
 			}
 		}
-	}
 
-	d.Set("health_check", currentHealthCheck)
+		d.Set("health_check", currentHealthCheck)
+	}
 
 	// Network Vlans
 	vlanTotal := len(slGroupObj.NetworkVlans)
@@ -441,6 +465,7 @@ func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{})
 	sess := meta.(*session.Session)
 	scaleGroupService := services.GetScaleGroupService(sess)
 	scaleNetworkVlanService := services.GetScaleNetworkVlanService(sess)
+	scaleLoadBalancerService := services.GetScaleLoadBalancerService(sess)
 
 	groupId, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -459,15 +484,12 @@ func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{})
 	groupObj.MaximumMemberCount = sl.Int(d.Get("maximum_member_count").(int))
 	groupObj.Cooldown = sl.Int(d.Get("cooldown").(int))
 	groupObj.TerminationPolicy.KeyName = sl.String(d.Get("termination_policy").(string))
-	groupObj.LoadBalancers[0].VirtualServerId = sl.Int(d.Get("virtual_server_id").(int))
-	groupObj.LoadBalancers[0].Port = sl.Int(d.Get("port").(int))
 
-	healthCheck, err := buildHealthCheckFromResourceData(d.Get("health_check").(map[string]interface{}))
+	currentLoadBalancers := groupObj.LoadBalancers
+	groupObj.LoadBalancers, err = buildLoadBalancers(d)
 	if err != nil {
-		return fmt.Errorf("Unable to parse health check options: %s", err)
+		return fmt.Errorf("Error creating Scale Group: %s", err)
 	}
-
-	groupObj.LoadBalancers[0].HealthCheck = &healthCheck
 
 	if d.HasChange("network_vlan_ids") {
 		// Vlans require special handling:
@@ -522,6 +544,15 @@ func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{})
 
 	if err != nil {
 		return fmt.Errorf("Error waiting for scale group (%s) to become active: %s", d.Id(), err)
+	}
+
+	// Delete a load balancer if there is the load balancer in a scale group
+	// and a request doesn't have virtual_server_id, port, and health_check.
+	if len(currentLoadBalancers) > 0 && len(groupObj.LoadBalancers) <= 0 {
+		_, err = scaleLoadBalancerService.Id(*currentLoadBalancers[0].Id).DeleteObject()
+		if err != nil {
+			return fmt.Errorf("Error received while deleting loadbalancers: %s", err)
+		}
 	}
 
 	return nil
