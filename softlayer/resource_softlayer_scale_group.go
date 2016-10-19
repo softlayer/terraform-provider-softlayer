@@ -356,7 +356,7 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 	d.Set("cooldown", *slGroupObj.Cooldown)
 	d.Set("status", *slGroupObj.Status.KeyName)
 	d.Set("termination_policy", *slGroupObj.TerminationPolicy.KeyName)
-	if slGroupObj.LoadBalancers != nil && len(slGroupObj.LoadBalancers) > 0 {
+	if len(slGroupObj.LoadBalancers) > 0 {
 		d.Set("virtual_server_id", *slGroupObj.LoadBalancers[0].VirtualServerId)
 		d.Set("port", *slGroupObj.LoadBalancers[0].Port)
 
