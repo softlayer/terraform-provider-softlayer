@@ -570,6 +570,15 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		d.Set("tags", tags)
 	}
 
+	// Set connection info
+	connInfo := map[string]string{"type": "ssh"}
+	if !*result.PrivateNetworkOnlyFlag && result.PrimaryIpAddress != nil {
+		connInfo["host"] = *result.PrimaryIpAddress
+	} else {
+		connInfo["host"] = *result.PrimaryBackendIpAddress
+	}
+	d.SetConnInfo(connInfo)
+
 	return nil
 }
 

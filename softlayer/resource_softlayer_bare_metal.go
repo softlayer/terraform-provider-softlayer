@@ -364,6 +364,14 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 		d.Set("tags", tags)
 	}
 
+	connInfo := map[string]string{"type": "ssh"}
+	if !*result.PrivateNetworkOnlyFlag && result.PrimaryIpAddress != nil {
+		connInfo["host"] = *result.PrimaryIpAddress
+	} else {
+		connInfo["host"] = *result.PrimaryBackendIpAddress
+	}
+	d.SetConnInfo(connInfo)
+
 	return nil
 }
 
