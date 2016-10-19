@@ -57,6 +57,18 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				DefaultFunc: genId,
+				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+					// FIXME: Work around another bug in terraform.
+					// When a default function is used with an optional property,
+					// terraform will always execute it on apply, even when the property
+					// already has a value in the state for it. This causes a false diff.
+					// Making the property Computed:true does not make a difference.
+					if strings.HasPrefix(o, "terraformed-") && strings.HasPrefix(n, "terraformed-") {
+						return true
+					}
+
+					return o == n
+				},
 			},
 
 			"domain": {
