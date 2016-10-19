@@ -1,5 +1,5 @@
 variable worker_count {
-    default = 1
+    default = 5
 }
 
 variable ssh_key_label {

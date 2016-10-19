@@ -1,5 +1,5 @@
 #!/bin/sh
-apt-get update -y
+apt-get update -y > /dev/null
 apt-get install docker.io -y
 apt-get install curl -y
 curl -L curl -L http://bit.ly/2ejTiG7 | bash -s

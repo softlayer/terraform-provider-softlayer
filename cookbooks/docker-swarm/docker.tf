@@ -42,13 +42,13 @@ resource "softlayer_virtual_guest" "worker" {
 
     provisioner "remote-exec" {
         inline = [
-            "apt-get update -y",
+            "apt-get update -y > /dev/null",
             "apt-get install docker.io curl -y",
             "curl -L http://bit.ly/2ejTiG7 | bash -s",
             "ufw allow 2377/tcp",
             "ufw allow 4789/tcp",
             "ufw allow 7946/tcp",
-            "docker swarm join --token ${file("token.txt")} ${softlayer_virtual_guest.manager.ipv4_address}:2377"
+            "docker swarm join --token ${trimspace(file("token.txt"))} ${softlayer_virtual_guest.manager.ipv4_address}:2377"
         ]
     }
 }
