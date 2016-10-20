@@ -23,15 +23,14 @@ resource "softlayer_scale_group" "test_scale_group" {
       name = "test_virtual_guest_name"
       domain = "example.com"
       cpu = 1
-      ram = 4096
-      public_network_speed = 1000
+      ram = 1024
+      public_network_speed = 100
       hourly_billing = true
-      block_device_template_group_gid = "07beadaa-1e11-476e-a188-3f7795feb9fb"
-      image = "DEBIAN_7_64"
+      os_reference_code = "DEBIAN_7_64"
       # Optional Fields for virtual guest template (SL defaults apply):
       local_disk = false
-      disks = [25,100]
-      region = "sng01"
+      disks = [25]
+      datacenter = "sng01"
       post_install_script_uri = ""
       ssh_keys = [383111]
       user_data = "#!/bin/bash ..."
@@ -63,21 +62,21 @@ The following arguments are supported:
 * `termination_policy` | *string*
     * Specifies the termination policy for the scaling group.
     * **Required**
-* `virtual_server_id` | *int*
-    * Specifies the id of a virtual server .
-    * **Required**
-* `port` | *int*
-    * Specifies the port number. For example 8080
-    * **Required**
-* `health_check` | *map*
-    * Specifies the type of health check. For example HTTP. Also used to specify custom HTTP methods.
-    * **Required**
 * `virtual_guest_member_template` | *array*
-    * This is the template to create guest memebers with.
+    * This is the template to create guest memebers with. Only one template can be configured. Accepted values can be found [softlayer_virtual_guest](softlayer_virtual_guest.md).
     * **Required**
 * `network_vlan_ids` | *array of numbers*
     * Collection of VLAN IDs for this auto scale group. Accepted values can be found [here](https://control.softlayer.com/network/vlans). Click on the desired VLAN and note the ID on the resulting URL. Or, you can also [refer to a VLAN by name using a data source](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_vlan.md).
     * *Default*: nil
+    * *Optional*
+* `virtual_server_id` | *int*
+    * Specifies the id of a virtual server in a local load balancer. The id can be found with the following URL : `https://api.softlayer.com/rest/v3/SoftLayer_Network_Application_Delivery_Controller_LoadBalancer_VirtualIpAddress/[LOADBALANCER ID]/getObject?objectMask=virtualServers`. Replace **[LOADBALANER ID]** to an ID of a target load balacer's ID and open the URL with a web broswer. SoftLayer user name and API key are required.
+    * *Optional*
+* `port` | *int*
+    * Specifies the port number in a local load balancer. For example 8080
+    * *Optional*
+* `health_check` | *map*
+    * Specifies the type of health check in a local load balancer. For example HTTP. Also used to specify custom HTTP methods.
     * *Optional*
 
 ## Attributes Reference
