@@ -198,10 +198,12 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
-					if !d.Get("private_network_only").(bool) {
-						return o == n
+					if privateNetworkOnly, ok := d.GetOk("private_network_only"); ok {
+						if privateNetworkOnly.(bool) {
+							return true
+						}
 					}
-					return true
+					return o == n
 				},
 				Default: 100,
 			},
