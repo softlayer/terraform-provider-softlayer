@@ -389,21 +389,20 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 	// the original order in the config and trigger a false change/update.
 	// This should be fine as we don't expect this to change after the group
 	// is created. Else, this code needs to be refactored to use a TypeSet.
-	if vlanTotal == 0 {
+	if _, ok := d.GetOk("network_vlan_ids"); !ok {
 		vlanIds := make([]int, vlanTotal)
 		for i, vlan := range slGroupObj.NetworkVlans {
 			vlanIds[i] = *vlan.NetworkVlanId
 		}
 		d.Set("network_vlan_ids", vlanIds)
 	}
-
 	virtualGuestTemplate := populateMemberTemplateResourceData(*slGroupObj.VirtualGuestMemberTemplate)
 	d.Set("virtual_guest_member_template", virtualGuestTemplate)
 
 	return nil
 }
 
-func populateMemberTemplateResourceData(template datatypes.Virtual_Guest) map[string]interface{} {
+func populateMemberTemplateResourceData(template datatypes.Virtual_Guest) []map[string]interface{} {
 
 	d := make(map[string]interface{})
 
@@ -423,27 +422,18 @@ func populateMemberTemplateResourceData(template datatypes.Virtual_Guest) map[st
 	d["post_install_script_uri"] = sl.Get(template.PostInstallScriptUri)
 
 	if template.PrimaryNetworkComponent != nil && template.PrimaryNetworkComponent.NetworkVlan != nil {
-		d["frontend_vlan_id"] = sl.Get(template.PrimaryNetworkComponent.NetworkVlan.Id)
-	} else {
-		d["frontend_vlan_id"] = nil
+		d["public_vlan_id"] = sl.Get(template.PrimaryNetworkComponent.NetworkVlan.Id)
 	}
 
 	if template.PrimaryBackendNetworkComponent != nil && template.PrimaryBackendNetworkComponent.NetworkVlan != nil {
-		d["backend_vlan_id"] = sl.Get(template.PrimaryBackendNetworkComponent.NetworkVlan.Id)
-	} else {
-		d["backend_vlan_id"] = nil
+		d["private_vlan_id"] = sl.Get(template.PrimaryBackendNetworkComponent.NetworkVlan.Id)
 	}
-
 	if template.BlockDeviceTemplateGroup != nil {
 		d["image_id"] = sl.Get(template.BlockDeviceTemplateGroup.GlobalIdentifier)
-	} else {
-		d["image_id"] = nil
 	}
 
 	if len(template.UserData) > 0 {
 		d["user_data"] = *template.UserData[0].Value
-	} else {
-		d["user_data"] = ""
 	}
 
 	sshKeys := make([]interface{}, 0, len(template.SshKeys))
@@ -458,7 +448,7 @@ func populateMemberTemplateResourceData(template datatypes.Virtual_Guest) map[st
 	}
 	d["disks"] = disks
 
-	return d
+	return []map[string]interface{}{d}
 }
 
 func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{}) error {
