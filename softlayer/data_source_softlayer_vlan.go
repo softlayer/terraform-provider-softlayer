@@ -85,7 +85,7 @@ func dataSourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error
 		d.SetId(fmt.Sprintf("%d", *vlan.Id))
 		d.Set("number", *vlan.VlanNumber)
 
-		if vlan.PrimaryRouter != nil {
+		if vlan.PrimaryRouter != nil && vlan.PrimaryRouter.Hostname != nil {
 			d.Set("router_hostname", *vlan.PrimaryRouter.Hostname)
 		}
 	} else {
