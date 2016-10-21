@@ -108,12 +108,13 @@ type Session struct {
 // 1. UserName
 // 2. Api Key
 // 3. Endpoint
+// 4. Timeout
 //
 // If one or more are omitted, New() will attempt to retrieve these values from
 // the environment, and the ~/.softlayer config file, in that order.
 func New(args ...interface{}) *Session {
-	keys := map[string]int{"username": 0, "api_key": 1, "endpoint_url": 2}
-	values := []string{"", "", ""}
+	keys := map[string]int{"username": 0, "api_key": 1, "endpoint_url": 2, "timeout": 3}
+	values := []string{"", "", "", ""}
 
 	for i := 0; i < len(args); i++ {
 		values[i] = args[i].(string)
@@ -132,6 +133,9 @@ func New(args ...interface{}) *Session {
 	// Prioritize SL_ENDPOINT_URL
 	envFallback("SL_ENDPOINT_URL", &values[keys["endpoint_url"]])
 	envFallback("SOFTLAYER_ENDPOINT_URL", &values[keys["endpoint_url"]])
+
+	envFallback("SL_TIMEOUT", &values[keys["timeout"]])
+	envFallback("SOFTLAYER_TIMEOUT", &values[keys["timeout"]])
 
 	// Read ~/.softlayer for configuration
 	u, err := user.Current()
@@ -160,11 +164,21 @@ func New(args ...interface{}) *Session {
 		endpointURL = DefaultEndpoint
 	}
 
-	return &Session{
+	sess := &Session{
 		UserName: values[keys["username"]],
 		APIKey:   values[keys["api_key"]],
 		Endpoint: endpointURL,
 	}
+
+	timeout := values[keys["timeout"]]
+	if timeout != "" {
+		timeoutDuration, err := time.ParseDuration(fmt.Sprintf("%ss", timeout))
+		if err == nil {
+			sess.Timeout = timeoutDuration
+		}
+	}
+
+	return sess
 }
 
 // DoRequest hands off the processing to the assigned transport handler. It is
