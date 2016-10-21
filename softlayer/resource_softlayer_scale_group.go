@@ -389,7 +389,7 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 	// the original order in the config and trigger a false change/update.
 	// This should be fine as we don't expect this to change after the group
 	// is created. Else, this code needs to be refactored to use a TypeSet.
-	if vlanTotal == 0 {
+	if _, ok := d.GetOk("network_vlan_ids"); !ok {
 		vlanIds := make([]int, vlanTotal)
 		for i, vlan := range slGroupObj.NetworkVlans {
 			vlanIds[i] = *vlan.NetworkVlanId
