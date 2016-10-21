@@ -13,11 +13,11 @@ Set in the config files, or override via `TF_ENV_varname`
 * `worker_count` | *int*
     * The number of docker swarm worker nodes
     * *Optional*
-    * *Default*: 1
+    * *Default*: 5
 * `datacenter` | *string*
     * The SoftLayer datacenter to use to provision the systems
     * **Required**
-    * *Default*: dal06
+    * *Default*: wdc01
 * `ssh_key_label` | *int*
     * The vlan number on which the nodes will be provisioned.
     * **Required**
