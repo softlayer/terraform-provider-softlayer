@@ -25,11 +25,12 @@ Go to the [documentation directory](docs/).
 
 ### Setup
 
-Make sure you have your [_$GOPATH_ environment variable set](https://golang.org/doc/code.html#GOPATH).
+Make sure you have your [_$GOPATH_ environment variable set](https://golang.org/doc/code.html#GOPATH). $GOPATH should be
+set to the terraform-provider-softlayer directory.
 
 _$GOPATH/bin_ should also be in your _$PATH_ (e.g. `export PATH=$GOPATH/bin:PATH`).
 
-Now you need to get the main dependencies.
+To retrieve dependencies run these commands from the root directory of terraform-provider-softlayer.
 
 To get _softlayer-go_:
 
