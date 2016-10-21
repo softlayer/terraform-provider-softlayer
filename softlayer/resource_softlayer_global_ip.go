@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	AdditionalServicesPackageType                  = "ADDITIONAL_SERVICES"
 	AdditionalServicesGlobalIpAddressesPackageType = "ADDITIONAL_SERVICES_GLOBAL_IP_ADDRESSES"
 
 	GlobalIpMask = "id,ipAddress[ipAddress],destinationIpAddress[ipAddress]"
@@ -147,7 +146,7 @@ func resourceSoftLayerGlobalIpUpdate(d *schema.ResourceData, meta interface{}) e
 		return nil
 	}
 
-	return resourceSoftLayerGlobalIpRead(d, meta)
+	return nil
 }
 
 func resourceSoftLayerGlobalIpDelete(d *schema.ResourceData, meta interface{}) error {
