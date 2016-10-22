@@ -128,33 +128,11 @@ func resourceSoftLayerScaleGroup() *schema.Resource {
 			},
 
 			"network_vlan_ids": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeInt},
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					o := strings.TrimRight(strings.TrimLeft(old, " ["), "] ")
-					n := strings.TrimRight(strings.TrimLeft(new, " ["), "] ")
-					oldIds := strings.Split(o, ",")
-					newIds := strings.Split(n, ",")
-					if len(oldIds) != len(newIds) {
-						return false
-					}
-
-					for _, newId := range newIds {
-						found := false
-						for _, oldId := range oldIds {
-							if strings.TrimSpace(newId) == strings.TrimSpace(oldId) {
-								found = true
-								break
-							}
-						}
-
-						if !found {
-							return false
-						}
-					}
-
-					return true
+				Set: func(v interface{}) int {
+					return v.(int)
 				},
 			},
 		},
@@ -277,7 +255,7 @@ func resourceSoftLayerScaleGroupCreate(d *schema.ResourceData, meta interface{})
 		return fmt.Errorf("Error while parsing virtual_guest_member_template values: %s", err)
 	}
 
-	scaleNetworkVlans, err := buildScaleVlansFromResourceData(d.Get("network_vlan_ids"), meta)
+	scaleNetworkVlans, err := buildScaleVlansFromResourceData(d.Get("network_vlan_ids").(*schema.Set).List(), meta)
 	if err != nil {
 		return fmt.Errorf("Error while parsing network vlan values: %s", err)
 	}
@@ -410,7 +388,6 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 	}
 
 	// Network Vlans
-	// TODO: This might change the order in the list.
 	vlanIds := make([]int, len(slGroupObj.NetworkVlans))
 	for i, vlan := range slGroupObj.NetworkVlans {
 		vlanIds[i] = *vlan.NetworkVlanId
@@ -509,17 +486,19 @@ func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{})
 		// 2. Pass the updated list of vlans to the Scale_Group.editObject function.  SoftLayer determines
 		// which Vlans are new, and which already exist.
 
-		oldIds, newIds := d.GetChange("network_vlan_ids")
+		oldValue, newValue := d.GetChange("network_vlan_ids")
+		oldIds := oldValue.(*schema.Set).List()
+		newIds := newValue.(*schema.Set).List()
 
 		// Delete entries from 'old' set not appearing in new (old - new)
-		for _, o := range oldIds.([]int) {
-			for _, n := range newIds.([]int) {
-				if n == o {
+		for _, o := range oldIds {
+			for _, n := range newIds {
+				if n.(int) == o.(int) {
 					goto nextOld
 				}
 			}
 
-			_, err = scaleNetworkVlanService.Id(o).DeleteObject()
+			_, err = scaleNetworkVlanService.Id(o.(int)).DeleteObject()
 			if err != nil {
 				return fmt.Errorf("Error deleting scale network vlan: %s", err)
 			}
