@@ -350,7 +350,9 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 
 	d.Set("id", *slGroupObj.Id)
 	d.Set("name", *slGroupObj.Name)
-	d.Set("regional_group", *slGroupObj.RegionalGroup.Name)
+	if slGroupObj.RegionalGroup != nil && slGroupObj.RegionalGroup.Name != nil {
+		d.Set("regional_group", *slGroupObj.RegionalGroup.Name)
+	}
 	d.Set("minimum_member_count", *slGroupObj.MinimumMemberCount)
 	d.Set("maximum_member_count", *slGroupObj.MaximumMemberCount)
 	d.Set("cooldown", *slGroupObj.Cooldown)
