@@ -12,6 +12,7 @@ func TestAccSoftLayerImageTemplateDataSource_Basic(t *testing.T) {
 		PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
+			// Tests looking up private or shared images
 			{
 				Config: testAccCheckSoftLayerImageTemplateDataSourceConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
@@ -27,14 +28,34 @@ func TestAccSoftLayerImageTemplateDataSource_Basic(t *testing.T) {
 					),
 				),
 			},
+			// Tests looking up a public image
+			{
+				Config: testAccCheckSoftLayerImageTemplateDataSourceConfig_basic2,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"data.softlayer_image_template.tfacc_img_tmpl",
+						"name",
+						"RightImage_Ubuntu_12.04_amd64_v13.5",
+					),
+					resource.TestMatchResourceAttr(
+						"data.softlayer_image_template.tfacc_img_tmpl",
+						"id",
+						regexp.MustCompile("^[0-9]+$"),
+					),
+				),
+			},
 		},
 	})
 }
 
-// The datasource to apply
 const testAccCheckSoftLayerImageTemplateDataSourceConfig_basic = `
-
 data "softlayer_image_template" "tfacc_img_tmpl" {
     name = "jumpbox"
+}
+`
+
+const testAccCheckSoftLayerImageTemplateDataSourceConfig_basic2 = `
+data "softlayer_image_template" "tfacc_img_tmpl" {
+    name = "RightImage_Ubuntu_12.04_amd64_v13.5"
 }
 `
