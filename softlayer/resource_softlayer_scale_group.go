@@ -128,9 +128,12 @@ func resourceSoftLayerScaleGroup() *schema.Resource {
 			},
 
 			"network_vlan_ids": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeInt},
+				Set: func(v interface{}) int {
+					return v.(int)
+				},
 			},
 		},
 	}
@@ -252,7 +255,7 @@ func resourceSoftLayerScaleGroupCreate(d *schema.ResourceData, meta interface{})
 		return fmt.Errorf("Error while parsing virtual_guest_member_template values: %s", err)
 	}
 
-	scaleNetworkVlans, err := buildScaleVlansFromResourceData(d.Get("network_vlan_ids"), meta)
+	scaleNetworkVlans, err := buildScaleVlansFromResourceData(d.Get("network_vlan_ids").(*schema.Set).List(), meta)
 	if err != nil {
 		return fmt.Errorf("Error while parsing network vlan values: %s", err)
 	}
@@ -385,19 +388,12 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 	}
 
 	// Network Vlans
-	vlanTotal := len(slGroupObj.NetworkVlans)
-	// Don't refresh vlan ids, unless this is an import operation
-	// to avoid the problem of getting the list out of order from
-	// the original order in the config and trigger a false change/update.
-	// This should be fine as we don't expect this to change after the group
-	// is created. Else, this code needs to be refactored to use a TypeSet.
-	if _, ok := d.GetOk("network_vlan_ids"); !ok {
-		vlanIds := make([]int, vlanTotal)
-		for i, vlan := range slGroupObj.NetworkVlans {
-			vlanIds[i] = *vlan.NetworkVlanId
-		}
-		d.Set("network_vlan_ids", vlanIds)
+	vlanIds := make([]int, len(slGroupObj.NetworkVlans))
+	for i, vlan := range slGroupObj.NetworkVlans {
+		vlanIds[i] = *vlan.NetworkVlanId
 	}
+	d.Set("network_vlan_ids", vlanIds)
+
 	virtualGuestTemplate := populateMemberTemplateResourceData(*slGroupObj.VirtualGuestMemberTemplate)
 	d.Set("virtual_guest_member_template", virtualGuestTemplate)
 
@@ -490,21 +486,22 @@ func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{})
 		// 2. Pass the updated list of vlans to the Scale_Group.editObject function.  SoftLayer determines
 		// which Vlans are new, and which already exist.
 
-		oldIds, newIds := d.GetChange("network_vlan_ids")
+		_, newValue := d.GetChange("network_vlan_ids")
+		newIds := newValue.(*schema.Set).List()
 
-		// Delete entries from 'old' set not appearing in new (old - new)
-		for _, o := range oldIds.([]int) {
-			for _, n := range newIds.([]int) {
-				if n == o {
-					goto nextOld
-				}
-			}
+		// Delete all Vlans
+		oldScaleVlans, err := scaleGroupService.
+			Id(groupId).
+			GetNetworkVlans()
+		if err != nil {
+			return fmt.Errorf("Could not retrieve current vlans for scale group (%d): %s", groupId, err)
+		}
 
-			_, err = scaleNetworkVlanService.Id(o).DeleteObject()
+		for _, oldScaleVlan := range oldScaleVlans {
+			_, err := scaleNetworkVlanService.Id(*oldScaleVlan.Id).DeleteObject()
 			if err != nil {
-				return fmt.Errorf("Error deleting scale network vlan: %s", err)
+				return fmt.Errorf("Error deleting scale network vlan %d: %s", *oldScaleVlan.Id, err)
 			}
-		nextOld:
 		}
 
 		// Parse the new list of vlans into the appropriate input structure
@@ -586,13 +583,23 @@ func waitForActiveStatus(d *schema.ResourceData, meta interface{}) (interface{},
 		Refresh: func() (interface{}, string, error) {
 			// get the status of the scale group
 			result, err := scaleGroupService.Id(id).Mask("status.keyName").GetObject()
-
-			log.Printf("The status of scale group with id (%s) is (%s)", d.Id(), *result.Status.KeyName)
 			if err != nil {
-				return nil, "", fmt.Errorf("Couldn't get status of the scale group: %s", err)
+				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
+					return nil, "", fmt.Errorf("The scale group %d does not exist anymore: %s", id, err)
+				}
+
+				return result, "BUSY", nil // Retry
 			}
 
-			return result, *result.Status.KeyName, nil
+			status := "BUSY"
+			if result.Status.KeyName != nil {
+				status = *result.Status.KeyName
+				log.Printf("The status of scale group with id (%d) is (%s)", id, *result.Status.KeyName)
+			} else {
+				log.Printf("Could not get the status of scale group with id (%d). Retrying...", id)
+			}
+
+			return result, status, nil
 		},
 		Timeout:    10 * time.Minute,
 		Delay:      2 * time.Second,
