@@ -21,34 +21,6 @@ providers {
 
 Go to the [documentation directory](docs/).
 
-#### `softlayer_global_ip`
-
-Provides Global Ip's containing all the information needed to add a global ip. This allows Global Ip's to be created, updated and deleted.
-For additional details please refer to [API documentation](http://sldn.softlayer.com/reference/services/SoftLayer_Network_Subnet_IpAddress_Global).
-
-##### Example Usage
-
-```hcl
-resource "softlayer_global_ip" "test_global_ip " {
-    routes_to = "119.81.82.163"
-}
-```
-
-##### Argument Reference
-
-The following arguments are supported:
-
-* `routes_to` | *string* - (Required) Create a new transaction to modify a global IP route.
-
-Field `routes_to`is editable.
-
-##### Attributes Reference
-
-The following attributes are exported:
-
-* `id` - id of the new global ip
-* `ip_address` - ip address of the new global ip
-
 ## Development
 
 ### Setup
