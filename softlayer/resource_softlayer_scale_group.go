@@ -601,20 +601,20 @@ func waitForActiveStatus(d *schema.ResourceData, meta interface{}) (interface{},
 		Refresh: func() (interface{}, string, error) {
 			// get the status of the scale group
 			result, err := scaleGroupService.Id(id).Mask("status.keyName").GetObject()
-			status := "BUSY"
-			if result.Status.KeyName != nil {
-				status = *result.Status.KeyName
-				log.Printf("The status of scale group with id (%s) is (%s)", d.Id(), *result.Status.KeyName)
-			} else {
-				log.Printf("Could not get the status of scale group with id (%s). Retrying...", d.Id())
-			}
-
 			if err != nil {
 				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
-					return nil, "", fmt.Errorf("Couldn't get status of the scale group: %s", err)
+					return nil, "", fmt.Errorf("The scale group %d does not exist anymore: %s", id, err)
 				}
 
 				return result, "BUSY", nil // Retry
+			}
+
+			status := "BUSY"
+			if result.Status.KeyName != nil {
+				status = *result.Status.KeyName
+				log.Printf("The status of scale group with id (%d) is (%s)", id, *result.Status.KeyName)
+			} else {
+				log.Printf("Could not get the status of scale group with id (%d). Retrying...", id)
 			}
 
 			return result, status, nil
