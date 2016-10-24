@@ -25,23 +25,16 @@ Go to the [documentation directory](docs/).
 
 ### Setup
 
-Make sure you have your [_$GOPATH_ environment variable set](https://golang.org/doc/code.html#GOPATH).
-
-_$GOPATH/bin_ should also be in your _$PATH_ (e.g. `export PATH=$GOPATH/bin:PATH`).
-
-Now you need to get the main dependencies.
-
-To get _softlayer-go_:
-
+1. Ensure you have a [_$GOPATH_ environment variable set](https://golang.org/doc/code.html#GOPATH).
+1. Ensure you have _$GOPATH/bin_ in your _$PATH_ (e.g. `export PATH=$GOPATH/bin:PATH`).
+1. Install _terraform-provider-softlayer_ as described above in the **install** section.
+1. Get the main dependencies:
 ```
-go get github.com/softlayer/softlayer-go/...
+$ go get github.com/softlayer/softlayer-go/...
+$ go get github.com/hashicorp/terraform
 ```
 
-To get _terraform_:
-
-```
-go get github.com/hashicorp/terraform
-```
+The project will exist at _$GOPATH/src/github.com/softlayer/terraform-provider-softlayer_.
 
 ### Build
 
@@ -52,7 +45,7 @@ make bin
 ### Test
 
 ```
-make test
+make
 ```
 
 ### Updating dependencies
