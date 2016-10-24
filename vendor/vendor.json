@@ -91,6 +91,12 @@
 			"path": "github.com/softlayer/softlayer-go/sl",
 			"revision": "8d989c364b558ec5b98800c3fc12848b1af3d5ca",
 			"revisionTime": "2016-10-21T20:49:26Z"
+		},
+		{
+			"checksumSHA1": "gJG/5S8KrCA1QGkIkpa5a/wnmy4=",
+			"path": "golang.org/x/text/encoding/charmap",
+			"revision": "1e65e9bf72c307081cea196f47ef37aed17eb316",
+			"revisionTime": "2016-08-30T12:50:59Z"
 		}
 	],
 	"rootPath": "github.com/softlayer/terraform-provider-softlayer"
