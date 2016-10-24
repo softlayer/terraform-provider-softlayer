@@ -25,19 +25,15 @@ else
     BASE_PATH=$GOPATH/bin
 fi
 
-echo ""
-echo "Moving ${DEST_BIN}_${XC_OS}_${XC_ARCH} to $BASE_PATH/$DEST_BIN"
-echo ""
-
 mv ${DEST_BIN}_${XC_OS}_${XC_ARCH} $BASE_PATH/$DEST_BIN
 if [ $? -ne 0 ]; then
         BASE_PATH=$GOPATH/bin
         mv ${DEST_BIN}_${XC_OS}_${XC_ARCH} $BASE_PATH/$DEST_BIN
 fi
 
-echo "Resulting binary: "
 echo ""
-echo $(ls -la $BASE_PATH/$DEST_BIN)
+echo "Installed ${DEST_BIN}_${XC_OS}_${XC_ARCH} at $BASE_PATH/$DEST_BIN"
+echo ""
 
 # Conditional for Brew people on OSX
 if [[ -L $TERRAFORM ]] && [[ $(uname) == "Darwin" ]]; then
