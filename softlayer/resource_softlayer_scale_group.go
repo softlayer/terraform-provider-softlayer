@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
+	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
@@ -492,13 +493,29 @@ func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{})
 
 		// Delete entries from 'old' set not appearing in new (old - new)
 		for _, o := range oldIds {
+			var err error
+			var oldScaleVlans []datatypes.Scale_Network_Vlan
+
+			oldId := o.(int)
 			for _, n := range newIds {
-				if n.(int) == o.(int) {
+				if n.(int) == oldId {
 					goto nextOld
 				}
 			}
 
-			_, err = scaleNetworkVlanService.Id(o.(int)).DeleteObject()
+			oldScaleVlans, err = scaleGroupService.
+				Id(groupId).
+				Filter(filter.Path("networkVlans.networkVlanId").Eq(oldId).Build()).
+				GetNetworkVlans()
+			if err != nil {
+				return fmt.Errorf("Error deleting scale network vlan: %s", err)
+			}
+
+			if len(oldScaleVlans) == 0 {
+				return fmt.Errorf("Could not lookup scale group vlan for network vlan %d", oldId)
+			}
+
+			_, err = scaleNetworkVlanService.Id(*oldScaleVlans[0].Id).DeleteObject()
 			if err != nil {
 				return fmt.Errorf("Error deleting scale network vlan: %s", err)
 			}
@@ -584,13 +601,23 @@ func waitForActiveStatus(d *schema.ResourceData, meta interface{}) (interface{},
 		Refresh: func() (interface{}, string, error) {
 			// get the status of the scale group
 			result, err := scaleGroupService.Id(id).Mask("status.keyName").GetObject()
-
-			log.Printf("The status of scale group with id (%s) is (%s)", d.Id(), *result.Status.KeyName)
-			if err != nil {
-				return nil, "", fmt.Errorf("Couldn't get status of the scale group: %s", err)
+			status := "BUSY"
+			if result.Status.KeyName != nil {
+				status = *result.Status.KeyName
+				log.Printf("The status of scale group with id (%s) is (%s)", d.Id(), *result.Status.KeyName)
+			} else {
+				log.Printf("Could not get the status of scale group with id (%s). Retrying...", d.Id())
 			}
 
-			return result, *result.Status.KeyName, nil
+			if err != nil {
+				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
+					return nil, "", fmt.Errorf("Couldn't get status of the scale group: %s", err)
+				}
+
+				return result, "BUSY", nil // Retry
+			}
+
+			return result, status, nil
 		},
 		Timeout:    10 * time.Minute,
 		Delay:      2 * time.Second,
