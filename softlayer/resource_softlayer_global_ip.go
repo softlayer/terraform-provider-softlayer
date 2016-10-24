@@ -87,11 +87,6 @@ func resourceSoftLayerGlobalIpRead(d *schema.ResourceData, meta interface{}) err
 
 	globalIp, err := service.Id(globalIpId).Mask(GlobalIpMask).GetObject()
 	if err != nil {
-		if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
-			d.SetId("")
-			return nil
-		}
-
 		return fmt.Errorf("Error retrieving Global Ip: %s", err)
 	}
 
@@ -120,16 +115,14 @@ func resourceSoftLayerGlobalIpUpdate(d *schema.ResourceData, meta interface{}) e
 		Pending: []string{"pending"},
 		Target:  []string{"complete"},
 		Refresh: func() (interface{}, string, error) {
-			subnetIpAddress, err := service.Id(globalIpId).GetDestinationIpAddress()
+			transaction, err := service.Id(globalIpId).GetActiveTransaction()
 			if err != nil {
 				return datatypes.Network_Subnet_IpAddress_Global{}, "pending", err
 			}
-
-			if *subnetIpAddress.IpAddress == d.Get("routes_to").(string) {
+			if transaction.Id == nil {
 				return datatypes.Network_Subnet_IpAddress_Global{}, "complete", nil
-			} else {
-				return nil, "pending", nil
 			}
+			return datatypes.Network_Subnet_IpAddress_Global{}, "pending", nil
 		},
 		Timeout:    10 * time.Minute,
 		Delay:      5 * time.Second,
