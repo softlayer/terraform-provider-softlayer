@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
-	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
@@ -487,39 +486,22 @@ func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{})
 		// 2. Pass the updated list of vlans to the Scale_Group.editObject function.  SoftLayer determines
 		// which Vlans are new, and which already exist.
 
-		oldValue, newValue := d.GetChange("network_vlan_ids")
-		oldIds := oldValue.(*schema.Set).List()
+		_, newValue := d.GetChange("network_vlan_ids")
 		newIds := newValue.(*schema.Set).List()
 
-		// Delete entries from 'old' set not appearing in new (old - new)
-		for _, o := range oldIds {
-			var err error
-			var oldScaleVlans []datatypes.Scale_Network_Vlan
+		// Delete all Vlans
+		oldScaleVlans, err := scaleGroupService.
+			Id(groupId).
+			GetNetworkVlans()
+		if err != nil {
+			return fmt.Errorf("Could not retrieve current vlans for scale group (%d): %s", groupId, err)
+		}
 
-			oldId := o.(int)
-			for _, n := range newIds {
-				if n.(int) == oldId {
-					goto nextOld
-				}
-			}
-
-			oldScaleVlans, err = scaleGroupService.
-				Id(groupId).
-				Filter(filter.Path("networkVlans.networkVlanId").Eq(oldId).Build()).
-				GetNetworkVlans()
+		for _, oldScaleVlan := range oldScaleVlans {
+			_, err := scaleNetworkVlanService.Id(*oldScaleVlan.Id).DeleteObject()
 			if err != nil {
-				return fmt.Errorf("Error deleting scale network vlan: %s", err)
+				return fmt.Errorf("Error deleting scale network vlan %d: %s", *oldScaleVlan.Id, err)
 			}
-
-			if len(oldScaleVlans) == 0 {
-				return fmt.Errorf("Could not lookup scale group vlan for network vlan %d", oldId)
-			}
-
-			_, err = scaleNetworkVlanService.Id(*oldScaleVlans[0].Id).DeleteObject()
-			if err != nil {
-				return fmt.Errorf("Error deleting scale network vlan: %s", err)
-			}
-		nextOld:
 		}
 
 		// Parse the new list of vlans into the appropriate input structure
