@@ -93,10 +93,28 @@
 			"revisionTime": "2016-10-21T20:49:26Z"
 		},
 		{
+			"checksumSHA1": "Mr4ur60bgQJnQFfJY0dGtwWwMPE=",
+			"path": "golang.org/x/text/encoding",
+			"revision": "2556e8494a202e0b4008f70eda8cdb089b03fa50",
+			"revisionTime": "2016-10-23T19:44:40Z"
+		},
+		{
 			"checksumSHA1": "gJG/5S8KrCA1QGkIkpa5a/wnmy4=",
 			"path": "golang.org/x/text/encoding/charmap",
-			"revision": "1e65e9bf72c307081cea196f47ef37aed17eb316",
-			"revisionTime": "2016-08-30T12:50:59Z"
+			"revision": "2556e8494a202e0b4008f70eda8cdb089b03fa50",
+			"revisionTime": "2016-10-23T19:44:40Z"
+		},
+		{
+			"checksumSHA1": "zeHyHebIZl1tGuwGllIhjfci+wI=",
+			"path": "golang.org/x/text/encoding/internal",
+			"revision": "2556e8494a202e0b4008f70eda8cdb089b03fa50",
+			"revisionTime": "2016-10-23T19:44:40Z"
+		},
+		{
+			"checksumSHA1": "TF4hoIqHVEAvOq67rfnSLSkcZ1Y=",
+			"path": "golang.org/x/text/encoding/internal/identifier",
+			"revision": "2556e8494a202e0b4008f70eda8cdb089b03fa50",
+			"revisionTime": "2016-10-23T19:44:40Z"
 		}
 	],
 	"rootPath": "github.com/softlayer/terraform-provider-softlayer"
