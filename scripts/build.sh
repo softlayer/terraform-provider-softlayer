@@ -30,6 +30,10 @@ echo "Moving ${DEST_BIN}_${XC_OS}_${XC_ARCH} to $BASE_PATH/$DEST_BIN"
 echo ""
 
 mv ${DEST_BIN}_${XC_OS}_${XC_ARCH} $BASE_PATH/$DEST_BIN
+if [ $? -ne 0 ]; then
+        BASE_PATH=$GOPATH/bin
+        mv ${DEST_BIN}_${XC_OS}_${XC_ARCH} $BASE_PATH/$DEST_BIN
+fi
 
 echo "Resulting binary: "
 echo ""
