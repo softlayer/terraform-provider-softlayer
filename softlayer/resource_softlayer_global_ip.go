@@ -72,7 +72,13 @@ func resourceSoftLayerGlobalIpCreate(d *schema.ResourceData, meta interface{}) e
 
 	globalIp, err := findGlobalIpByOrderId(sess, *receipt.OrderId)
 	d.SetId(fmt.Sprintf("%d", *globalIp.Id))
-	return resourceSoftLayerGlobalIpUpdate(d, meta)
+
+	err = resourceSoftLayerGlobalIpUpdate(d, meta)
+	if err != nil {
+		return fmt.Errorf("Error during creation of global ip: %s", err)
+	}
+
+	return resourceSoftLayerGlobalIpRead(d, meta)
 
 }
 
