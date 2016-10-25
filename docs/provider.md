@@ -25,27 +25,27 @@ resource "softlayer_ssh_key" "testkey1" {
 # Virtual Server created with existing SSH Key already in SoftLayer
 # inventory and not created using this Terraform template.
 resource "softlayer_virtual_guest" "host-a" {
-    name = "host-a.example.com"
+    hostname = "host-a.example.com"
     domain = "example.com"
-    ssh_keys = [123456]
+    ssh_key_ids = [123456]
     os_reference_code = "DEBIAN_7_64"
     datacenter = "ams01"
     network_speed = 10
-    cpu = 1
-    ram = 1024
+    cores = 1
+    memory = 1024
 }
 
 # Virtual Server created with a mix of previously existing and
 # Terraform created/managed resources.
 resource "softlayer_virtual_guest" "host-b" {
-    name = "host-b.example.com"
+    hostname = "host-b.example.com"
     domain = "example.com"
     ssh_keys = [123456, "${softlayer_ssh_key.test_key_1.id}"]
     os_reference_code = "CENTOS_6_64"
     datacenter = "ams01"
     network_speed = 10
-    cpu = 1
-    ram = 1024
+    cores = 1
+    memory = 1024
 }
 ```
 

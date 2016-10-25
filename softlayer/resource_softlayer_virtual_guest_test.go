@@ -28,7 +28,7 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerVirtualGuestExists("softlayer_virtual_guest.terraform-acceptance-test-1", &guest),
 					resource.TestCheckResourceAttr(
-						"softlayer_virtual_guest.terraform-acceptance-test-1", "name", "terraform-test"),
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "hostname", "terraform-test"),
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "domain", "bar.example.com"),
 					resource.TestCheckResourceAttr(
@@ -40,9 +40,9 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "private_network_only", "false"),
 					resource.TestCheckResourceAttr(
-						"softlayer_virtual_guest.terraform-acceptance-test-1", "cpu", "1"),
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "cores", "1"),
 					resource.TestCheckResourceAttr(
-						"softlayer_virtual_guest.terraform-acceptance-test-1", "ram", "1024"),
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "memory", "1024"),
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "disks.0", "25"),
 					resource.TestCheckResourceAttr(
@@ -50,7 +50,7 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "disks.2", "20"),
 					resource.TestCheckResourceAttr(
-						"softlayer_virtual_guest.terraform-acceptance-test-1", "user_data", "{\"value\":\"newvalue\"}"),
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "user_metadata", "{\"value\":\"newvalue\"}"),
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "local_disk", "false"),
 					resource.TestCheckResourceAttr(
@@ -68,7 +68,7 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerVirtualGuestExists("softlayer_virtual_guest.terraform-acceptance-test-1", &guest),
 					resource.TestCheckResourceAttr(
-						"softlayer_virtual_guest.terraform-acceptance-test-1", "user_data", "updatedData"),
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "user_metadata", "updatedData"),
 					CheckStringSet(
 						"softlayer_virtual_guest.terraform-acceptance-test-1",
 						"tags", []string{"mesos-master"},
@@ -81,7 +81,7 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerVirtualGuestExists("softlayer_virtual_guest.terraform-acceptance-test-1", &guest),
 					resource.TestCheckResourceAttr(
-						"softlayer_virtual_guest.terraform-acceptance-test-1", "ram", "2048"),
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "memory", "2048"),
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "network_speed", "100"),
 				),
@@ -94,7 +94,7 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 			//				Check: resource.ComposeTestCheckFunc(
 			//					testAccCheckSoftLayerVirtualGuestExists("softlayer_virtual_guest.terraform-acceptance-test-1", &guest),
 			//					resource.TestCheckResourceAttr(
-			//						"softlayer_virtual_guest.terraform-acceptance-test-1", "cpu", "2"),
+			//						"softlayer_virtual_guest.terraform-acceptance-test-1", "cores", "2"),
 			//				),
 			//			},
 
@@ -241,17 +241,17 @@ func CheckStringSet(n string, name string, set []string) resource.TestCheckFunc 
 
 const testAccCheckSoftLayerVirtualGuestConfig_basic = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
-    name = "terraform-test"
+    hostname = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
     datacenter = "wdc01"
     network_speed = 10
     hourly_billing = true
 	private_network_only = false
-    cpu = 1
-    ram = 1024
+    cores = 1
+    memory = 1024
     disks = [25, 10, 20]
-    user_data = "{\"value\":\"newvalue\"}"
+    user_metadata = "{\"value\":\"newvalue\"}"
     tags = ["collectd"]
     dedicated_acct_host_only = true
     local_disk = false
@@ -260,16 +260,16 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
 
 const testAccCheckSoftLayerVirtualGuestConfig_update = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
-    name = "terraform-test"
+    hostname = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
     datacenter = "wdc01"
     network_speed = 10
     hourly_billing = true
-    cpu = 1
-    ram = 1024
+    cores = 1
+    memory = 1024
     disks = [25, 10, 20]
-    user_data = "updatedData"
+    user_metadata = "updatedData"
     tags = ["mesos-master"]
     dedicated_acct_host_only = true
     local_disk = false
@@ -278,16 +278,16 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
 
 const testAccCheckSoftLayerVirtualGuestConfig_upgradeMemoryNetworkSpeed = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
-    name = "terraform-test"
+    hostname = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
     datacenter = "wdc01"
     network_speed = 100
     hourly_billing = true
-    cpu = 1
-    ram = 2048
+    cores = 1
+    memory = 2048
     disks = [25, 10, 20]
-    user_data = "updatedData"
+    user_metadata = "updatedData"
     tags = ["mesos-master"]
     dedicated_acct_host_only = true
     local_disk = false
@@ -296,16 +296,16 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
 
 const testAccCheckSoftLayerVirtualGuestConfig_vmUpgradeCPUs = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
-    name = "terraform-test"
+    hostname = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
     datacenter = "wdc01"
     network_speed = 100
     hourly_billing = true
-    cpu = 2
-    ram = 2048
+    cores = 2
+    memory = 2048
     disks = [25, 10, 20]
-    user_data = "updatedData"
+    user_metadata = "updatedData"
     tags = ["mesos-master"]
     dedicated_acct_host_only = true
     local_disk = false
@@ -314,17 +314,17 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
 
 const testAccCheckSoftLayerVirtualGuestConfig_postInstallScriptUri = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-pISU" {
-    name = "terraform-test-pISU"
+    hostname = "terraform-test-pISU"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
     datacenter = "wdc01"
     network_speed = 10
     hourly_billing = true
 	private_network_only = false
-    cpu = 1
-    ram = 1024
+    cores = 1
+    memory = 1024
     disks = [25, 10, 20]
-    user_data = "{\"value\":\"newvalue\"}"
+    user_metadata = "{\"value\":\"newvalue\"}"
     dedicated_acct_host_only = true
     local_disk = false
     post_install_script_uri = "https://www.google.com"
@@ -333,13 +333,13 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-pISU" {
 
 const testAccCheckSoftLayerVirtualGuestConfig_blockDeviceTemplateGroup = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-BDTGroup" {
-    name = "terraform-test-blockDeviceTemplateGroup"
+    hostname = "terraform-test-blockDeviceTemplateGroup"
     domain = "bar.example.com"
     datacenter = "wdc01"
     network_speed = 10
     hourly_billing = false
-    cpu = 1
-    ram = 1024
+    cores = 1
+    memory = 1024
     local_disk = false
     image_id = 1025457
 }

@@ -29,17 +29,17 @@ resource "softlayer_lb_local_service_group" "es_lb_sg" {
 
 resource "softlayer_virtual_guest" "es-vm" {
     count                = "${var.node_count}"
-    name                 = "es-vm${count.index+1}"
+    hostname             = "es-vm${count.index+1}"
     domain               = "demo.com"
     os_reference_code    = "UBUNTU_LATEST"
     datacenter           = "${var.datacenter}"
     hourly_billing       = true
-    cpu                  = 1
-    ram                  = 1024
+    cores                = 1
+    memory               = 1024
     disks                = [25]
     local_disk           = true
 
-    ssh_keys = [
+    ssh_key_ids = [
         "${data.softlayer_ssh_key.es_key.id}"
     ]
 

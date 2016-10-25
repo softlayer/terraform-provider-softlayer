@@ -5,17 +5,17 @@ Provides a `virtual_guest` resource. This allows virtual guests to be created, u
 ```hcl
 # Create a new virtual guest using image "Debian"
 resource "softlayer_virtual_guest" "twc_terraform_sample" {
-    name = "twc-terraform-sample-name"
+    hostname = "twc-terraform-sample-name"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
     datacenter = "wdc01"
     network_speed = 10
     hourly_billing = true
     private_network_only = false
-    cpu = 1
-    ram = 1024
+    cores = 1
+    memory = 1024
     disks = [25, 10, 20]
-    user_data = "{\"value\":\"newvalue\"}"
+    user_metadata = "{\"value\":\"newvalue\"}"
     dedicated_acct_host_only = true
     local_disk = false
     public_vlan_id = 1391277
@@ -27,13 +27,13 @@ resource "softlayer_virtual_guest" "twc_terraform_sample" {
 # Create a new virtual guest using block device template, tags,
 # and subnets
 resource "softlayer_virtual_guest" "terraform-sample-BDTGroup" {
-   name = "terraform-sample-blockDeviceTemplateGroup"
+   hostname = "terraform-sample-blockDeviceTemplateGroup"
    domain = "bar.example.com"
    datacenter = "ams01"
    public_network_speed = 10
    hourly_billing = false
-   cpu = 1
-   ram = 1024
+   cores = 1
+   memory = 1024
    local_disk = false
    image_id = 12345
    tags = [
@@ -49,16 +49,16 @@ resource "softlayer_virtual_guest" "terraform-sample-BDTGroup" {
 
 The following arguments are supported:
 
-*   `name` | *string*
+*   `hostname` | *string*
     * Hostname for the computing instance.
     * **Optional**
 *   `domain` | *string*
     * Domain for the computing instance.
     * **Required**
-*   `cpu` | *int*
+*   `cores` | *int*
     * The number of CPU cores to allocate.
     * **Required**
-*   `ram` | *int*
+*   `memory` | *int*
     * The amount of memory to allocate in megabytes.
     * **Required**
 *   `datacenter` | *string*
@@ -109,10 +109,10 @@ The following arguments are supported:
     * Block device and disk image settings for the computing instance
     * *Optional*
     * *Default*: The smallest available capacity for the primary disk will be used. If an image template is specified the disk capacity will be be provided by the template.
-*   `user_data` | *string*
+*   `user_metadata` | *string*
     * Arbitrary data to be made available to the computing instance.
     * *Optional*
-*   `ssh_keys` | *array* of numbers
+*   `ssh_key_ids` | *array* of numbers
     * SSH key _IDs_ to install on the computing instance upon provisioning.
     * *Optional*
 

@@ -53,7 +53,7 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Computed: true,
 			},
 
-			"name": {
+			"hostname": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				DefaultFunc: genId,
@@ -69,6 +69,12 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 
 					return o == n
 				},
+			},
+
+			"name": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Removed:  "Renamed to 'hostname'",
 			},
 
 			"domain": {
@@ -103,7 +109,7 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"cpu": {
+			"cores": {
 				Type:     schema.TypeInt,
 				Required: true,
 				// TODO: This fields for now requires recreation, because currently for some reason SoftLayer resets "dedicated_acct_host_only"
@@ -112,7 +118,13 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"ram": {
+			"cpu": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Removed:  "Renamed to 'cores'",
+			},
+
+			"memory": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
@@ -128,6 +140,12 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 
 					return
 				},
+			},
+
+			"ram": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Removed:  "Renamed to 'memory'",
 			},
 
 			"dedicated_acct_host_only": {
@@ -228,15 +246,27 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Computed: true,
 			},
 
-			"ssh_keys": {
+			"ssh_key_ids": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeInt},
 			},
 
+			"ssh_keys": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Removed:  "Renamed as 'ssh_key_ids'",
+			},
+
+			"user_metadata": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"user_data": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Removed:  "Renamed as 'user_metadata'",
 			},
 
 			"local_disk": {
@@ -320,13 +350,13 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 	}
 
 	opts := datatypes.Virtual_Guest{
-		Hostname:               sl.String(d.Get("name").(string)),
+		Hostname:               sl.String(d.Get("hostname").(string)),
 		Domain:                 sl.String(d.Get("domain").(string)),
 		HourlyBillingFlag:      sl.Bool(d.Get("hourly_billing").(bool)),
 		PrivateNetworkOnlyFlag: sl.Bool(d.Get("private_network_only").(bool)),
 		Datacenter:             &dc,
-		StartCpus:              sl.Int(d.Get("cpu").(int)),
-		MaxMemory:              sl.Int(d.Get("ram").(int)),
+		StartCpus:              sl.Int(d.Get("cores").(int)),
+		MaxMemory:              sl.Int(d.Get("memory").(int)),
 		NetworkComponents:      []datatypes.Virtual_Guest_Network_Component{networkComponent},
 		BlockDevices:           getBlockDevices(d),
 		LocalDiskFlag:          sl.Bool(d.Get("local_disk").(bool)),
@@ -408,7 +438,7 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 		opts.PrimaryBackendNetworkComponent = &primaryBackendNetworkComponent
 	}
 
-	if userData, ok := d.GetOk("user_data"); ok {
+	if userData, ok := d.GetOk("user_metadata"); ok {
 		opts.UserData = []datatypes.Virtual_Guest_Attribute{
 			{
 				Value: sl.String(userData.(string)),
@@ -417,7 +447,7 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 	}
 
 	// Get configured ssh_keys
-	ssh_keys := d.Get("ssh_keys").([]interface{})
+	ssh_keys := d.Get("ssh_key_ids").([]interface{})
 	if len(ssh_keys) > 0 {
 		opts.SshKeys = make([]datatypes.Security_Ssh_Key, 0, len(ssh_keys))
 		for _, ssh_key := range ssh_keys {
@@ -500,7 +530,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		return fmt.Errorf("Error retrieving virtual guest: %s", err)
 	}
 
-	d.Set("name", *result.Hostname)
+	d.Set("hostname", *result.Hostname)
 	d.Set("domain", *result.Domain)
 
 	if result.Datacenter != nil {
@@ -514,8 +544,8 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 			d.Get("network_speed").(int),
 		),
 	)
-	d.Set("cpu", *result.StartCpus)
-	d.Set("ram", *result.MaxMemory)
+	d.Set("cores", *result.StartCpus)
+	d.Set("memory", *result.MaxMemory)
 	d.Set("dedicated_acct_host_only", *result.DedicatedAccountHostOnlyFlag)
 	if result.PrimaryIpAddress != nil {
 		d.Set("has_public_ip", *result.PrimaryIpAddress != "")
@@ -556,9 +586,9 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		data, err := base64.StdEncoding.DecodeString(*userData[0].Value)
 		if err != nil {
 			log.Printf("Can't base64 decode user data %s. error: %s", *userData[0].Value, err)
-			d.Set("user_data", userData)
+			d.Set("user_metadata", userData)
 		} else {
-			d.Set("user_data", string(data))
+			d.Set("user_metadata", string(data))
 		}
 	}
 
@@ -598,10 +628,10 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 		return fmt.Errorf("Error retrieving virtual guest: %s", err)
 	}
 
-	// Update "name" and "domain" fields if present and changed
+	// Update "hostname" and "domain" fields if present and changed
 	// Those are the only fields, which could be updated
-	if d.HasChange("name") || d.HasChange("domain") {
-		result.Hostname = sl.String(d.Get("name").(string))
+	if d.HasChange("hostname") || d.HasChange("domain") {
+		result.Hostname = sl.String(d.Get("hostname").(string))
 		result.Domain = sl.String(d.Get("domain").(string))
 
 		_, err = service.Id(id).EditObject(&result)
@@ -612,8 +642,8 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 	}
 
 	// Set user data if provided and not empty
-	if d.HasChange("user_data") {
-		_, err := service.Id(id).SetUserMetadata([]string{d.Get("user_data").(string)})
+	if d.HasChange("user_metadata") {
+		_, err := service.Id(id).SetUserMetadata([]string{d.Get("user_metadata").(string)})
 		if err != nil {
 			return fmt.Errorf("Couldn't update user data for virtual guest: %s", err)
 		}
@@ -627,14 +657,14 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 		}
 	}
 
-	// Upgrade "cpu", "ram" and "nic_speed" if provided and changed
+	// Upgrade "cores", "memory" and "network_speed" if provided and changed
 	upgradeOptions := map[string]float64{}
-	if d.HasChange("cpu") {
-		upgradeOptions[product.CPUCategoryCode] = float64(d.Get("cpu").(int))
+	if d.HasChange("cores") {
+		upgradeOptions[product.CPUCategoryCode] = float64(d.Get("cores").(int))
 	}
 
-	if d.HasChange("ram") {
-		memoryInMB := float64(d.Get("ram").(int))
+	if d.HasChange("memory") {
+		memoryInMB := float64(d.Get("memory").(int))
 
 		// Convert memory to GB, as softlayer only allows to upgrade RAM in Gigs
 		// Must be already validated at this step
@@ -800,14 +830,22 @@ func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (inte
 
 func resourceSoftLayerVirtualGuestExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	service := services.GetVirtualGuestService(meta.(*session.Session))
-
 	guestId, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
 
 	result, err := service.Id(guestId).GetObject()
-	return result.Id != nil && err == nil && *result.Id == guestId, nil
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
+		return false, fmt.Errorf("Error communicating with the API: %s", err)
+	}
+
+	return result.Id != nil && *result.Id == guestId, nil
 }
 
 func getTags(d *schema.ResourceData) string {

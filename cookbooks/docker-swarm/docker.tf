@@ -5,15 +5,15 @@ data "softlayer_ssh_key" "my_key" {
 }
 
 resource "softlayer_virtual_guest" "manager" {
-    name              = "docker-swarm-manager"
+    hostname          = "docker-swarm-manager"
     domain            = "demo.com"
     os_reference_code = "UBUNTU_LATEST"
     datacenter        = "${var.datacenter}"
-    cpu               = 1
-    ram               = 1024
+    cores             = 1
+    memory            = 1024
     local_disk        = true
 
-    ssh_keys = [
+    ssh_key_ids = [
         "${data.softlayer_ssh_key.my_key.id}"
     ]
 
@@ -28,15 +28,15 @@ resource "softlayer_virtual_guest" "manager" {
 
 resource "softlayer_virtual_guest" "worker" {
     count             = "${var.worker_count}"
-    name              = "docker-swarm-worker${count.index}"
+    hostname           = "docker-swarm-worker${count.index}"
     domain            = "demo.com"
     os_reference_code = "UBUNTU_LATEST"
     datacenter        = "${var.datacenter}"
-    cpu               = 1
-    ram               = 1024
+    cores             = 1
+    memory            = 1024
     local_disk        = true
 
-    ssh_keys = [
+    ssh_key_ids = [
         "${data.softlayer_ssh_key.my_key.id}"
     ]
 

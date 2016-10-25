@@ -207,13 +207,13 @@ resource "softlayer_scale_group" "sample-http-cluster" {
         type = "HTTP"
     }
     virtual_guest_member_template = {
-        name = "test-VM"
+        hostname = "test-VM"
         domain = "example.com"
-        cpu = 1
-        ram = 4096
-        public_network_speed = 1000
+        cores = 1
+        memory = 4096
+        network_speed = 1000
         hourly_billing = true
-        image = "DEBIAN_7_64"
+        os_reference_code = "DEBIAN_7_64"
         local_disk = false
         region = "sng01"
     }
@@ -266,13 +266,13 @@ resource "softlayer_scale_group" "sample-http-cluster" {
         type = "HTTP"
     }
     virtual_guest_member_template = {
-        name = "test-VM"
+        hostname = "test-VM"
         domain = "example.com"
-        cpu = 1
-        ram = 4096
-        public_network_speed = 1000
+        cores = 1
+        memory = 4096
+        network_speed = 1000
         hourly_billing = true
-        image = "DEBIAN_7_64"
+        os_reference_code = "DEBIAN_7_64"
         local_disk = false
         region = "sng01"
     }
