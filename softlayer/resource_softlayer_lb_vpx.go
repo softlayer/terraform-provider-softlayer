@@ -424,13 +424,15 @@ func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) erro
 		return fmt.Errorf("Failed to create VIPs for Netscaler VPX ID: %d", id)
 	}
 
-	// Wait VPX service initializing. GetLoadBalancers() internally calls REST API of VPX and returns an error
-	// if the REST API is not available.
+	// Wait VPX service initializing. GetLoadBalancers() internally calls REST API of VPX and returns
+	// an error "Could not connect to host" if the REST API is not available.
 	IsRESTReady := false
 
 	for restWaitCount := 0; restWaitCount < 60; restWaitCount++ {
 		_, err := NADCService.Id(id).GetLoadBalancers()
-		if err == nil {
+		// GetLoadBalancers returns an error "There was a problem processing the reply from the
+		// application tier.  Please contact development." if the VPX version is 10.5.
+		if err == nil || !strings.Contains(err.Error(), "Could not connect to host") {
 			IsRESTReady = true
 			break
 		}
