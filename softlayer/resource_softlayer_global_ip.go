@@ -71,6 +71,10 @@ func resourceSoftLayerGlobalIpCreate(d *schema.ResourceData, meta interface{}) e
 	}
 
 	globalIp, err := findGlobalIpByOrderId(sess, *receipt.OrderId)
+	if err != nil {
+		return fmt.Errorf("Error during creation of global ip: %s", err)
+	}
+
 	d.SetId(fmt.Sprintf("%d", *globalIp.Id))
 	d.Set("ip_address", *globalIp.IpAddress.IpAddress)
 
@@ -193,15 +197,15 @@ func findGlobalIpByOrderId(sess *session.Session, orderId int) (datatypes.Networ
 			globalIps, err := services.GetAccountService(sess).
 				Filter(filter.Path("globalIpRecords.billingItem.orderItem.order.id").
 					Eq(strconv.Itoa(orderId)).Build()).
-				Mask("id").
+				Mask("id,ipAddress[ipAddress]").
 				GetGlobalIpRecords()
 			if err != nil {
 				return datatypes.Network_Subnet_IpAddress_Global{}, "", err
 			}
 
-			if len(globalIps) == 1 {
+			if len(globalIps) == 1 && globalIps[0].IpAddress != nil {
 				return globalIps[0], "complete", nil
-			} else if len(globalIps) == 0 {
+			} else if len(globalIps) == 0 || len(globalIps) == 1 {
 				return nil, "pending", nil
 			} else {
 				return nil, "", fmt.Errorf("Expected one global ip: %s", err)
