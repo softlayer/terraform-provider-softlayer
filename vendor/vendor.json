@@ -3,10 +3,10 @@
 	"ignore": "appengine test",
 	"package": [
 		{
-			"checksumSHA1": "2moPPHhYD65oWVbDNjC+0sOVUak=",
+			"checksumSHA1": "pjBPgV7Vsah79nFWOvWHZ3PkTIc=",
 			"path": "github.com/renier/xmlrpc",
-			"revision": "cad6f5ec0169df983593bd2ed925ab51009f99c8",
-			"revisionTime": "2016-10-26T05:05:34Z"
+			"revision": "79afb7136fd5637ee1ad13754a90005a49fce713",
+			"revisionTime": "2016-10-26T21:33:56Z"
 		},
 		{
 			"checksumSHA1": "9WpPhKdaMFOSiheFaSIdC23YHOo=",
