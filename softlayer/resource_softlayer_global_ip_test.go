@@ -23,7 +23,7 @@ func TestAccSoftLayerGlobalIp_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerGlobalIpExists("softlayer_global_ip.test-global-ip"),
 					resource.TestMatchResourceAttr("softlayer_global_ip.test-global-ip", "ip_address",
-					regexp.MustCompile(`^(([01]?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))\.){3}([01]?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))$`)),
+						regexp.MustCompile(`^(([01]?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))\.){3}([01]?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))$`)),
 					testAccCheckSoftLayerResources("softlayer_global_ip.test-global-ip", "routes_to",
 						"softlayer_virtual_guest.vm1", "ipv4_address"),
 				),
