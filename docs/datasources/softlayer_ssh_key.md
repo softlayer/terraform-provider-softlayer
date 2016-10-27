@@ -18,7 +18,7 @@ reference the `id` property in a softlayer_virtual_guest resource:
 ```hcl
 resource "softlayer_virtual_guest" "vm1" {
     ...
-    ssh_keys = ["${data.softlayer_ssh_key.public_key.id}"]
+    ssh_key_ids = ["${data.softlayer_ssh_key.public_key.id}"]
     ...
 }
 ```

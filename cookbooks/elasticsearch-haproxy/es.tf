@@ -11,16 +11,16 @@ data "softlayer_ssh_key" "esk_key" {
 
 resource "softlayer_virtual_guest" "esk-node" {
     count                = "${var.node_count}"
-    name                 = "esk-node${count.index+1}"
+    hostname             = "esk-node${count.index+1}"
     domain               = "demo.com"
     os_reference_code    = "UBUNTU_LATEST"
     datacenter           = "${var.datacenter}"
     private_network_only = true
-    cpu                  = 1
-    ram                  = 1024
+    cores                = 1
+    memory               = 1024
     local_disk           = true
 
-    ssh_keys = [
+    ssh_key_ids = [
         "${data.softlayer_ssh_key.esk_key.id}"
     ]
 
@@ -38,17 +38,17 @@ resource "softlayer_virtual_guest" "esk-node" {
 }
 
 resource "softlayer_virtual_guest" "haproxy" {
-    name = "esk-haproxy"
+    hostname = "esk-haproxy"
     domain = "demo.com"
     os_reference_code = "UBUNTU_LATEST"
     datacenter = "${var.datacenter}"
     private_network_only = false
-    cpu = 1
-    ram = 1024
+    cores = 1
+    memory = 1024
     local_disk = true
-    user_data = "${join(" ", softlayer_virtual_guest.esk-node.*.ipv4_address_private)}"
+    user_metadata = "${join(" ", softlayer_virtual_guest.esk-node.*.ipv4_address_private)}"
 
-    ssh_keys = [
+    ssh_key_ids = [
         "${data.softlayer_ssh_key.esk_key.id}"
     ]
 

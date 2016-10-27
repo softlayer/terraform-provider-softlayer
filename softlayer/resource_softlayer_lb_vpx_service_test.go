@@ -35,29 +35,29 @@ func TestAccSoftLayerLbVpxService_Basic(t *testing.T) {
 var testAccCheckSoftLayerLbVpxServiceConfig_basic = `
 
 resource "softlayer_virtual_guest" "vm1" {
-    name = "vm1"
+    hostname = "vm1"
     domain = "example.com"
-    image = "DEBIAN_7_64"
+    os_reference_code = "DEBIAN_7_64"
     datacenter = "wdc01"
-    public_network_speed = 10
+    network_speed = 10
     hourly_billing = true
     private_network_only = false
-    cpu = 1
-    ram = 1024
+    cores = 1
+    memory = 1024
     disks = [25]
     local_disk = false
 }
 
 resource "softlayer_virtual_guest" "vm2" {
-    name = "vm2"
+    hostname = "vm2"
     domain = "example.com"
-    image = "DEBIAN_7_64"
+    os_reference_code = "DEBIAN_7_64"
     datacenter = "wdc01"
-    public_network_speed = 10
+    network_speed = 10
     hourly_billing = true
     private_network_only = false
-    cpu = 1
-    ram = 1024
+    cores = 1
+    memory = 1024
     disks = [25]
     local_disk = false
 }

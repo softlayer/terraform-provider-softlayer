@@ -20,11 +20,11 @@ resource "softlayer_scale_group" "test_scale_group" {
       type = "HTTP"
     }
     virtual_guest_member_template = {
-      name = "test_virtual_guest_name"
+      hostname = "test_virtual_guest_name"
       domain = "example.com"
-      cpu = 1
-      ram = 1024
-      public_network_speed = 100
+      cores = 1
+      memory = 1024
+      network_speed = 100
       hourly_billing = true
       os_reference_code = "DEBIAN_7_64"
       # Optional Fields for virtual guest template (SL defaults apply):
@@ -32,8 +32,8 @@ resource "softlayer_scale_group" "test_scale_group" {
       disks = [25]
       datacenter = "sng01"
       post_install_script_uri = ""
-      ssh_keys = [383111]
-      user_data = "#!/bin/bash ..."
+      ssh_key_ids = [383111]
+      user_metadata = "#!/bin/bash ..."
     }
     # Optional Fields for scale_group:
     network_vlan_ids = [1234567, 7654321]

@@ -404,12 +404,12 @@ func populateMemberTemplateResourceData(template datatypes.Virtual_Guest) []map[
 
 	d := make(map[string]interface{})
 
-	d["name"] = *template.Hostname
+	d["hostname"] = *template.Hostname
 	d["domain"] = *template.Domain
 	d["datacenter"] = *template.Datacenter.Name
 	d["network_speed"] = *template.NetworkComponents[0].MaxSpeed
-	d["cpu"] = *template.StartCpus
-	d["ram"] = *template.MaxMemory
+	d["cores"] = *template.StartCpus
+	d["memory"] = *template.MaxMemory
 	d["private_network_only"] = *template.PrivateNetworkOnlyFlag
 	d["hourly_billing"] = *template.HourlyBillingFlag
 	d["local_disk"] = *template.LocalDiskFlag
@@ -431,14 +431,14 @@ func populateMemberTemplateResourceData(template datatypes.Virtual_Guest) []map[
 	}
 
 	if len(template.UserData) > 0 {
-		d["user_data"] = *template.UserData[0].Value
+		d["user_metadata"] = *template.UserData[0].Value
 	}
 
 	sshKeys := make([]interface{}, 0, len(template.SshKeys))
 	for _, elem := range template.SshKeys {
 		sshKeys = append(sshKeys, *elem.Id)
 	}
-	d["ssh_keys"] = sshKeys
+	d["ssh_key_ids"] = sshKeys
 
 	disks := make([]interface{}, 0, len(template.BlockDevices))
 	for _, elem := range template.BlockDevices {

@@ -44,19 +44,19 @@ func TestAccSoftLayerScaleGroup_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "health_check.type", "HTTP"),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.name", "test-VM"),
+						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.hostname", "test-VM"),
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.domain", "example.com"),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.cpu", "1"),
+						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.cores", "1"),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.ram", "4096"),
+						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.memory", "4096"),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.public_network_speed", "1000"),
+						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.network_speed", "1000"),
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.hourly_billing", "true"),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.image", "DEBIAN_7_64"),
+						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.os_reference_code", "DEBIAN_7_64"),
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.local_disk", "false"),
 					resource.TestCheckResourceAttr(
@@ -68,7 +68,7 @@ func TestAccSoftLayerScaleGroup_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.post_install_script_uri", ""),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.user_data", "#!/bin/bash"),
+						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.user_metadata", "#!/bin/bash"),
 					testAccCheckSoftLayerScaleGroupContainsNetworkVlan(&scalegroup, 1928, "bcr02a.sng01"),
 				),
 			},
@@ -94,17 +94,17 @@ func TestAccSoftLayerScaleGroup_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "health_check.type", "HTTP-CUSTOM"),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.name", "example-VM"),
+						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.hostname", "example-VM"),
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.domain", "test.com"),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.cpu", "2"),
+						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.cores", "2"),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.ram", "8192"),
+						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.memory", "8192"),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.public_network_speed", "100"),
+						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.network_speed", "100"),
 					resource.TestCheckResourceAttr(
-						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.image", "CENTOS_7_64"),
+						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.os_reference_code", "CENTOS_7_64"),
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.datacenter", "sng01"),
 					resource.TestCheckResourceAttr(
@@ -219,18 +219,18 @@ resource "softlayer_scale_group" "sample-http-cluster" {
         type = "HTTP"
     }
     virtual_guest_member_template = {
-        name = "test-VM"
+        hostname = "test-VM"
         domain = "example.com"
-        cpu = 1
-        ram = 4096
-        public_network_speed = 1000
+        cores = 1
+        memory = 4096
+        network_speed = 1000
         hourly_billing = true
-        image = "DEBIAN_7_64"
+        os_reference_code = "DEBIAN_7_64"
         local_disk = false
         disks = [25,100]
         datacenter = "sng01"
         post_install_script_uri = ""
-        user_data = "#!/bin/bash"
+        user_metadata = "#!/bin/bash"
     }
 }`
 
@@ -265,17 +265,17 @@ resource "softlayer_scale_group" "sample-http-cluster" {
         custom_response = 200
     }
     virtual_guest_member_template = {
-        name = "example-VM"
+        hostname = "example-VM"
         domain = "test.com"
-        cpu = 2
-        ram = 8192
-        public_network_speed = 100
+        cores = 2
+        memory = 8192
+        network_speed = 100
         hourly_billing = true
-        image = "CENTOS_7_64"
+        os_reference_code = "CENTOS_7_64"
         local_disk = false
         disks = [25,100]
         datacenter = "sng01"
         post_install_script_uri = "http://localhost/index.html"
-        user_data = "#!/bin/bash"
+        user_metadata = "#!/bin/bash"
     }
 }`

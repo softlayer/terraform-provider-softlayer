@@ -29,17 +29,17 @@ func TestAccSoftLayerLbLocalService_Basic(t *testing.T) {
 
 const testAccCheckSoftLayerLbLocalServiceConfig_basic = `
 resource "softlayer_virtual_guest" "test_server_1" {
-    name = "terraform-test"
+    hostname = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
     datacenter = "tok02"
     network_speed = 10
     hourly_billing = true
     private_network_only = false
-    cpu = 1
-    ram = 1024
+    cores = 1
+    memory = 1024
     disks = [25, 10, 20]
-    user_data = "{\"value\":\"newvalue\"}"
+    user_metadata = "{\"value\":\"newvalue\"}"
     dedicated_acct_host_only = true
     local_disk = false
 }
