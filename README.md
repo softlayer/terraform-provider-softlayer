@@ -8,6 +8,8 @@
 $ go get -u github.com/softlayer/terraform-provider-softlayer
 ```
 
+Alternatively, you can now also [download binaries](https://github.com/softlayer/terraform-provider-softlayer/releases) of the provider.
+
 Create or edit this file to specify the location of the terraform softlayer provider binary:
 
 ```
