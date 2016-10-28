@@ -174,6 +174,20 @@ func getSubnetId(subnet string, meta interface{}) (int, error) {
 	return *subnets[0].Id, nil
 }
 
+func getVPXVersion(id int, sess *session.Session) (string, error) {
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
+	getObjectResult, err := service.Id(id).Mask("description").GetObject()
+
+	if err != nil {
+		return "", fmt.Errorf("Error retrieving VPX version: %s", err)
+	}
+
+	r, _ := regexp.Compile(" VPX [0-9]+\\.[0-9]+ ")
+	versionStr := r.FindString(*getObjectResult.Description)
+	r, _ = regexp.Compile("[0-9]+\\.[0-9]+")
+	return r.FindString(versionStr), nil
+}
+
 func getVPXPriceItemKeyName(version string, speed int, plan string) string {
 	name := "CITRIX_NETSCALER_VPX"
 	speedMeasurements := "MBPS"

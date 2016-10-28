@@ -14,6 +14,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/minsikl/netscaler-nitro-go/client"
+	dt "github.com/minsikl/netscaler-nitro-go/datatypes"
+	"github.com/minsikl/netscaler-nitro-go/op"
+)
+const (
+	VPX_VERSION_10_1 = "10.1"
 )
 
 func resourceSoftLayerLbVpxVip() *schema.Resource {
@@ -85,6 +92,19 @@ func parseId(id string) (int, string, error) {
 }
 
 func resourceSoftLayerLbVpxVipCreate(d *schema.ResourceData, meta interface{}) error {
+	version, err := getVPXVersion(d.Get("nad_controller_id").(int), meta.(*session.Session))
+	if err != nil {
+		return fmt.Errorf("Error creating Virtual Ip Address: %s", err)
+	}
+
+	if version == VPX_VERSION_10_1 {
+		return resourceSoftLayerLbVpxVipCreate101(d, meta)
+	}
+
+	return resourceSoftLayerLbVpxVipCreate105(d, meta)
+}
+
+func resourceSoftLayerLbVpxVipCreate101(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
@@ -130,6 +150,40 @@ func resourceSoftLayerLbVpxVipCreate(d *schema.ResourceData, meta interface{}) e
 
 	if !successFlag {
 		return errors.New("Error creating Virtual Ip Address")
+	}
+
+	d.SetId(fmt.Sprintf("%d:%s", nadcId, vipName))
+
+	log.Printf("[INFO] Netscaler VPX VIP ID: %s", d.Id())
+
+	return resourceSoftLayerLbVpxVipRead(d, meta)
+}
+
+func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}) error {
+	nadcId := d.Get("nad_controller_id").(int)
+	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	if err != nil {
+		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
+	}
+
+	vipName := d.Get("name").(string)
+
+	// 1. Create a virtual server
+	lbvserverReq := dt.LbvserverReq{
+		Lbvserver: &dt.Lbvserver{
+			Name:        op.String(vipName),
+			Ipv46:       op.String(d.Get("virtual_ip_address").(string)),
+			Port:        op.Int(d.Get("source_port").(int)),
+			ServiceType: op.String(d.Get("type").(string)),
+			Lbmethod:    op.String(d.Get("load_balancing_method").(string)),
+		},
+	}
+
+	log.Printf("[INFO] Creating Virtual Ip Address %s", *lbvserverReq.Lbvserver.Ipv46)
+
+	err = nClient.Add(&lbvserverReq)
+	if err != nil {
+		fmt.Printf("[ERROR]" + err.Error())
 	}
 
 	d.SetId(fmt.Sprintf("%d:%s", nadcId, vipName))
@@ -267,4 +321,14 @@ func resourceSoftLayerLbVpxVipExists(d *schema.ResourceData, meta interface{}) (
 	vip, err := network.GetNadcLbVipByName(sess, nadcId, vipName)
 
 	return vip != nil && err == nil && *vip.Name == vipName, nil
+}
+
+func getNitroClient(sess *session.Session, nadcId int) (*client.NitroClient, error) {
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
+	nadc, err := service.Id(nadcId).GetObject()
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving netscaler: %s", err)
+	}
+	return client.NewNitroClient("http", *nadc.ManagementIpAddress, dt.CONFIG,
+		"root", *nadc.Password.Password, true), nil
 }
