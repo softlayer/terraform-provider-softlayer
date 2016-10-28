@@ -305,31 +305,31 @@ func getNameForBlockDevice(i int) string {
 	// so we get 0, 2, 3, 4, 5 ...
 	if i == 0 {
 		return "0"
-	} else {
-		return strconv.Itoa(i + 1)
 	}
+
+	return strconv.Itoa(i + 1)
 }
 
 func getBlockDevices(d *schema.ResourceData) []datatypes.Virtual_Guest_Block_Device {
 	numBlocks := d.Get("disks.#").(int)
 	if numBlocks == 0 {
 		return nil
-	} else {
-		blocks := make([]datatypes.Virtual_Guest_Block_Device, 0, numBlocks)
-		for i := 0; i < numBlocks; i++ {
-			blockRef := fmt.Sprintf("disks.%d", i)
-			name := getNameForBlockDevice(i)
-			capacity := d.Get(blockRef).(int)
-			block := datatypes.Virtual_Guest_Block_Device{
-				Device: &name,
-				DiskImage: &datatypes.Virtual_Disk_Image{
-					Capacity: &capacity,
-				},
-			}
-			blocks = append(blocks, block)
-		}
-		return blocks
 	}
+
+	blocks := make([]datatypes.Virtual_Guest_Block_Device, 0, numBlocks)
+	for i := 0; i < numBlocks; i++ {
+		blockRef := fmt.Sprintf("disks.%d", i)
+		name := getNameForBlockDevice(i)
+		capacity := d.Get(blockRef).(int)
+		block := datatypes.Virtual_Guest_Block_Device{
+			Device: &name,
+			DiskImage: &datatypes.Virtual_Disk_Image{
+				Capacity: &capacity,
+			},
+		}
+		blocks = append(blocks, block)
+	}
+	return blocks
 }
 func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interface{}) (datatypes.Virtual_Guest, error) {
 
@@ -447,12 +447,13 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 	}
 
 	// Get configured ssh_keys
-	ssh_keys := d.Get("ssh_key_ids").([]interface{})
-	if len(ssh_keys) > 0 {
-		opts.SshKeys = make([]datatypes.Security_Ssh_Key, 0, len(ssh_keys))
-		for _, ssh_key := range ssh_keys {
+	sshKeys := d.Get("ssh_key_ids").([]interface{})
+	sshKeysLen := len(sshKeys)
+	if sshKeysLen > 0 {
+		opts.SshKeys = make([]datatypes.Security_Ssh_Key, 0, sshKeysLen)
+		for _, sshKey := range sshKeys {
 			opts.SshKeys = append(opts.SshKeys, datatypes.Security_Ssh_Key{
-				Id: sl.Int(ssh_key.(int)),
+				Id: sl.Int(sshKey.(int)),
 			})
 		}
 	}
@@ -716,6 +717,7 @@ func resourceSoftLayerVirtualGuestDelete(d *schema.ResourceData, meta interface{
 	return nil
 }
 
+// WaitForUpgradeTransactionsToAppear Wait for upgrade transactions
 func WaitForUpgradeTransactionsToAppear(d *schema.ResourceData, meta interface{}) (interface{}, error) {
 
 	log.Printf("Waiting for server (%s) to have upgrade transactions", d.Id())
@@ -755,6 +757,7 @@ func WaitForUpgradeTransactionsToAppear(d *schema.ResourceData, meta interface{}
 	return stateConf.WaitForState()
 }
 
+// WaitForPublicIpAvailable Wait for the public ip to be available
 func WaitForPublicIpAvailable(d *schema.ResourceData, meta interface{}) (interface{}, error) {
 	log.Printf("Waiting for server (%s) to get a public IP", d.Id())
 
@@ -781,9 +784,9 @@ func WaitForPublicIpAvailable(d *schema.ResourceData, meta interface{}) (interfa
 
 			if result.PrimaryIpAddress == nil || *result.PrimaryIpAddress == "" {
 				return result, "unavailable", nil
-			} else {
-				return result, "available", nil
 			}
+
+			return result, "available", nil
 		},
 		Timeout:    45 * time.Minute,
 		Delay:      10 * time.Second,
@@ -793,6 +796,7 @@ func WaitForPublicIpAvailable(d *schema.ResourceData, meta interface{}) (interfa
 	return stateConf.WaitForState()
 }
 
+// WaitForNoActiveTransactions Wait for no active transactions
 func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (interface{}, error) {
 	log.Printf("Waiting for server (%s) to have zero active transactions", d.Id())
 	id, err := strconv.Atoi(d.Id())
@@ -816,9 +820,9 @@ func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (inte
 
 			if len(transactions) == 0 {
 				return transactions, "idle", nil
-			} else {
-				return transactions, "active", nil
 			}
+
+			return transactions, "active", nil
 		},
 		Timeout:    45 * time.Minute,
 		Delay:      10 * time.Second,
