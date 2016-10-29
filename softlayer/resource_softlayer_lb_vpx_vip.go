@@ -19,6 +19,7 @@ import (
 	dt "github.com/minsikl/netscaler-nitro-go/datatypes"
 	"github.com/minsikl/netscaler-nitro-go/op"
 )
+
 const (
 	VPX_VERSION_10_1 = "10.1"
 )
@@ -194,6 +195,24 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 }
 
 func resourceSoftLayerLbVpxVipRead(d *schema.ResourceData, meta interface{}) error {
+	nadcId, _, err := parseId(d.Id())
+	if err != nil {
+		return fmt.Errorf("softlayer_lb_vpx : %s", err)
+	}
+
+	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	if err != nil {
+		return fmt.Errorf("Error creating Virtual Ip Address: %s", err)
+	}
+
+	if version == VPX_VERSION_10_1 {
+		return resourceSoftLayerLbVpxVipRead101(d, meta)
+	}
+
+	return resourceSoftLayerLbVpxVipRead105(d, meta)
+}
+
+func resourceSoftLayerLbVpxVipRead101(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	nadcId, vipName, err := parseId(d.Id())
@@ -230,7 +249,67 @@ func resourceSoftLayerLbVpxVipRead(d *schema.ResourceData, meta interface{}) err
 	return nil
 }
 
+func resourceSoftLayerLbVpxVipRead105(d *schema.ResourceData, meta interface{}) error {
+	nadcId, vipName, err := parseId(d.Id())
+	if err != nil {
+		return fmt.Errorf("softlayer_lb_vpx : %s", err)
+	}
+
+	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	if err != nil {
+		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
+	}
+
+	// Read Virtual Server
+	vip := dt.LbvserverRes{}
+	err = nClient.Get(&vip, vipName)
+	if err != nil {
+		fmt.Printf("Error getting VIP information : %s", err.Error())
+	}
+
+	d.Set("nad_controller_id", nadcId)
+	if vip.Lbvserver[0].Lbmethod != nil {
+		d.Set("load_balancing_method", *vip.Lbvserver[0].Lbmethod)
+	}
+
+	if vip.Lbvserver[0].Name != nil {
+		d.Set("name", *vip.Lbvserver[0].Name)
+	}
+
+	if vip.Lbvserver[0].Port != nil {
+		d.Set("source_port", *vip.Lbvserver[0].Port)
+	}
+
+	if vip.Lbvserver[0].ServiceType != nil {
+		d.Set("type", *vip.Lbvserver[0].ServiceType)
+	}
+
+	if vip.Lbvserver[0].Ipv46 != nil {
+		d.Set("virtual_ip_address", *vip.Lbvserver[0].Ipv46)
+	}
+
+	return nil
+}
+
 func resourceSoftLayerLbVpxVipUpdate(d *schema.ResourceData, meta interface{}) error {
+	nadcId, _, err := parseId(d.Id())
+	if err != nil {
+		return fmt.Errorf("softlayer_lb_vpx : %s", err)
+	}
+
+	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	if err != nil {
+		return fmt.Errorf("Error creating Virtual Ip Address: %s", err)
+	}
+
+	if version == VPX_VERSION_10_1 {
+		return resourceSoftLayerLbVpxVipUpdate101(d, meta)
+	}
+
+	return resourceSoftLayerLbVpxVipUpdate105(d, meta)
+}
+
+func resourceSoftLayerLbVpxVipUpdate101(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
@@ -265,6 +344,38 @@ func resourceSoftLayerLbVpxVipUpdate(d *schema.ResourceData, meta interface{}) e
 
 	if err != nil {
 		return fmt.Errorf("Error updating Virtual Ip Address: %s", err)
+	}
+
+	return resourceSoftLayerLbVpxVipRead(d, meta)
+}
+
+func resourceSoftLayerLbVpxVipUpdate105(d *schema.ResourceData, meta interface{}) error {
+	nadcId := d.Get("nad_controller_id").(int)
+	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	if err != nil {
+		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
+	}
+
+	// Create a virtual server
+	lbvserverReq := dt.LbvserverReq{
+		Lbvserver: &dt.Lbvserver{
+			Name: op.String(d.Get("name").(string)),
+		},
+	}
+
+	log.Printf("[INFO] Updating Virtual Ip Address %s", *lbvserverReq.Lbvserver.Ipv46)
+
+	err = nClient.Update(&lbvserverReq)
+	if err != nil {
+		fmt.Printf("Error updating Virtual Ip Address: %s" + err.Error())
+	}
+
+	if d.HasChange("load_balancing_method") {
+		lbvserverReq.Lbvserver.Lbmethod = sl.String(d.Get("load_balancing_method").(string))
+	}
+
+	if d.HasChange("virtual_ip_address") {
+		lbvserverReq.Lbvserver.Ipv46 = sl.String(d.Get("virtual_ip_address").(string))
 	}
 
 	return resourceSoftLayerLbVpxVipRead(d, meta)
