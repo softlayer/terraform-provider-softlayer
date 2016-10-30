@@ -399,19 +399,17 @@ func resourceSoftLayerLbVpxVipUpdate105(d *schema.ResourceData, meta interface{}
 		},
 	}
 
-	log.Printf("[INFO] Updating Virtual Ip Address %s", *lbvserverReq.Lbvserver.Ipv46)
-
-	err = nClient.Update(&lbvserverReq)
-	if err != nil {
-		fmt.Printf("Error updating Virtual Ip Address: %s" + err.Error())
-	}
-
 	if d.HasChange("load_balancing_method") {
 		lbvserverReq.Lbvserver.Lbmethod = sl.String(d.Get("load_balancing_method").(string))
 	}
 
 	if d.HasChange("virtual_ip_address") {
 		lbvserverReq.Lbvserver.Ipv46 = sl.String(d.Get("virtual_ip_address").(string))
+	}
+
+	err = nClient.Update(&lbvserverReq)
+	if err != nil {
+		return fmt.Errorf("Error updating Virtual Ip Address: " + err.Error())
 	}
 
 	return resourceSoftLayerLbVpxVipRead(d, meta)
