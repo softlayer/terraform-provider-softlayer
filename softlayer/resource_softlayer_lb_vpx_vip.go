@@ -73,25 +73,6 @@ func resourceSoftLayerLbVpxVip() *schema.Resource {
 	}
 }
 
-func parseId(id string) (int, string, error) {
-	if len(id) < 1 {
-		return 0, "", fmt.Errorf("Failed to parse id : Unable to get a VIP ID")
-	}
-
-	idList := strings.Split(id, ":")
-	if len(idList) != 2 || len(idList[0]) < 1 || len(idList[1]) < 1 {
-		return 0, "", fmt.Errorf("Failed to parse id : Invalid VIP ID")
-	}
-
-	nadcId, err := strconv.Atoi(idList[0])
-	if err != nil {
-		return 0, "", fmt.Errorf("Failed to parse id : Unable to get a VIP ID %s", err)
-	}
-
-	vipName := idList[1]
-	return nadcId, vipName, nil
-}
-
 func resourceSoftLayerLbVpxVipCreate(d *schema.ResourceData, meta interface{}) error {
 	version, err := getVPXVersion(d.Get("nad_controller_id").(int), meta.(*session.Session))
 	if err != nil {
@@ -103,6 +84,97 @@ func resourceSoftLayerLbVpxVipCreate(d *schema.ResourceData, meta interface{}) e
 	}
 
 	return resourceSoftLayerLbVpxVipCreate105(d, meta)
+}
+
+func resourceSoftLayerLbVpxVipRead(d *schema.ResourceData, meta interface{}) error {
+	nadcId, _, err := parseId(d.Id())
+	if err != nil {
+		return fmt.Errorf("Error Reading Virtual IP Address: %s", err)
+	}
+
+	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	if err != nil {
+		return fmt.Errorf("Error Reading Virtual Ip Address: %s", err)
+	}
+
+	if version == VPX_VERSION_10_1 {
+		return resourceSoftLayerLbVpxVipRead101(d, meta)
+	}
+
+	return resourceSoftLayerLbVpxVipRead105(d, meta)
+}
+
+func resourceSoftLayerLbVpxVipUpdate(d *schema.ResourceData, meta interface{}) error {
+	nadcId, _, err := parseId(d.Id())
+	if err != nil {
+		return fmt.Errorf("Error updating Virtual IP Address: %s", err)
+	}
+
+	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	if err != nil {
+		return fmt.Errorf("Error updating Virtual Ip Address: %s", err)
+	}
+
+	if version == VPX_VERSION_10_1 {
+		return resourceSoftLayerLbVpxVipUpdate101(d, meta)
+	}
+
+	return resourceSoftLayerLbVpxVipUpdate105(d, meta)
+}
+
+func resourceSoftLayerLbVpxVipDelete(d *schema.ResourceData, meta interface{}) error {
+	nadcId, _, err := parseId(d.Id())
+	if err != nil {
+		return fmt.Errorf("Error deleting Virtual Ip Address: %s", err)
+	}
+
+	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	if err != nil {
+		return fmt.Errorf("Error deleting Virtual Ip Address: %s", err)
+	}
+
+	if version == VPX_VERSION_10_1 {
+		return resourceSoftLayerLbVpxVipDelete101(d, meta)
+	}
+
+	return resourceSoftLayerLbVpxVipDelete105(d, meta)
+}
+
+func resourceSoftLayerLbVpxVipExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	nadcId, _, err := parseId(d.Id())
+	if err != nil {
+		return false, fmt.Errorf("Error in exists: %s", err)
+	}
+
+	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	if err != nil {
+		return false, fmt.Errorf("Error in exists: %s", err)
+	}
+
+	if version == VPX_VERSION_10_1 {
+		return resourceSoftLayerLbVpxVipExists101(d, meta)
+	}
+
+	return resourceSoftLayerLbVpxVipExists105(d, meta)
+}
+
+func parseId(id string) (int, string, error) {
+	if len(id) < 1 {
+		return 0, "", fmt.Errorf("Failed to parse id %s: Unable to get a VIP ID", id)
+	}
+
+	idList := strings.Split(id, ":")
+	if len(idList) != 2 || len(idList[0]) < 1 || len(idList[1]) < 1 {
+		return 0, "", fmt.Errorf("Failed to parse id %s: Invalid VIP ID", id)
+	}
+
+	nadcId, err := strconv.Atoi(idList[0])
+	if err != nil {
+		return 0, "", fmt.Errorf("Failed to parse id : Unable to get a VIP ID %s", err)
+	}
+
+	vipName := idList[1]
+	return nadcId, vipName, nil
 }
 
 func resourceSoftLayerLbVpxVipCreate101(d *schema.ResourceData, meta interface{}) error {
@@ -169,7 +241,7 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 
 	vipName := d.Get("name").(string)
 
-	// 1. Create a virtual server
+	// Create a virtual server
 	lbvserverReq := dt.LbvserverReq{
 		Lbvserver: &dt.Lbvserver{
 			Name:        op.String(vipName),
@@ -184,7 +256,7 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 
 	err = nClient.Add(&lbvserverReq)
 	if err != nil {
-		fmt.Printf("[ERROR]" + err.Error())
+		return err
 	}
 
 	d.SetId(fmt.Sprintf("%d:%s", nadcId, vipName))
@@ -192,24 +264,6 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 	log.Printf("[INFO] Netscaler VPX VIP ID: %s", d.Id())
 
 	return resourceSoftLayerLbVpxVipRead(d, meta)
-}
-
-func resourceSoftLayerLbVpxVipRead(d *schema.ResourceData, meta interface{}) error {
-	nadcId, _, err := parseId(d.Id())
-	if err != nil {
-		return fmt.Errorf("softlayer_lb_vpx : %s", err)
-	}
-
-	version, err := getVPXVersion(nadcId, meta.(*session.Session))
-	if err != nil {
-		return fmt.Errorf("Error creating Virtual Ip Address: %s", err)
-	}
-
-	if version == VPX_VERSION_10_1 {
-		return resourceSoftLayerLbVpxVipRead101(d, meta)
-	}
-
-	return resourceSoftLayerLbVpxVipRead105(d, meta)
 }
 
 func resourceSoftLayerLbVpxVipRead101(d *schema.ResourceData, meta interface{}) error {
@@ -291,24 +345,6 @@ func resourceSoftLayerLbVpxVipRead105(d *schema.ResourceData, meta interface{}) 
 	return nil
 }
 
-func resourceSoftLayerLbVpxVipUpdate(d *schema.ResourceData, meta interface{}) error {
-	nadcId, _, err := parseId(d.Id())
-	if err != nil {
-		return fmt.Errorf("softlayer_lb_vpx : %s", err)
-	}
-
-	version, err := getVPXVersion(nadcId, meta.(*session.Session))
-	if err != nil {
-		return fmt.Errorf("Error creating Virtual Ip Address: %s", err)
-	}
-
-	if version == VPX_VERSION_10_1 {
-		return resourceSoftLayerLbVpxVipUpdate101(d, meta)
-	}
-
-	return resourceSoftLayerLbVpxVipUpdate105(d, meta)
-}
-
 func resourceSoftLayerLbVpxVipUpdate101(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
@@ -381,7 +417,7 @@ func resourceSoftLayerLbVpxVipUpdate105(d *schema.ResourceData, meta interface{}
 	return resourceSoftLayerLbVpxVipRead(d, meta)
 }
 
-func resourceSoftLayerLbVpxVipDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxVipDelete101(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
@@ -421,7 +457,27 @@ func resourceSoftLayerLbVpxVipDelete(d *schema.ResourceData, meta interface{}) e
 	return nil
 }
 
-func resourceSoftLayerLbVpxVipExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceSoftLayerLbVpxVipDelete105(d *schema.ResourceData, meta interface{}) error {
+	nadcId, vipName, err := parseId(d.Id())
+	if err != nil {
+		return fmt.Errorf("softlayer_lb_vpx : %s", err)
+	}
+
+	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	if err != nil {
+		return fmt.Errorf("Error deleting Virtual Ip Address %s: %s", vipName, err)
+	}
+
+	// Delete a virtual server
+	err = nClient.Delete(&dt.LbvserverReq{}, vipName)
+	if err != nil {
+		return fmt.Errorf("Error deleting Virtual Ip Address %s: %s", vipName, err)
+	}
+
+	return nil
+}
+
+func resourceSoftLayerLbVpxVipExists101(d *schema.ResourceData, meta interface{}) (bool, error) {
 	sess := meta.(*session.Session)
 
 	nadcId, vipName, err := parseId(d.Id())
@@ -432,6 +488,27 @@ func resourceSoftLayerLbVpxVipExists(d *schema.ResourceData, meta interface{}) (
 	vip, err := network.GetNadcLbVipByName(sess, nadcId, vipName)
 
 	return vip != nil && err == nil && *vip.Name == vipName, nil
+}
+
+func resourceSoftLayerLbVpxVipExists105(d *schema.ResourceData, meta interface{}) (bool, error) {
+	nadcId, vipName, err := parseId(d.Id())
+	if err != nil {
+		return false, fmt.Errorf("softlayer_lb_vpx : %s", err)
+	}
+
+	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	if err != nil {
+		return false, err
+	}
+
+	// Read Virtual Server
+	vip := dt.LbvserverRes{}
+	err = nClient.Get(&vip, vipName)
+	if err != nil {
+		return false, err
+	} else {
+		return true, nil
+	}
 }
 
 func getNitroClient(sess *session.Session, nadcId int) (*client.NitroClient, error) {
