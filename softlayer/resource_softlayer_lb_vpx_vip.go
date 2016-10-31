@@ -24,6 +24,18 @@ const (
 	VPX_VERSION_10_1 = "10.1"
 )
 
+var loadBalancingMethod = map[string]string {
+	"rr" : "ROUNDROBIN",
+	"sr" : "SOURCEIPHASH", // Need to be updated
+	"lc" : "LEASTCONNECTION",
+	"pi" : "ROUNDROBIN",
+	"pi-sr" : "ROUNDROBIN", // Need to be updated
+	"pi-lc" : "LEASTCONNECTION",
+	"ic" : "ROUNDROBIN",
+	"ic-sr" : "ROUNDROBIN", // Need to be updated
+	"ic-lc" : "LEASTCONNECTION",
+}
+
 func resourceSoftLayerLbVpxVip() *schema.Resource {
 	return &schema.Resource{
 		Create:   resourceSoftLayerLbVpxVipCreate,
@@ -240,6 +252,10 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 	}
 
 	vipName := d.Get("name").(string)
+	lbMethod := loadBalancingMethod[d.Get("load_balancing_method").(string)]
+	if len(lbMethod) == 0 {
+		lbMethod = d.Get("load_balancing_method").(string)
+	}
 
 	// Create a virtual server
 	lbvserverReq := dt.LbvserverReq{
@@ -248,7 +264,7 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 			Ipv46:       op.String(d.Get("virtual_ip_address").(string)),
 			Port:        op.Int(d.Get("source_port").(int)),
 			ServiceType: op.String(d.Get("type").(string)),
-			Lbmethod:    op.String(d.Get("load_balancing_method").(string)),
+			Lbmethod:    op.String(lbMethod),
 		},
 	}
 
