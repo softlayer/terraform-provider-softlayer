@@ -34,7 +34,7 @@ func TestAccSoftLayerLbVpxVip_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_lb_vpx_vip.testacc_vip105", "load_balancing_method", "lc"),
 					resource.TestCheckResourceAttr(
-						"softlayer_lb_vpx_vip.testacc_vip105", "name", "test_load_balancer_vip"),
+						"softlayer_lb_vpx_vip.testacc_vip105", "name", "test_load_balancer_vip105"),
 					resource.TestCheckResourceAttr(
 						"softlayer_lb_vpx_vip.testacc_vip105", "source_port", "80"),
 					resource.TestCheckResourceAttr(
@@ -67,8 +67,6 @@ func testAccCheckSoftLayerLbVpxVipDestroy(s *terraform.State) error {
 }
 
 var testAccCheckSoftLayerLbVpxVipConfig_basic = `
-
-
 resource "softlayer_lb_vpx" "testacc_foobar_nadc" {
     datacenter = "dal09"
     speed = 10

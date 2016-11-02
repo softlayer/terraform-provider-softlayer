@@ -24,17 +24,31 @@ const (
 	VPX_VERSION_10_1 = "10.1"
 )
 
-var loadBalancingMethod = map[string]string {
-	"rr" : "ROUNDROBIN",
-	"sr" : "SOURCEIPHASH", // Need to be updated
-	"lc" : "LEASTCONNECTION",
-	"pi" : "ROUNDROBIN",
-	"pi-sr" : "ROUNDROBIN", // Need to be updated
-	"pi-lc" : "LEASTCONNECTION",
-	"ic" : "ROUNDROBIN",
-	"ic-sr" : "ROUNDROBIN", // Need to be updated
-	"ic-lc" : "LEASTCONNECTION",
-}
+var (
+	lbMethodMapFromSLtoVPX105 = map[string][2]string{
+		"rr":    {"NONE", "ROUNDROBIN"},
+		"sr":    {"NONE", "LEASTRESPONSETIME"},
+		"lc":    {"NONE", "LEASTCONNECTION"},
+		"pi":    {"SOURCEIP", "ROUNDROBIN"},
+		"pi-sr": {"SOURCEIP", "LEASTRESPONSETIME"},
+		"pi-lc": {"SOURCEIP", "LEASTCONNECTION"},
+		"ic":    {"COOKIEINSERT", "ROUNDROBIN"},
+		"ic-sr": {"COOKIEINSERT", "LEASTRESPONSETIME"},
+		"ic-lc": {"COOKIEINSERT", "LEASTCONNECTION"},
+	}
+
+	lbMethodMapFromVPX105toSL = map[[2]string]string{
+		{"NONE", "ROUNDROBIN"}:                "rr",
+		{"NONE", "LEASTRESPONSETIME"}:         "sr",
+		{"NONE", "LEASTCONNECTION"}:           "lc",
+		{"SOURCEIP", "ROUNDROBIN"}:            "pi",
+		{"SOURCEIP", "LEASTRESPONSETIME"}:     "pi-sr",
+		{"SOURCEIP", "LEASTCONNECTION"}:       "pi-lc",
+		{"COOKIEINSERT", "ROUNDROBIN"}:        "ic",
+		{"COOKIEINSERT", "LEASTRESPONSETIME"}: "ic-sr",
+		{"COOKIEINSERT", "LEASTCONNECTION"}:   "ic-lc",
+	}
+)
 
 func resourceSoftLayerLbVpxVip() *schema.Resource {
 	return &schema.Resource{
@@ -55,6 +69,12 @@ func resourceSoftLayerLbVpxVip() *schema.Resource {
 			"load_balancing_method": {
 				Type:     schema.TypeString,
 				Required: true,
+			},
+
+			"persistence": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
 			},
 
 			// name field is actually used as an ID in SoftLayer
@@ -252,10 +272,6 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 	}
 
 	vipName := d.Get("name").(string)
-	lbMethod := loadBalancingMethod[d.Get("load_balancing_method").(string)]
-	if len(lbMethod) == 0 {
-		lbMethod = d.Get("load_balancing_method").(string)
-	}
 
 	// Create a virtual server
 	lbvserverReq := dt.LbvserverReq{
@@ -264,8 +280,20 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 			Ipv46:       op.String(d.Get("virtual_ip_address").(string)),
 			Port:        op.Int(d.Get("source_port").(int)),
 			ServiceType: op.String(d.Get("type").(string)),
-			Lbmethod:    op.String(lbMethod),
 		},
+	}
+
+	if len(d.Get("persistence").(string)) > 0 {
+		lbvserverReq.Lbvserver.Lbmethod = op.String(d.Get("persistence").(string))
+	}
+	lbMethodPair := lbMethodMapFromSLtoVPX105[d.Get("load_balancing_method").(string)]
+	if len(lbMethodPair[1]) > 0 {
+		if len(lbMethodPair[0]) > 0 {
+			lbvserverReq.Lbvserver.Persistencetype = &lbMethodPair[0]
+		} else {
+			lbvserverReq.Lbvserver.Persistencetype = op.String("NONE")
+		}
+		lbvserverReq.Lbvserver.Lbmethod = &lbMethodPair[1]
 	}
 
 	log.Printf("[INFO] Creating Virtual Ip Address %s", *lbvserverReq.Lbvserver.Ipv46)
@@ -354,6 +382,19 @@ func resourceSoftLayerLbVpxVipRead105(d *schema.ResourceData, meta interface{}) 
 		d.Set("type", *vip.Lbvserver[0].ServiceType)
 	}
 
+	if vip.Lbvserver[0].Persistencetype != nil {
+		if *vip.Lbvserver[0].Persistencetype == "NONE" {
+			d.Set("persistence", nil)
+		} else {
+			d.Set("persistence", *vip.Lbvserver[0].Persistencetype)
+		}
+	}
+
+	lbMethod := lbMethodMapFromVPX105toSL[[2]string{*vip.Lbvserver[0].Persistencetype, *vip.Lbvserver[0].Lbmethod}]
+	if len(lbMethod) > 0 {
+		d.Set("load_balancing_method", lbMethod)
+	}
+
 	if vip.Lbvserver[0].Ipv46 != nil {
 		d.Set("virtual_ip_address", *vip.Lbvserver[0].Ipv46)
 	}
@@ -383,10 +424,10 @@ func resourceSoftLayerLbVpxVipUpdate101(d *schema.ResourceData, meta interface{}
 	for count := 0; count < 10; count++ {
 		var successFlag bool
 		successFlag, err = service.Id(nadcId).UpdateLiveLoadBalancer(&template)
-		log.Printf("[INFO]  Updating Virtual Ip Address %s successFlag : %t", *template.VirtualIpAddress, successFlag)
+		log.Printf("[INFO]  Updating Virtual Ip Address successFlag : %t", successFlag)
 
 		if err != nil && strings.Contains(err.Error(), "Operation already in progress") {
-			log.Printf("[INFO] Updating Virtual Ip Address %s error : %s. Retry in 10 secs", *template.VirtualIpAddress, err.Error())
+			log.Printf("[INFO] Updating Virtual Ip Address error : %s. Retry in 10 secs", err.Error())
 			time.Sleep(time.Second * 10)
 			continue
 		}
@@ -415,8 +456,19 @@ func resourceSoftLayerLbVpxVipUpdate105(d *schema.ResourceData, meta interface{}
 		},
 	}
 
-	if d.HasChange("load_balancing_method") {
-		lbvserverReq.Lbvserver.Lbmethod = sl.String(d.Get("load_balancing_method").(string))
+	if d.HasChange("load_balancing_method") || d.HasChange("persistence") {
+		lbvserverReq.Lbvserver.Persistencetype = op.String(d.Get("persistence").(string))
+		lbvserverReq.Lbvserver.Lbmethod = op.String(d.Get("load_balancing_method").(string))
+
+		lbMethodPair := lbMethodMapFromSLtoVPX105[d.Get("load_balancing_method").(string)]
+		if len(lbMethodPair[1]) > 0 {
+			if len(lbMethodPair[0]) > 0 {
+				lbvserverReq.Lbvserver.Persistencetype = &lbMethodPair[0]
+			} else {
+				lbvserverReq.Lbvserver.Persistencetype = op.String("NONE")
+			}
+			lbvserverReq.Lbvserver.Lbmethod = &lbMethodPair[1]
+		}
 	}
 
 	if d.HasChange("virtual_ip_address") {
@@ -527,7 +579,7 @@ func resourceSoftLayerLbVpxVipExists105(d *schema.ResourceData, meta interface{}
 
 func getNitroClient(sess *session.Session, nadcId int) (*client.NitroClient, error) {
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
-	nadc, err := service.Id(nadcId).GetObject()
+	nadc, err := service.Id(nadcId).Mask("managementIpAddress,password[password]").GetObject()
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving netscaler: %s", err)
 	}
