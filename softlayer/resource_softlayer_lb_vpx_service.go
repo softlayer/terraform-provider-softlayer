@@ -19,6 +19,22 @@ import (
 	"time"
 )
 
+var (
+	healthCheckMapFromSLtoVPX105 = map[string]string{
+		"HTTP": "http",
+		"TCP":  "tcp",
+		"ICMP": "ping",
+		"DNS":  "dns",
+	}
+
+	healthCheckMapFromVPX105toSL = map[string]string{
+		"http": "HTTP",
+		"tcp":  "TCP",
+		"ping": "ICMP",
+		"dns":  "DNS",
+	}
+)
+
 func resourceSoftLayerLbVpxService() *schema.Resource {
 	return &schema.Resource{
 		Create:   resourceSoftLayerLbVpxServiceCreate,
@@ -72,6 +88,12 @@ func resourceSoftLayerLbVpxService() *schema.Resource {
 			"health_check": {
 				Type:     schema.TypeString,
 				Required: true,
+				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+					if strings.ToUpper(o) == strings.ToUpper(n) {
+						return true
+					}
+					return false
+				},
 			},
 		},
 	}
@@ -300,19 +322,20 @@ func resourceSoftLayerLbVpxServiceCreate105(d *schema.ResourceData, meta interfa
 	if err != nil {
 		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
 	}
+	/*
+		// Update weight
+		svcWeightReq := dt.ServiceReq{
+			Service: &dt.Service{
+				Name:   op.String(d.Get("name").(string)),
+				Weight: op.Int(d.Get("weight").(int)),
+			},
+		}
 
-	// Update weight
-	svcWeightReq := dt.ServiceReq{
-		Service: &dt.Service{
-			Name:   op.String(d.Get("name").(string)),
-			Weight: op.Int(d.Get("weight").(int)),
-		},
-	}
-
-	err = nClient.Update(&svcWeightReq)
-	if err != nil {
-		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
-	}
+		err = nClient.Update(&svcWeightReq)
+		if err != nil {
+			return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
+		}
+	*/
 
 	// Bind Virtual Server and service
 	lbvserverServiceBindingReq := dt.LbvserverServiceBindingReq{
@@ -323,6 +346,24 @@ func resourceSoftLayerLbVpxServiceCreate105(d *schema.ResourceData, meta interfa
 	}
 
 	err = nClient.Add(&lbvserverServiceBindingReq)
+	if err != nil {
+		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
+	}
+
+	// Add Health_check
+	healthCheck := d.Get("health_check").(string)
+	if len(healthCheckMapFromSLtoVPX105[healthCheck]) > 0 {
+		healthCheck = healthCheckMapFromSLtoVPX105[healthCheck]
+	}
+
+	serviceLbmonitorBindingReq := dt.ServiceLbmonitorBindingReq{
+		ServiceLbmonitorBinding: &dt.ServiceLbmonitorBinding{
+			Name:        op.String(serviceName),
+			MonitorName: op.String(healthCheck),
+		},
+	}
+
+	err = nClient.Add(&serviceLbmonitorBindingReq)
 	if err != nil {
 		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
 	}
@@ -381,10 +422,23 @@ func resourceSoftLayerLbVpxServiceRead105(d *schema.ResourceData, meta interface
 	if svc.Service[0].Weight != nil {
 		d.Set("weight", *svc.Service[0].Weight)
 	}
-	//	d.Set("health_check", *svc.Service[0].lbService.HealthCheck)
+
 	maxClientStr, err := strconv.Atoi(*svc.Service[0].Maxclient)
 	if err == nil {
 		d.Set("connection_limit", maxClientStr)
+	}
+
+	healthCheck := dt.ServiceLbmonitorBindingRes{}
+	err = nClient.Get(&healthCheck, serviceName)
+	if err != nil {
+		fmt.Printf("Error getting service information : %s", err.Error())
+	}
+	if healthCheck.ServiceLbmonitorBinding[0].MonitorName != nil {
+		healthCheck := *healthCheck.ServiceLbmonitorBinding[0].MonitorName
+		if len(healthCheckMapFromVPX105toSL[healthCheck]) > 0 {
+			healthCheck = healthCheckMapFromVPX105toSL[healthCheck]
+		}
+		d.Set("health_check", healthCheck)
 	}
 
 	return nil
@@ -462,21 +516,59 @@ func resourceSoftLayerLbVpxServiceUpdate105(d *schema.ResourceData, meta interfa
 		},
 	}
 
+	updateFlag := false
+
 	if d.HasChange("health_check") {
-		svcReq.Service.ServiceType = op.String(d.Get("health_check").(string))
+		// Delete previous health_check
+		healthCheck := dt.ServiceLbmonitorBindingRes{}
+		err = nClient.Get(&healthCheck, serviceName)
+		if err != nil {
+			fmt.Printf("Error getting service information : %s", err.Error())
+		}
+		monitorName := healthCheck.ServiceLbmonitorBinding[0].MonitorName
+		if monitorName != nil && *monitorName != "tcp-default" {
+			// Delete the health_check
+			err = nClient.Delete(&dt.ServiceLbmonitorBindingReq{}, serviceName, "args=monitor_name:"+*monitorName)
+			if err != nil {
+				return fmt.Errorf("Error deleting monitor %s: %s", *monitorName, err)
+			}
+		}
+
+		// Add Health_check
+
+		monitor := d.Get("health_check").(string)
+		if len(healthCheckMapFromSLtoVPX105[monitor]) > 0 {
+			monitor = healthCheckMapFromSLtoVPX105[monitor]
+		}
+
+		serviceLbmonitorBindingReq := dt.ServiceLbmonitorBindingReq{
+			ServiceLbmonitorBinding: &dt.ServiceLbmonitorBinding{
+				Name:        op.String(serviceName),
+				MonitorName: op.String(monitor),
+			},
+		}
+
+		err = nClient.Add(&serviceLbmonitorBindingReq)
+		if err != nil {
+			return fmt.Errorf("Error adding a monitor: %s", err)
+		}
 	}
 
 	if d.HasChange("weight") {
 		svcReq.Service.Weight = op.Int(d.Get("weight").(int))
+		updateFlag = true
 	}
 
 	if d.HasChange("connection_limit") {
 		svcReq.Service.Maxclient = op.String(strconv.Itoa(d.Get("connection_limit").(int)))
+		updateFlag = true
 	}
 
 	log.Printf("[INFO] Updating LoadBalancer Service %s", serviceName)
 
-	err = nClient.Update(&svcReq)
+	if updateFlag {
+		err = nClient.Update(&svcReq)
+	}
 
 	if err != nil {
 		return fmt.Errorf("Error updating LoadBalancer Service: %s", err)
