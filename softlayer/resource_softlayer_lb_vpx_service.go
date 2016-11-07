@@ -24,6 +24,7 @@ var (
 		"HTTP": "http",
 		"TCP":  "tcp",
 		"ICMP": "ping",
+		"icmp": "ping",
 		"DNS":  "dns",
 	}
 
@@ -322,20 +323,6 @@ func resourceSoftLayerLbVpxServiceCreate105(d *schema.ResourceData, meta interfa
 	if err != nil {
 		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
 	}
-	/*
-		// Update weight
-		svcWeightReq := dt.ServiceReq{
-			Service: &dt.Service{
-				Name:   op.String(d.Get("name").(string)),
-				Weight: op.Int(d.Get("weight").(int)),
-			},
-		}
-
-		err = nClient.Update(&svcWeightReq)
-		if err != nil {
-			return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
-		}
-	*/
 
 	// Bind Virtual Server and service
 	lbvserverServiceBindingReq := dt.LbvserverServiceBindingReq{
@@ -419,9 +406,6 @@ func resourceSoftLayerLbVpxServiceRead105(d *schema.ResourceData, meta interface
 	d.Set("name", *svc.Service[0].Name)
 	d.Set("destination_ip_address", *svc.Service[0].Ipaddress)
 	d.Set("destination_port", *svc.Service[0].Port)
-	if svc.Service[0].Weight != nil {
-		d.Set("weight", *svc.Service[0].Weight)
-	}
 
 	maxClientStr, err := strconv.Atoi(*svc.Service[0].Maxclient)
 	if err == nil {
@@ -552,11 +536,6 @@ func resourceSoftLayerLbVpxServiceUpdate105(d *schema.ResourceData, meta interfa
 		if err != nil {
 			return fmt.Errorf("Error adding a monitor: %s", err)
 		}
-	}
-
-	if d.HasChange("weight") {
-		svcReq.Service.Weight = op.Int(d.Get("weight").(int))
-		updateFlag = true
 	}
 
 	if d.HasChange("connection_limit") {
