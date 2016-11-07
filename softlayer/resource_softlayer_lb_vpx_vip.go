@@ -449,7 +449,7 @@ func resourceSoftLayerLbVpxVipUpdate105(d *schema.ResourceData, meta interface{}
 		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
 	}
 
-	// Create a virtual server
+	// Update a virtual server
 	lbvserverReq := dt.LbvserverReq{
 		Lbvserver: &dt.Lbvserver{
 			Name: op.String(d.Get("name").(string)),

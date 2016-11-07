@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
+	dt "github.com/minsikl/netscaler-nitro-go/datatypes"
+	"github.com/minsikl/netscaler-nitro-go/op"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/helpers/network"
 	"github.com/softlayer/softlayer-go/services"
@@ -112,6 +114,98 @@ func updateVpxService(sess *session.Session, nadcId int, lbVip *datatypes.Networ
 }
 
 func resourceSoftLayerLbVpxServiceCreate(d *schema.ResourceData, meta interface{}) error {
+	vipId := d.Get("vip_id").(string)
+	_, nadcId, _, err := parseServiceId(vipId)
+
+	if err != nil {
+		return fmt.Errorf("Error parsing vip id: %s", err)
+	}
+
+	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	if err != nil {
+		return fmt.Errorf("Error creating Virtual Ip Address: %s", err)
+	}
+
+	if version == VPX_VERSION_10_1 {
+		return resourceSoftLayerLbVpxServiceCreate101(d, meta)
+	}
+
+	return resourceSoftLayerLbVpxServiceCreate105(d, meta)
+}
+
+func resourceSoftLayerLbVpxServiceRead(d *schema.ResourceData, meta interface{}) error {
+	_, nadcId, _, err := parseServiceId(d.Id())
+	if err != nil {
+		return fmt.Errorf("Error parsing vip id: %s", err)
+	}
+
+	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	if err != nil {
+		return fmt.Errorf("Error Reading Virtual Ip Address: %s", err)
+	}
+
+	if version == VPX_VERSION_10_1 {
+		return resourceSoftLayerLbVpxServiceRead101(d, meta)
+	}
+
+	return resourceSoftLayerLbVpxServiceRead105(d, meta)
+}
+
+func resourceSoftLayerLbVpxServiceUpdate(d *schema.ResourceData, meta interface{}) error {
+	_, nadcId, _, err := parseServiceId(d.Id())
+	if err != nil {
+		return fmt.Errorf("Error updating Virtual IP Address: %s", err)
+	}
+
+	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	if err != nil {
+		return fmt.Errorf("Error updating Virtual Ip Address: %s", err)
+	}
+
+	if version == VPX_VERSION_10_1 {
+		return resourceSoftLayerLbVpxServiceUpdate101(d, meta)
+	}
+
+	return resourceSoftLayerLbVpxServiceUpdate105(d, meta)
+}
+
+func resourceSoftLayerLbVpxServiceDelete(d *schema.ResourceData, meta interface{}) error {
+	_, nadcId, _, err := parseServiceId(d.Id())
+	if err != nil {
+		return fmt.Errorf("Error deleting Virtual Ip Address: %s", err)
+	}
+
+	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	if err != nil {
+		return fmt.Errorf("Error deleting Virtual Ip Address: %s", err)
+	}
+
+	if version == VPX_VERSION_10_1 {
+		return resourceSoftLayerLbVpxServiceDelete101(d, meta)
+	}
+
+	return resourceSoftLayerLbVpxServiceDelete105(d, meta)
+}
+
+func resourceSoftLayerLbVpxServiceExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	_, nadcId, _, err := parseServiceId(d.Id())
+	if err != nil {
+		return false, fmt.Errorf("Error in exists: %s", err)
+	}
+
+	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	if err != nil {
+		return false, fmt.Errorf("Error in exists: %s", err)
+	}
+
+	if version == VPX_VERSION_10_1 {
+		return resourceSoftLayerLbVpxServiceExists101(d, meta)
+	}
+
+	return resourceSoftLayerLbVpxServiceExists105(d, meta)
+}
+
+func resourceSoftLayerLbVpxServiceCreate101(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	vipId := d.Get("vip_id").(string)
@@ -164,7 +258,69 @@ func resourceSoftLayerLbVpxServiceCreate(d *schema.ResourceData, meta interface{
 	return resourceSoftLayerLbVpxServiceRead(d, meta)
 }
 
-func resourceSoftLayerLbVpxServiceRead(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxServiceCreate105(d *schema.ResourceData, meta interface{}) error {
+	vipId := d.Get("vip_id").(string)
+	vipName, nadcId, _, err := parseServiceId(vipId)
+	serviceName := d.Get("name").(string)
+
+	if err != nil {
+		return fmt.Errorf("Error parsing vip id: %s", err)
+	}
+
+	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	if err != nil {
+		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
+	}
+
+	// Create a service
+	svcReq := dt.ServiceReq{
+		Service: &dt.Service{
+			Name:        op.String(d.Get("name").(string)),
+			Ip:          op.String(d.Get("destination_ip_address").(string)),
+			Port:        op.Int(d.Get("destination_port").(int)),
+			ServiceType: op.String(d.Get("health_check").(string)),
+			Maxclient:   op.String(strconv.Itoa(d.Get("connection_limit").(int))),
+		},
+	}
+
+	log.Printf("[INFO] Creating LoadBalancer Service %s", serviceName)
+	err = nClient.Add(&svcReq)
+	if err != nil {
+		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
+	}
+
+	// Update weight
+	svcWeightReq := dt.ServiceReq{
+		Service: &dt.Service{
+			Name:   op.String(d.Get("name").(string)),
+			Weight: op.Int(d.Get("weight").(int)),
+		},
+	}
+
+	err = nClient.Update(&svcWeightReq)
+	if err != nil {
+		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
+	}
+
+	// Bind Virtual Server and service
+	lbvserverServiceBindingReq := dt.LbvserverServiceBindingReq{
+		LbvserverServiceBinding: &dt.LbvserverServiceBinding{
+			Name:        op.String(vipName),
+			ServiceName: op.String(serviceName),
+		},
+	}
+
+	err = nClient.Add(&lbvserverServiceBindingReq)
+	if err != nil {
+		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
+	}
+
+	d.SetId(fmt.Sprintf("%s:%s", vipId, serviceName))
+
+	return resourceSoftLayerLbVpxServiceRead(d, meta)
+}
+
+func resourceSoftLayerLbVpxServiceRead101(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	vipName, nadcId, serviceName, err := parseServiceId(d.Id())
@@ -188,7 +344,41 @@ func resourceSoftLayerLbVpxServiceRead(d *schema.ResourceData, meta interface{})
 	return nil
 }
 
-func resourceSoftLayerLbVpxServiceUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxServiceRead105(d *schema.ResourceData, meta interface{}) error {
+	vipName, nadcId, serviceName, err := parseServiceId(d.Id())
+	if err != nil {
+		return fmt.Errorf("Error parsing vip id: %s", err)
+	}
+
+	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	if err != nil {
+		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
+	}
+
+	// Read Service
+
+	svc := dt.ServiceRes{}
+	err = nClient.Get(&svc, serviceName)
+	if err != nil {
+		fmt.Printf("Error getting service information : %s", err.Error())
+	}
+	d.Set("vip_id", strconv.Itoa(nadcId)+":"+vipName)
+	d.Set("name", *svc.Service[0].Name)
+	d.Set("destination_ip_address", *svc.Service[0].Ipaddress)
+	d.Set("destination_port", *svc.Service[0].Port)
+	if svc.Service[0].Weight != nil {
+		d.Set("weight", *svc.Service[0].Weight)
+	}
+	//	d.Set("health_check", *svc.Service[0].lbService.HealthCheck)
+	maxClientStr, err := strconv.Atoi(*svc.Service[0].Maxclient)
+	if err == nil {
+		d.Set("connection_limit", maxClientStr)
+	}
+
+	return nil
+}
+
+func resourceSoftLayerLbVpxServiceUpdate101(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 
 	vipName, nadcId, serviceName, err := parseServiceId(d.Id())
@@ -242,7 +432,48 @@ func resourceSoftLayerLbVpxServiceUpdate(d *schema.ResourceData, meta interface{
 	return nil
 }
 
-func resourceSoftLayerLbVpxServiceDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerLbVpxServiceUpdate105(d *schema.ResourceData, meta interface{}) error {
+	_, nadcId, serviceName, err := parseServiceId(d.Id())
+	if err != nil {
+		return fmt.Errorf("Error parsing vip id: %s", err)
+	}
+
+	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	if err != nil {
+		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
+	}
+
+	// Update a service
+	svcReq := dt.ServiceReq{
+		Service: &dt.Service{
+			Name: op.String(d.Get("name").(string)),
+		},
+	}
+
+	if d.HasChange("health_check") {
+		svcReq.Service.ServiceType = op.String(d.Get("health_check").(string))
+	}
+
+	if d.HasChange("weight") {
+		svcReq.Service.Weight = op.Int(d.Get("weight").(int))
+	}
+
+	if d.HasChange("connection_limit") {
+		svcReq.Service.Maxclient = op.String(strconv.Itoa(d.Get("connection_limit").(int)))
+	}
+
+	log.Printf("[INFO] Updating LoadBalancer Service %s", serviceName)
+
+	err = nClient.Update(&svcReq)
+
+	if err != nil {
+		return fmt.Errorf("Error updating LoadBalancer Service: %s", err)
+	}
+
+	return nil
+}
+
+func resourceSoftLayerLbVpxServiceDelete101(d *schema.ResourceData, meta interface{}) error {
 	vipName, nadcId, serviceName, err := parseServiceId(d.Id())
 	if err != nil {
 		return fmt.Errorf("Error parsing vip id: %s", err)
@@ -287,7 +518,28 @@ func resourceSoftLayerLbVpxServiceDelete(d *schema.ResourceData, meta interface{
 	return nil
 }
 
-func resourceSoftLayerLbVpxServiceExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceSoftLayerLbVpxServiceDelete105(d *schema.ResourceData, meta interface{}) error {
+	_, nadcId, serviceName, err := parseServiceId(d.Id())
+	if err != nil {
+		return fmt.Errorf("Error parsing vip id: %s", err)
+	}
+
+	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	if err != nil {
+		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
+	}
+
+	// Delete a service
+
+	err = nClient.Delete(&dt.ServiceReq{}, serviceName)
+	if err != nil {
+		return fmt.Errorf("Error deleting service %s: %s", serviceName, err)
+	}
+
+	return nil
+}
+
+func resourceSoftLayerLbVpxServiceExists101(d *schema.ResourceData, meta interface{}) (bool, error) {
 	vipName, nadcId, serviceName, err := parseServiceId(d.Id())
 	if err != nil {
 		return false, fmt.Errorf("Error parsing vip id: %s", err)
@@ -299,5 +551,25 @@ func resourceSoftLayerLbVpxServiceExists(d *schema.ResourceData, meta interface{
 		return false, fmt.Errorf("Unable to get load balancer service %s: %s", serviceName, err)
 	}
 
-	return err == nil && *lbService.Name == serviceName, nil
+	return *lbService.Name == serviceName, nil
+}
+
+func resourceSoftLayerLbVpxServiceExists105(d *schema.ResourceData, meta interface{}) (bool, error) {
+	_, nadcId, serviceName, err := parseServiceId(d.Id())
+	if err != nil {
+		return false, fmt.Errorf("Error parsing vip id: %s", err)
+	}
+
+	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	if err != nil {
+		return false, fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
+	}
+
+	svc := dt.ServiceRes{}
+	err = nClient.Get(&svc, serviceName)
+	if err != nil {
+		return false, fmt.Errorf("Unable to get load balancer service %s: %s", serviceName, err)
+	}
+
+	return *svc.Service[0].Name == serviceName, nil
 }
