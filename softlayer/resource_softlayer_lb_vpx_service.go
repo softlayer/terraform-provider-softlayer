@@ -275,12 +275,24 @@ func resourceSoftLayerLbVpxServiceCreate105(d *schema.ResourceData, meta interfa
 	// Create a service
 	svcReq := dt.ServiceReq{
 		Service: &dt.Service{
-			Name:        op.String(d.Get("name").(string)),
-			Ip:          op.String(d.Get("destination_ip_address").(string)),
-			Port:        op.Int(d.Get("destination_port").(int)),
-			ServiceType: op.String(d.Get("health_check").(string)),
-			Maxclient:   op.String(strconv.Itoa(d.Get("connection_limit").(int))),
+			Name:      op.String(d.Get("name").(string)),
+			Ip:        op.String(d.Get("destination_ip_address").(string)),
+			Port:      op.Int(d.Get("destination_port").(int)),
+			Maxclient: op.String(strconv.Itoa(d.Get("connection_limit").(int))),
 		},
+	}
+
+	// Get serviceType for VIP
+	vip := dt.LbvserverRes{}
+	err = nClient.Get(&vip, vipName)
+	if err != nil {
+		return fmt.Errorf("Error creating LoadBalancer Service : %s", err)
+	}
+
+	if vip.Lbvserver[0].ServiceType != nil {
+		svcReq.Service.ServiceType = vip.Lbvserver[0].ServiceType
+	} else {
+		return fmt.Errorf("Error creating LoadBalancer : type of VIP '%s' is null.", vipName)
 	}
 
 	log.Printf("[INFO] Creating LoadBalancer Service %s", serviceName)

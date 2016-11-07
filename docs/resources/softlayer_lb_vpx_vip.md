@@ -2,7 +2,7 @@
 
 Create, update, and delete Softlayer VPX Load Balancer Virtual IP Addresses. For additional details please refer to the [API documentation](http://sldn.softlayer.com/reference/datatypes/SoftLayer_Network_LoadBalancer_VirtualIpAddress).
 
-_Please Note_: If Netscaler VPX 10.5 is used, terraform uses Netscaler's own REST API([NITRO API](https://docs.citrix.com/en-us/netscaler/11/nitro-api.html)) for softlayer_lb_vpx_vip resource management. The NITRO API is only accessable in SoftLayer private network, so it is necessary to execute terraform in SoftLayer's private network. SoftLayer [SSL VPN](http://www.softlayer.com/VPN-Access) also can be used for private network connection. 
+_Please Note_: If Netscaler VPX 10.5 is used, terraform uses Netscaler's REST API([NITRO API](https://docs.citrix.com/en-us/netscaler/11/nitro-api.html)) for softlayer_lb_vpx_vip resource management. The NITRO API is only accessable in SoftLayer private network, so it is necessary to execute terraform in SoftLayer's private network. SoftLayer [SSL VPN](http://www.softlayer.com/VPN-Access) also can be used for private network connection. 
 
 The following configuration supports Netscaler VPX 10.1 and 10.5
 ```hcl
