@@ -8,8 +8,8 @@ _Please Note_: If Netscaler VPX 10.5 is used, terraform uses Netscaler's REST AP
 resource "softlayer_lb_vpx_service" "test_service" {
   name = "test_load_balancer_service"
   vip_id = "${softlayer_lb_vpx_vip.testacc_vip.id}"
-  destination_ip_address = "${softlayer_virtual_guest.terraform-acceptance-test-2.ipv4_address}"
-  destination_port = 89
+  destination_ip_address = "${softlayer_virtual_guest.test_server.ipv4_address}"
+  destination_port = 80
   weight = 55
   connection_limit = 5000
   health_check = "HTTP"
@@ -28,8 +28,9 @@ resource "softlayer_lb_vpx_service" "test_service" {
     * (Required) The destination port of the server traffic will be directed to.
 * `weight` | *int*
     * (Required) Set the weight of this VPX Load Balancer service. Affects the choices the VPX Load Balancer makes between the various services. See [the documentation](http://sldn.softlayer.com/reference/datatypes/SoftLayer_Network_LoadBalancer_Service) for details.
+    * In VPX 10.5, weight value is ignored. 
 * `connection_limit` | *int*
-    * (Required) Set the connection limit for this service.
+    * (Required) Set the connection limit for this service. The range is 0 ~ 4294967294. See [maxClient](https://docs.citrix.com/en-us/netscaler/11/reference/netscaler-command-reference/basic/service.html) for details.
 * `health_check` | *string*
     * (Required) Set the health check for the VPX Load Balancer Service. See [the documentation](http://sldn.softlayer.com/reference/datatypes/SoftLayer_Network_LoadBalancer_Service) for details.
 
