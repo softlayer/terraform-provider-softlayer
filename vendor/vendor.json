@@ -3,6 +3,28 @@
 	"ignore": "appengine test",
 	"package": [
 		{
+			"path": "github.com/minsikl/netscaler-nitro-go...",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "zV4C20+kJotM0cSDUqfhTxK9KqM=",
+			"path": "github.com/minsikl/netscaler-nitro-go/client",
+			"revision": "2b699d8f16513642f30278200d45f54e8c9ab76a",
+			"revisionTime": "2016-11-08T06:41:20Z"
+		},
+		{
+			"checksumSHA1": "WOnqMpzWWImPugN0SUp0Jj8GRq4=",
+			"path": "github.com/minsikl/netscaler-nitro-go/datatypes",
+			"revision": "2b699d8f16513642f30278200d45f54e8c9ab76a",
+			"revisionTime": "2016-11-08T06:41:20Z"
+		},
+		{
+			"checksumSHA1": "3dT9TU0WuWcCnoRLHajCPSV6G0g=",
+			"path": "github.com/minsikl/netscaler-nitro-go/op",
+			"revision": "2b699d8f16513642f30278200d45f54e8c9ab76a",
+			"revisionTime": "2016-11-08T06:41:20Z"
+		},
+		{
 			"checksumSHA1": "pjBPgV7Vsah79nFWOvWHZ3PkTIc=",
 			"path": "github.com/renier/xmlrpc",
 			"revision": "79afb7136fd5637ee1ad13754a90005a49fce713",
