@@ -20,6 +20,7 @@ import (
 )
 
 var (
+	// Healthcheck mapping tables
 	healthCheckMapFromSLtoVPX105 = map[string]string{
 		"HTTP": "http",
 		"TCP":  "tcp",
@@ -305,7 +306,7 @@ func resourceSoftLayerLbVpxServiceCreate105(d *schema.ResourceData, meta interfa
 		},
 	}
 
-	// Get serviceType for VIP
+	// Get serviceType of a virtual server
 	vip := dt.LbvserverRes{}
 	err = nClient.Get(&vip, vipName)
 	if err != nil {
@@ -319,12 +320,14 @@ func resourceSoftLayerLbVpxServiceCreate105(d *schema.ResourceData, meta interfa
 	}
 
 	log.Printf("[INFO] Creating LoadBalancer Service %s", serviceName)
+
+	// Add the service
 	err = nClient.Add(&svcReq)
 	if err != nil {
 		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
 	}
 
-	// Bind Virtual Server and service
+	// Bind the virtual server and the service
 	lbvserverServiceBindingReq := dt.LbvserverServiceBindingReq{
 		LbvserverServiceBinding: &dt.LbvserverServiceBinding{
 			Name:        op.String(vipName),
@@ -337,7 +340,7 @@ func resourceSoftLayerLbVpxServiceCreate105(d *schema.ResourceData, meta interfa
 		return fmt.Errorf("Error creating LoadBalancer Service: %s", err)
 	}
 
-	// Add Health_check
+	// Bind Health_check monitor
 	healthCheck := d.Get("health_check").(string)
 	if len(healthCheckMapFromSLtoVPX105[healthCheck]) > 0 {
 		healthCheck = healthCheckMapFromSLtoVPX105[healthCheck]
@@ -395,7 +398,7 @@ func resourceSoftLayerLbVpxServiceRead105(d *schema.ResourceData, meta interface
 		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
 	}
 
-	// Read Service
+	// Read a service
 
 	svc := dt.ServiceRes{}
 	err = nClient.Get(&svc, serviceName)
@@ -412,6 +415,7 @@ func resourceSoftLayerLbVpxServiceRead105(d *schema.ResourceData, meta interface
 		d.Set("connection_limit", maxClientStr)
 	}
 
+	// Read a monitor information
 	healthCheck := dt.ServiceLbmonitorBindingRes{}
 	err = nClient.Get(&healthCheck, serviceName)
 	if err != nil {
@@ -503,7 +507,6 @@ func resourceSoftLayerLbVpxServiceUpdate105(d *schema.ResourceData, meta interfa
 	updateFlag := false
 
 	if d.HasChange("health_check") {
-		// Delete previous health_check
 		healthCheck := dt.ServiceLbmonitorBindingRes{}
 		err = nClient.Get(&healthCheck, serviceName)
 		if err != nil {
@@ -511,15 +514,14 @@ func resourceSoftLayerLbVpxServiceUpdate105(d *schema.ResourceData, meta interfa
 		}
 		monitorName := healthCheck.ServiceLbmonitorBinding[0].MonitorName
 		if monitorName != nil && *monitorName != "tcp-default" {
-			// Delete the health_check
+			// Delete previous health_check
 			err = nClient.Delete(&dt.ServiceLbmonitorBindingReq{}, serviceName, "args=monitor_name:"+*monitorName)
 			if err != nil {
 				return fmt.Errorf("Error deleting monitor %s: %s", *monitorName, err)
 			}
 		}
 
-		// Add Health_check
-
+		// Add a new health_check
 		monitor := d.Get("health_check").(string)
 		if len(healthCheckMapFromSLtoVPX105[monitor]) > 0 {
 			monitor = healthCheckMapFromSLtoVPX105[monitor]
@@ -613,7 +615,6 @@ func resourceSoftLayerLbVpxServiceDelete105(d *schema.ResourceData, meta interfa
 	}
 
 	// Delete a service
-
 	err = nClient.Delete(&dt.ServiceReq{}, serviceName)
 	if err != nil {
 		return fmt.Errorf("Error deleting service %s: %s", serviceName, err)

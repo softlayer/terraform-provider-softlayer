@@ -25,6 +25,8 @@ const (
 )
 
 var (
+	// Load balancing algorithm mapping tables
+
 	lbMethodMapFromSLtoVPX105 = map[string][2]string{
 		"rr":    {"NONE", "ROUNDROBIN"},
 		"sr":    {"NONE", "LEASTRESPONSETIME"},
@@ -273,7 +275,6 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 
 	vipName := d.Get("name").(string)
 
-	// Create a virtual server
 	lbvserverReq := dt.LbvserverReq{
 		Lbvserver: &dt.Lbvserver{
 			Name:        op.String(vipName),
@@ -298,6 +299,7 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 
 	log.Printf("[INFO] Creating Virtual Ip Address %s", *lbvserverReq.Lbvserver.Ipv46)
 
+	// Create a virtual server
 	err = nClient.Add(&lbvserverReq)
 	if err != nil {
 		return err
@@ -358,7 +360,7 @@ func resourceSoftLayerLbVpxVipRead105(d *schema.ResourceData, meta interface{}) 
 		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
 	}
 
-	// Read Virtual Server
+	// Read a virtual server
 	vip := dt.LbvserverRes{}
 	err = nClient.Get(&vip, vipName)
 	if err != nil {
@@ -449,7 +451,6 @@ func resourceSoftLayerLbVpxVipUpdate105(d *schema.ResourceData, meta interface{}
 		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
 	}
 
-	// Update a virtual server
 	lbvserverReq := dt.LbvserverReq{
 		Lbvserver: &dt.Lbvserver{
 			Name: op.String(d.Get("name").(string)),
@@ -475,6 +476,7 @@ func resourceSoftLayerLbVpxVipUpdate105(d *schema.ResourceData, meta interface{}
 		lbvserverReq.Lbvserver.Ipv46 = sl.String(d.Get("virtual_ip_address").(string))
 	}
 
+	// Update the virtual server
 	err = nClient.Update(&lbvserverReq)
 	if err != nil {
 		return fmt.Errorf("Error updating Virtual Ip Address: " + err.Error())
@@ -567,7 +569,7 @@ func resourceSoftLayerLbVpxVipExists105(d *schema.ResourceData, meta interface{}
 		return false, err
 	}
 
-	// Read Virtual Server
+	// Read a virtual server
 	vip := dt.LbvserverRes{}
 	err = nClient.Get(&vip, vipName)
 	if err != nil {
