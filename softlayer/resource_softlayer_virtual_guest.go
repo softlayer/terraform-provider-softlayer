@@ -708,10 +708,15 @@ func resourceSoftLayerVirtualGuestDelete(d *schema.ResourceData, meta interface{
 		return fmt.Errorf("Error deleting virtual guest, couldn't wait for zero active transactions: %s", err)
 	}
 
-	_, err = service.Id(id).DeleteObject()
+	ok, err := service.Id(id).DeleteObject()
 
 	if err != nil {
 		return fmt.Errorf("Error deleting virtual guest: %s", err)
+	}
+
+	if !ok {
+		return fmt.Errorf(
+			"API reported it was unsuccessful in removing the virtual guest '%d'", id)
 	}
 
 	return nil
