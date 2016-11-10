@@ -22,6 +22,8 @@ import (
 	"github.com/softlayer/softlayer-go/sl"
 )
 
+const assurityLevel = 1
+
 func genId() (interface{}, error) {
 	numBytes := 8
 	bytes := make([]byte, numBytes)
@@ -809,6 +811,7 @@ func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (inte
 		return nil, fmt.Errorf("The instance ID %s must be numeric", d.Id())
 	}
 
+	assurity := assurityLevel
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"retry", "active"},
 		Target:  []string{"idle"},
@@ -824,7 +827,12 @@ func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (inte
 			}
 
 			if len(transactions) == 0 {
-				return transactions, "idle", nil
+				if assurity == 0 {
+					return transactions, "idle", nil
+				}
+				assurity--
+			} else {
+				assurity = assurityLevel
 			}
 
 			return transactions, "active", nil
