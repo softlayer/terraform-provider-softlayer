@@ -572,11 +572,13 @@ func resourceSoftLayerLbVpxVipExists105(d *schema.ResourceData, meta interface{}
 	// Read a virtual server
 	vip := dt.LbvserverRes{}
 	err = nClient.Get(&vip, vipName)
-	if err != nil {
+
+	if err != nil && strings.Contains(err.Error(), "No such resource") {
+		return false, nil
+	} else if err != nil {
 		return false, err
-	} else {
-		return true, nil
 	}
+	return true, nil
 }
 
 func getNitroClient(sess *session.Session, nadcId int) (*client.NitroClient, error) {

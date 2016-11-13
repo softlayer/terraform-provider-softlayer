@@ -651,7 +651,9 @@ func resourceSoftLayerLbVpxServiceExists105(d *schema.ResourceData, meta interfa
 
 	svc := dt.ServiceRes{}
 	err = nClient.Get(&svc, serviceName)
-	if err != nil {
+	if err != nil && strings.Contains(err.Error(), "No Service") {
+		return false, nil
+	} else if err != nil {
 		return false, fmt.Errorf("Unable to get load balancer service %s: %s", serviceName, err)
 	}
 
