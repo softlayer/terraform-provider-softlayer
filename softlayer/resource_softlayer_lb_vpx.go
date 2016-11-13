@@ -182,10 +182,7 @@ func getVPXVersion(id int, sess *session.Session) (string, error) {
 		return "", fmt.Errorf("Error retrieving VPX version: %s", err)
 	}
 
-	r, _ := regexp.Compile(" VPX [0-9]+\\.[0-9]+ ")
-	versionStr := r.FindString(*getObjectResult.Description)
-	r, _ = regexp.Compile("[0-9]+\\.[0-9]+")
-	return r.FindString(versionStr), nil
+	return strings.Split(*getObjectResult.Description, " ")[3], nil
 }
 
 func getVPXPriceItemKeyName(version string, speed int, plan string) string {
