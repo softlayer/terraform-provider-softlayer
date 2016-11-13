@@ -10,6 +10,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func resourceSoftLayerLbVpxHa() *schema.Resource {
@@ -44,7 +45,7 @@ func resourceSoftLayerLbVpxHa() *schema.Resource {
 	}
 }
 
-func configureHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient) error {
+func configureHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient, staySecondary bool) error {
 	// 1. VPX2 : Sync password
 	systemuserReq2 := dt.SystemuserReq{
 		Systemuser: &dt.Systemuser{
@@ -57,6 +58,7 @@ func configureHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient) err
 		return err
 	}
 	nClient2.Password = nClient1.Password
+
 	// 2. VPX1 : Register hanode
 	hanodeReq1 := dt.HanodeReq{
 		Hanode: &dt.Hanode{
@@ -64,10 +66,15 @@ func configureHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient) err
 			Ipaddress: op.String(nClient2.IpAddress),
 		},
 	}
+
 	err = nClient1.Add(&hanodeReq1)
 	if err != nil {
 		return err
 	}
+
+	// Wait 5 secs to make VPX1 a primary node.
+	time.Sleep(time.Second * 5)
+
 	// 3. VPX2 : Register hanode
 	hanodeReq2 := dt.HanodeReq{
 		Hanode: &dt.Hanode{
@@ -79,6 +86,20 @@ func configureHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient) err
 	if err != nil {
 		return err
 	}
+
+	// Update STAYSECONDARY
+	if staySecondary {
+		stay := dt.HanodeReq{
+			Hanode: &dt.Hanode{
+				Hastatus: op.String("STAYSECONDARY"),
+			},
+		}
+		err = nClient2.Update(&stay)
+		if err != nil {
+			return err
+		}
+	}
+
 	// 4. VPX1 : Register rpcnode
 	nsrpcnode1 := dt.NsrpcnodeReq{
 		Nsrpcnode: &dt.Nsrpcnode{
@@ -95,6 +116,7 @@ func configureHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient) err
 	if err != nil {
 		return err
 	}
+
 	// 5. VPX2 : Register rpcnode
 	nsrpcnode2 := dt.NsrpcnodeReq{
 		Nsrpcnode: &dt.Nsrpcnode{
@@ -111,6 +133,7 @@ func configureHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient) err
 	if err != nil {
 		return err
 	}
+
 	// 6. VPX1 : Sync files
 	hafiles := dt.HafilesReq{
 		Hafiles: &dt.Hafiles{
@@ -121,14 +144,17 @@ func configureHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient) err
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
+
 func deleteHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient) error {
 	// 1. VPX2 : Delete hanode
 	err := nClient2.Delete(&dt.HanodeReq{}, "2")
 	if err != nil {
 		return err
 	}
+
 	// 2. VPX1 : Delete hanode
 	err = nClient1.Delete(&dt.HanodeReq{}, "2")
 	if err != nil {
@@ -136,6 +162,7 @@ func deleteHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient) error 
 	}
 	return nil
 }
+
 func parseHAId(id string) (int, int, error) {
 	if len(id) < 1 {
 		return 0, 0, fmt.Errorf("Failed to parse id : Unable to get netscaler Ids")
@@ -154,30 +181,41 @@ func parseHAId(id string) (int, int, error) {
 	}
 	return primaryId, secondaryId, nil
 }
+
 func resourceSoftLayerLbVpxHaCreate(d *schema.ResourceData, meta interface{}) error {
 	primaryId := d.Get("primary_id").(int)
 	secondaryId := d.Get("secondary_id").(int)
+	staySecondary := false
+	if stay, ok := d.GetOk("stay_secondary"); ok {
+		staySecondary = stay.(bool)
+	}
+
 	nClientPrimary, err := getNitroClient(meta.(*session.Session), primaryId)
 	if err != nil {
 		return fmt.Errorf("Error getting primary netscaler information ID: %d", primaryId)
 	}
+
 	nClientSecondary, err := getNitroClient(meta.(*session.Session), secondaryId)
 	if err != nil {
 		return fmt.Errorf("Error getting secondary netscaler information ID: %d", secondaryId)
 	}
-	nClientSecondary.Password = nClientPrimary.Password
-	log.Printf("Password : " + nClientSecondary.Password)
-	err = configureHA(nClientPrimary, nClientSecondary)
+
+	err = configureHA(nClientPrimary, nClientSecondary, staySecondary)
 	if err != nil {
 		return fmt.Errorf("Error configuration HA %s", err.Error())
 	}
+
 	d.SetId(fmt.Sprintf("%d:%d", primaryId, secondaryId))
+
 	log.Printf("[INFO] Netscaler HA ID: %s", d.Id())
+
 	return resourceSoftLayerLbVpxHaRead(d, meta)
 }
+
 func resourceSoftLayerLbVpxHaRead(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
+
 func resourceSoftLayerLbVpxHaDelete(d *schema.ResourceData, meta interface{}) error {
 	primaryId, secondaryId, err := parseHAId(d.Id())
 	if err != nil {
@@ -191,13 +229,29 @@ func resourceSoftLayerLbVpxHaDelete(d *schema.ResourceData, meta interface{}) er
 	if err != nil {
 		return fmt.Errorf("Error getting secondary netscaler information ID: %d", secondaryId)
 	}
+
+	secondaryPassword := nClientSecondary.Password
 	nClientSecondary.Password = nClientPrimary.Password
 	err = deleteHA(nClientPrimary, nClientSecondary)
 	if err != nil {
 		return fmt.Errorf("Error deleting HA %s", err.Error())
 	}
+
+	// Restore password of the secondary VPX
+	systemuserReq := dt.SystemuserReq{
+		Systemuser: &dt.Systemuser{
+			Username: op.String("root"),
+			Password: op.String(secondaryPassword),
+		},
+	}
+	err = nClientSecondary.Update(&systemuserReq)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
+
 func resourceSoftLayerLbVpxHaExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	return true, nil
 }
