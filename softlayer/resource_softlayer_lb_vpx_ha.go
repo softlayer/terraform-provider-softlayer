@@ -87,20 +87,19 @@ func configureHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient, sta
 		return err
 	}
 
-	// Update STAYSECONDARY
+	// 4. VPX2 : Update STAYSECONDARY
+	stay := dt.HanodeReq{Hanode: &dt.Hanode{}}
 	if staySecondary {
-		stay := dt.HanodeReq{
-			Hanode: &dt.Hanode{
-				Hastatus: op.String("STAYSECONDARY"),
-			},
-		}
-		err = nClient2.Update(&stay)
-		if err != nil {
-			return err
-		}
+		stay.Hanode.Hastatus = op.String("STAYSECONDARY")
+	} else {
+		stay.Hanode.Hastatus = op.String("ENABLE")
+	}
+	err = nClient2.Update(&stay)
+	if err != nil {
+		return err
 	}
 
-	// 4. VPX1 : Register rpcnode
+	// 5. VPX1 : Register rpcnode
 	nsrpcnode1 := dt.NsrpcnodeReq{
 		Nsrpcnode: &dt.Nsrpcnode{
 			Ipaddress: op.String(nClient1.IpAddress),
@@ -117,7 +116,7 @@ func configureHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient, sta
 		return err
 	}
 
-	// 5. VPX2 : Register rpcnode
+	// 6. VPX2 : Register rpcnode
 	nsrpcnode2 := dt.NsrpcnodeReq{
 		Nsrpcnode: &dt.Nsrpcnode{
 			Ipaddress: op.String(nClient1.IpAddress),
@@ -134,7 +133,7 @@ func configureHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient, sta
 		return err
 	}
 
-	// 6. VPX1 : Sync files
+	// 7. VPX1 : Sync files
 	hafiles := dt.HafilesReq{
 		Hafiles: &dt.Hafiles{
 			[]string{"all"},
@@ -213,6 +212,38 @@ func resourceSoftLayerLbVpxHaCreate(d *schema.ResourceData, meta interface{}) er
 }
 
 func resourceSoftLayerLbVpxHaRead(d *schema.ResourceData, meta interface{}) error {
+	primaryId, secondaryId, err := parseHAId(d.Id())
+	if err != nil {
+		return fmt.Errorf("Error reading HA %s", err.Error())
+	}
+
+	nClientPrimary, err := getNitroClient(meta.(*session.Session), primaryId)
+	if err != nil {
+		return fmt.Errorf("Error getting primary netscaler information ID: %d", primaryId)
+	}
+
+	nClientSecondary, err := getNitroClient(meta.(*session.Session), secondaryId)
+	if err != nil {
+		return fmt.Errorf("Error getting primary netscaler information ID: %d", primaryId)
+	}
+
+	nClientSecondary.Password = nClientPrimary.Password
+
+	// Read a service
+	res := dt.HanodeRes{}
+	err = nClientSecondary.Get(&res, "")
+	if err != nil {
+		fmt.Printf("Error getting hnode information : %s", err.Error())
+	}
+	staySecondary := false
+	if *res.Hanode[0].Hastatus == "STAYSECONDARY" {
+		staySecondary = true
+	}
+
+	d.Set("primary_id", primaryId)
+	d.Set("secondary_id", secondaryId)
+	d.Set("stay_secondary", staySecondary)
+
 	return nil
 }
 
