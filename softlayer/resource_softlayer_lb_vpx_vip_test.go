@@ -21,6 +21,7 @@ func TestAccSoftLayerLbVpxVip_Basic(t *testing.T) {
 			{
 				Config: testAccCheckSoftLayerLbVpxVipConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
+					// Test VPX 10.1
 					resource.TestCheckResourceAttr(
 						"softlayer_lb_vpx_vip.testacc_vip", "load_balancing_method", "lc"),
 					resource.TestCheckResourceAttr(
@@ -29,6 +30,15 @@ func TestAccSoftLayerLbVpxVip_Basic(t *testing.T) {
 						"softlayer_lb_vpx_vip.testacc_vip", "source_port", "80"),
 					resource.TestCheckResourceAttr(
 						"softlayer_lb_vpx_vip.testacc_vip", "type", "HTTP"),
+					// Test VPX 10.5
+					resource.TestCheckResourceAttr(
+						"softlayer_lb_vpx_vip.testacc_vip105", "load_balancing_method", "lc"),
+					resource.TestCheckResourceAttr(
+						"softlayer_lb_vpx_vip.testacc_vip105", "name", "test_load_balancer_vip105"),
+					resource.TestCheckResourceAttr(
+						"softlayer_lb_vpx_vip.testacc_vip105", "source_port", "80"),
+					resource.TestCheckResourceAttr(
+						"softlayer_lb_vpx_vip.testacc_vip105", "type", "HTTP"),
 				),
 			},
 		},
@@ -57,8 +67,6 @@ func testAccCheckSoftLayerLbVpxVipDestroy(s *terraform.State) error {
 }
 
 var testAccCheckSoftLayerLbVpxVipConfig_basic = `
-
-
 resource "softlayer_lb_vpx" "testacc_foobar_nadc" {
     datacenter = "dal09"
     speed = 10
@@ -74,5 +82,22 @@ resource "softlayer_lb_vpx_vip" "testacc_vip" {
     source_port = 80
     type = "HTTP"
     virtual_ip_address = "${softlayer_lb_vpx.testacc_foobar_nadc.vip_pool[0]}"
+}
+
+resource "softlayer_lb_vpx" "testacc_foobar_nadc105" {
+    datacenter = "dal09"
+    speed = 10
+    version = "10.5"
+    plan = "Standard"
+    ip_count = 2
+}
+
+resource "softlayer_lb_vpx_vip" "testacc_vip105" {
+    name = "test_load_balancer_vip105"
+    nad_controller_id = "${softlayer_lb_vpx.testacc_foobar_nadc105.id}"
+    load_balancing_method = "lc"
+    source_port = 80
+    type = "HTTP"
+    virtual_ip_address = "${softlayer_lb_vpx.testacc_foobar_nadc105.vip_pool[0]}"
 }
 `

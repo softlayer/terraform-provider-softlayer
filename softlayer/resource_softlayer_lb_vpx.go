@@ -174,6 +174,17 @@ func getSubnetId(subnet string, meta interface{}) (int, error) {
 	return *subnets[0].Id, nil
 }
 
+func getVPXVersion(id int, sess *session.Session) (string, error) {
+	service := services.GetNetworkApplicationDeliveryControllerService(sess)
+	getObjectResult, err := service.Id(id).Mask("description").GetObject()
+
+	if err != nil {
+		return "", fmt.Errorf("Error retrieving VPX version: %s", err)
+	}
+
+	return strings.Split(*getObjectResult.Description, " ")[3], nil
+}
+
 func getVPXPriceItemKeyName(version string, speed int, plan string) string {
 	name := "CITRIX_NETSCALER_VPX"
 	speedMeasurements := "MBPS"
@@ -271,9 +282,9 @@ func findVPXByOrderId(orderId int, meta interface{}) (datatypes.Network_Applicat
 				return nil, "", fmt.Errorf("Expected one VPX: %s", err)
 			}
 		},
-		Timeout:    10 * time.Minute,
-		Delay:      5 * time.Second,
-		MinTimeout: 3 * time.Second,
+		Timeout:    45 * time.Minute,
+		Delay:      10 * time.Second,
+		MinTimeout: 10 * time.Second,
 	}
 
 	pendingResult, err := stateConf.WaitForState()
@@ -402,14 +413,15 @@ func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) erro
 	// Wait Virtual IP provisioning
 	IsVipReady := false
 
-	for vipWaitCount := 0; vipWaitCount < 60; vipWaitCount++ {
-		getObjectResult, err := NADCService.Id(id).Mask("subnets[ipAddresses]").GetObject()
+	for vipWaitCount := 0; vipWaitCount < 270; vipWaitCount++ {
+		getObjectResult, err := NADCService.Id(id).Mask("subnets[ipAddresses],password[password]").GetObject()
 		if err != nil {
 			return fmt.Errorf("Error retrieving network application delivery controller: %s", err)
 		}
 
 		ipCount := 0
-		if getObjectResult.Subnets != nil && len(getObjectResult.Subnets) > 0 && getObjectResult.Subnets[0].IpAddresses != nil {
+		if getObjectResult.Password != nil && getObjectResult.Password.Password != nil && len(*getObjectResult.Password.Password) > 0 &&
+			getObjectResult.Subnets != nil && len(getObjectResult.Subnets) > 0 && getObjectResult.Subnets[0].IpAddresses != nil {
 			ipCount = len(getObjectResult.Subnets[0].IpAddresses)
 		}
 		if ipCount > 0 {
@@ -428,7 +440,7 @@ func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) erro
 	// an error "Could not connect to host" if the REST API is not available.
 	IsRESTReady := false
 
-	for restWaitCount := 0; restWaitCount < 60; restWaitCount++ {
+	for restWaitCount := 0; restWaitCount < 270; restWaitCount++ {
 		_, err := NADCService.Id(id).GetLoadBalancers()
 		// GetLoadBalancers returns an error "There was a problem processing the reply from the
 		// application tier.  Please contact development." if the VPX version is 10.5.
@@ -445,7 +457,7 @@ func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) erro
 	}
 
 	// Wait additional buffer time for VPX service.
-	time.Sleep(time.Second * 60)
+	time.Sleep(time.Minute)
 
 	return resourceSoftLayerLbVpxRead(d, meta)
 }
