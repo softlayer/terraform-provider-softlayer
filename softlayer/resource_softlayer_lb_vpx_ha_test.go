@@ -48,7 +48,7 @@ resource "softlayer_lb_vpx" "test_pri" {
     version = "10.5"
     plan = "Standard"
     ip_count = 2
-        public_vlan_id = "${softlayer_virtual_guest.vm1.public_vlan_id}"
+    public_vlan_id = "${softlayer_virtual_guest.vm1.public_vlan_id}"
     private_vlan_id = "${softlayer_virtual_guest.vm1.private_vlan_id}"
     public_subnet = "${softlayer_virtual_guest.vm1.public_subnet}"
     private_subnet = "${softlayer_virtual_guest.vm1.private_subnet}"
