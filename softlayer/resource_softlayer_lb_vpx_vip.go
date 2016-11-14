@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"encoding/base64"
 	"github.com/minsikl/netscaler-nitro-go/client"
 	dt "github.com/minsikl/netscaler-nitro-go/datatypes"
 	"github.com/minsikl/netscaler-nitro-go/op"
@@ -99,6 +100,12 @@ func resourceSoftLayerLbVpxVip() *schema.Resource {
 				ForceNew: true,
 			},
 
+			// security_certificate_id is only acceptable with SSL type
+			"security_certificate_id": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+
 			"virtual_ip_address": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -106,6 +113,12 @@ func resourceSoftLayerLbVpxVip() *schema.Resource {
 		},
 	}
 }
+
+/*
+func validateSecurityCertificateId(d *schema.ResourceData, meta interface{}) error {
+
+}
+*/
 
 func resourceSoftLayerLbVpxVipCreate(d *schema.ResourceData, meta interface{}) error {
 	version, err := getVPXVersion(d.Get("nad_controller_id").(int), meta.(*session.Session))
@@ -274,13 +287,15 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 	}
 
 	vipName := d.Get("name").(string)
+	vipType := d.Get("type").(string)
+	vipSecurityCertificateId := d.Get("security_certificate_id").(int)
 
 	lbvserverReq := dt.LbvserverReq{
 		Lbvserver: &dt.Lbvserver{
 			Name:        op.String(vipName),
 			Ipv46:       op.String(d.Get("virtual_ip_address").(string)),
 			Port:        op.Int(d.Get("source_port").(int)),
-			ServiceType: op.String(d.Get("type").(string)),
+			ServiceType: op.String(vipType),
 		},
 	}
 
@@ -308,6 +323,93 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 	d.SetId(fmt.Sprintf("%d:%s", nadcId, vipName))
 
 	log.Printf("[INFO] Netscaler VPX VIP ID: %s", d.Id())
+
+	if vipType == "SSL" {
+		// Read security_certificate
+		sess := meta.(*session.Session)
+		service := services.GetSecurityCertificateService(sess)
+
+		cert, err := service.Id(vipSecurityCertificateId).GetObject()
+
+		if err != nil {
+			return fmt.Errorf("Unable to get Security Certificate: %s", err)
+		}
+
+		certName := vipName + "_" + strconv.Itoa(vipSecurityCertificateId)
+		certFileName := certName + ".cert"
+		keyFileName := certName + ".key"
+
+		// Upload security_certificate
+		certReq := dt.SystemfileReq{
+			Systemfile: &dt.Systemfile{
+				Filename:     op.String(certFileName),
+				Filecontent:  op.String(base64.StdEncoding.EncodeToString([]byte(*cert.Certificate))),
+				Filelocation: op.String("/nsconfig/ssl/"),
+				Fileencoding: op.String("BASE64"),
+			},
+		}
+
+		err = nClient.Add(&certReq)
+		if err != nil {
+			return err
+		}
+
+		keyReq := dt.SystemfileReq{
+			Systemfile: &dt.Systemfile{
+				Filename:     op.String(keyFileName),
+				Filecontent:  op.String(base64.StdEncoding.EncodeToString([]byte(*cert.PrivateKey))),
+				Filelocation: op.String("/nsconfig/ssl/"),
+				Fileencoding: op.String("BASE64"),
+			},
+		}
+
+		err = nClient.Add(&keyReq)
+		if err != nil {
+			return err
+		}
+
+		// Enable SSL
+
+		sslFeature := dt.NsfeatureReq{
+			Nsfeature: &dt.Nsfeature{
+				Feature: []string{"ssl"},
+			},
+		}
+
+		err = nClient.Enable(&sslFeature, true)
+		if err != nil {
+			return err
+		}
+
+		// Register SSL
+
+		sslCertKey := dt.SslcertkeyReq{
+			Sslcertkey: &dt.Sslcertkey{
+				Certkey: op.String(certName),
+				Cert:    op.String(certFileName),
+				Key:     op.String(keyFileName),
+			},
+		}
+
+		err = nClient.Add(&sslCertKey)
+		if err != nil {
+			return err
+		}
+
+		// Bind security_certificate
+
+		sslBind := dt.SslvserverSslcertkeyBindingReq{
+			SslvserverSslcertkeyBinding: &dt.SslvserverSslcertkeyBinding{
+				Vservername: op.String(vipName),
+				Certkeyname: op.String(certName),
+			},
+		}
+
+		err = nClient.Add(&sslBind)
+		if err != nil {
+			return err
+		}
+	}
 
 	return resourceSoftLayerLbVpxVipRead(d, meta)
 }
