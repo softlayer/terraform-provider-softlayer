@@ -29,6 +29,19 @@ resource "softlayer_lb_vpx_vip" "testacc_vip" {
 }
 ```
 
+Netscaler VPX 10.5 supports SSL Offload. If `type` is "SSL" and `security_certificate_id` is configured, the `virtual_ip_address` provides `HTTPS` protocol.
+```hcl
+resource "softlayer_lb_vpx_vip" "testacc_vip" {
+    name = "test_load_balancer_vip"
+    nad_controller_id = 1234567
+    load_balancing_method = "lc"
+    source_port = 80
+    virtual_ip_address = "211.233.12.12"
+    type = "SSL"
+    security_certificate_id = 2345678
+}
+```
+
 ## Argument Reference
 
 * `name` | *string*
@@ -45,7 +58,10 @@ resource "softlayer_lb_vpx_vip" "testacc_vip" {
 * `source_port` | *int*
     * (Required) The source port for the VPX Load Balancer Virtual IP Address.
 * `type` | *string*
-    * (Required) The connection type for the VPX Load Balancer Virtual IP Address. Accepted values are `HTTP`, `FTP`, `TCP`, `UDP`, and `DNS`.
+    * (Required) The connection type for the VPX Load Balancer Virtual IP Address. Accepted values are *HTTP*, *FTP*, *TCP*, *UDP*, *DNS*, and *SSL*. If *SSL* is configured, `security_certificate_id` will be used as a certification for SSL offload services.
+* `security_certificate_id` | *int*
+    * (Netscaler VPX 10.5 only)
+    * (Optional) Provides a security certification for SSL offload. For additional information, refer to [softlayer_security_certificate](./softlayer_security_certificate.md)
 
 ## Attributes Reference
 
