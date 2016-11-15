@@ -146,7 +146,7 @@ type SystemuserRes struct {
 
 // hanode
 type Hanode struct {
-	Id *int `json:"id,omitempty"`
+	Id *string `json:"id,omitempty"`
 	Ipaddress    *string `json:"ipaddress,omitempty"`
 	Hastatus    *string `json:"hastatus,omitempty"`
 }

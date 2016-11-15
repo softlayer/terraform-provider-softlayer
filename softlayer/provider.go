@@ -60,6 +60,7 @@ func Provider() terraform.ResourceProvider {
 			"softlayer_lb_vpx":                 resourceSoftLayerLbVpx(),
 			"softlayer_lb_vpx_vip":             resourceSoftLayerLbVpxVip(),
 			"softlayer_lb_vpx_service":         resourceSoftLayerLbVpxService(),
+			"softlayer_lb_vpx_ha":              resourceSoftLayerLbVpxHa(),
 			"softlayer_lb_local":               resourceSoftLayerLbLocal(),
 			"softlayer_lb_local_service_group": resourceSoftLayerLbLocalServiceGroup(),
 			"softlayer_lb_local_service":       resourceSoftLayerLbLocalService(),
