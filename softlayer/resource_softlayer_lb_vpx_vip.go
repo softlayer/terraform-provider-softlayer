@@ -104,6 +104,7 @@ func resourceSoftLayerLbVpxVip() *schema.Resource {
 			"security_certificate_id": {
 				Type:     schema.TypeInt,
 				Optional: true,
+				ForceNew: true,
 			},
 
 			"virtual_ip_address": {
@@ -113,12 +114,6 @@ func resourceSoftLayerLbVpxVip() *schema.Resource {
 		},
 	}
 }
-
-/*
-func validateSecurityCertificateId(d *schema.ResourceData, meta interface{}) error {
-
-}
-*/
 
 func resourceSoftLayerLbVpxVipCreate(d *schema.ResourceData, meta interface{}) error {
 	version, err := getVPXVersion(d.Get("nad_controller_id").(int), meta.(*session.Session))
@@ -225,6 +220,10 @@ func parseId(id string) (int, string, error) {
 }
 
 func resourceSoftLayerLbVpxVipCreate101(d *schema.ResourceData, meta interface{}) error {
+	if _, ok := d.GetOk("security_certificate_id"); ok {
+		return fmt.Errorf("Error creating Virtual Ip Address: security_certificate_id is not supported with VPX 10.1.")
+	}
+
 	sess := meta.(*session.Session)
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
@@ -288,7 +287,7 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 
 	vipName := d.Get("name").(string)
 	vipType := d.Get("type").(string)
-	vipSecurityCertificateId := d.Get("security_certificate_id").(int)
+	securityCertificateId := d.Get("security_certificate_id").(int)
 
 	lbvserverReq := dt.LbvserverReq{
 		Lbvserver: &dt.Lbvserver{
@@ -314,102 +313,30 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 
 	log.Printf("[INFO] Creating Virtual Ip Address %s", *lbvserverReq.Lbvserver.Ipv46)
 
+	// security_certificated_id is only available when type is 'SSL'
+	if securityCertificateId > 0 && vipType != "SSL" {
+		return fmt.Errorf("Error creating VIP : security_certificated_id is only available when type is 'SSL'")
+	}
+
 	// Create a virtual server
 	err = nClient.Add(&lbvserverReq)
 	if err != nil {
 		return err
 	}
 
-	d.SetId(fmt.Sprintf("%d:%s", nadcId, vipName))
-
-	log.Printf("[INFO] Netscaler VPX VIP ID: %s", d.Id())
-
+	// Configure security_certificate for SSL Offload.
 	if vipType == "SSL" {
-		// Read security_certificate
-		sess := meta.(*session.Session)
-		service := services.GetSecurityCertificateService(sess)
-
-		cert, err := service.Id(vipSecurityCertificateId).GetObject()
-
+		err = configureSecurityCertificate(nClient, meta.(*session.Session), vipName, securityCertificateId)
 		if err != nil {
-			return fmt.Errorf("Unable to get Security Certificate: %s", err)
-		}
-
-		certName := vipName + "_" + strconv.Itoa(vipSecurityCertificateId)
-		certFileName := certName + ".cert"
-		keyFileName := certName + ".key"
-
-		// Upload security_certificate
-		certReq := dt.SystemfileReq{
-			Systemfile: &dt.Systemfile{
-				Filename:     op.String(certFileName),
-				Filecontent:  op.String(base64.StdEncoding.EncodeToString([]byte(*cert.Certificate))),
-				Filelocation: op.String("/nsconfig/ssl/"),
-				Fileencoding: op.String("BASE64"),
-			},
-		}
-
-		err = nClient.Add(&certReq)
-		if err != nil {
-			return err
-		}
-
-		keyReq := dt.SystemfileReq{
-			Systemfile: &dt.Systemfile{
-				Filename:     op.String(keyFileName),
-				Filecontent:  op.String(base64.StdEncoding.EncodeToString([]byte(*cert.PrivateKey))),
-				Filelocation: op.String("/nsconfig/ssl/"),
-				Fileencoding: op.String("BASE64"),
-			},
-		}
-
-		err = nClient.Add(&keyReq)
-		if err != nil {
-			return err
-		}
-
-		// Enable SSL
-
-		sslFeature := dt.NsfeatureReq{
-			Nsfeature: &dt.Nsfeature{
-				Feature: []string{"ssl"},
-			},
-		}
-
-		err = nClient.Enable(&sslFeature, true)
-		if err != nil {
-			return err
-		}
-
-		// Register SSL
-
-		sslCertKey := dt.SslcertkeyReq{
-			Sslcertkey: &dt.Sslcertkey{
-				Certkey: op.String(certName),
-				Cert:    op.String(certFileName),
-				Key:     op.String(keyFileName),
-			},
-		}
-
-		err = nClient.Add(&sslCertKey)
-		if err != nil {
-			return err
-		}
-
-		// Bind security_certificate
-
-		sslBind := dt.SslvserverSslcertkeyBindingReq{
-			SslvserverSslcertkeyBinding: &dt.SslvserverSslcertkeyBinding{
-				Vservername: op.String(vipName),
-				Certkeyname: op.String(certName),
-			},
-		}
-
-		err = nClient.Add(&sslBind)
-		if err != nil {
+			// Delete VIP and return an error.
+			resourceSoftLayerLbVpxVipDelete105(d, meta)
 			return err
 		}
 	}
+
+	d.SetId(fmt.Sprintf("%d:%s", nadcId, vipName))
+
+	log.Printf("[INFO] Netscaler VPX VIP ID: %s", d.Id())
 
 	return resourceSoftLayerLbVpxVipRead(d, meta)
 }
@@ -501,6 +428,12 @@ func resourceSoftLayerLbVpxVipRead105(d *schema.ResourceData, meta interface{}) 
 
 	if vip.Lbvserver[0].Ipv46 != nil {
 		d.Set("virtual_ip_address", *vip.Lbvserver[0].Ipv46)
+	}
+
+	// Read a certificate information
+	securityCertificateId, err := getSecurityCertificateId(nClient, vipName)
+	if err == nil {
+		d.Set("security_certificate_id", securityCertificateId)
 	}
 
 	return nil
@@ -644,6 +577,12 @@ func resourceSoftLayerLbVpxVipDelete105(d *schema.ResourceData, meta interface{}
 		return fmt.Errorf("Error deleting Virtual Ip Address %s: %s", vipName, err)
 	}
 
+	// Delete a security certification
+	securityCertificateId, err := getSecurityCertificateId(nClient, vipName)
+	if err != nil {
+		deleteSecurityCertificate(nClient, vipName, securityCertificateId)
+	}
+
 	return nil
 }
 
@@ -680,6 +619,7 @@ func resourceSoftLayerLbVpxVipExists105(d *schema.ResourceData, meta interface{}
 	} else if err != nil {
 		return false, err
 	}
+
 	return true, nil
 }
 
@@ -691,4 +631,140 @@ func getNitroClient(sess *session.Session, nadcId int) (*client.NitroClient, err
 	}
 	return client.NewNitroClient("http", *nadc.ManagementIpAddress, dt.CONFIG,
 		"root", *nadc.Password.Password, true), nil
+}
+
+func configureSecurityCertificate(nClient *client.NitroClient, sess *session.Session, vipName string, securityCertificateId int) error {
+	// Read security_certificate
+	service := services.GetSecurityCertificateService(sess)
+	cert, err := service.Id(securityCertificateId).GetObject()
+	if err != nil {
+		return fmt.Errorf("Unable to get Security Certificate: %s", err)
+	}
+
+	certName := vipName + "_" + strconv.Itoa(securityCertificateId)
+	certFileName := certName + ".cert"
+	keyFileName := certName + ".key"
+
+	// Delete previous certificate
+	deleteSecurityCertificate(nClient, vipName, securityCertificateId)
+
+	// Upload security_certificate
+	certReq := dt.SystemfileReq{
+		Systemfile: &dt.Systemfile{
+			Filename:     op.String(certFileName),
+			Filecontent:  op.String(base64.StdEncoding.EncodeToString([]byte(*cert.Certificate))),
+			Filelocation: op.String("/nsconfig/ssl/"),
+			Fileencoding: op.String("BASE64"),
+		},
+	}
+
+	err = nClient.Add(&certReq)
+	if err != nil {
+		deleteSecurityCertificate(nClient, vipName, securityCertificateId)
+		return err
+	}
+
+	keyReq := dt.SystemfileReq{
+		Systemfile: &dt.Systemfile{
+			Filename:     op.String(keyFileName),
+			Filecontent:  op.String(base64.StdEncoding.EncodeToString([]byte(*cert.PrivateKey))),
+			Filelocation: op.String("/nsconfig/ssl/"),
+			Fileencoding: op.String("BASE64"),
+		},
+	}
+
+	err = nClient.Add(&keyReq)
+	if err != nil {
+		deleteSecurityCertificate(nClient, vipName, securityCertificateId)
+		return err
+	}
+
+	// Enable SSL
+
+	sslFeature := dt.NsfeatureReq{
+		Nsfeature: &dt.Nsfeature{
+			Feature: []string{"ssl"},
+		},
+	}
+
+	err = nClient.Enable(&sslFeature, true)
+	if err != nil {
+		deleteSecurityCertificate(nClient, vipName, securityCertificateId)
+		return err
+	}
+
+	// Register SSL
+
+	sslCertKey := dt.SslcertkeyReq{
+		Sslcertkey: &dt.Sslcertkey{
+			Certkey: op.String(certName),
+			Cert:    op.String(certFileName),
+			Key:     op.String(keyFileName),
+		},
+	}
+
+	err = nClient.Add(&sslCertKey)
+	if err != nil {
+		deleteSecurityCertificate(nClient, vipName, securityCertificateId)
+		return err
+	}
+
+	// Bind security_certificate
+
+	sslBind := dt.SslvserverSslcertkeyBindingReq{
+		SslvserverSslcertkeyBinding: &dt.SslvserverSslcertkeyBinding{
+			Vservername: op.String(vipName),
+			Certkeyname: op.String(certName),
+		},
+	}
+
+	err = nClient.Add(&sslBind)
+	if err != nil {
+		deleteSecurityCertificate(nClient, vipName, securityCertificateId)
+		return err
+	}
+	return nil
+}
+
+func deleteSecurityCertificate(nClient *client.NitroClient, vipName string, securityCertificateId int) {
+	certName := vipName + "_" + strconv.Itoa(securityCertificateId)
+	certFileName := certName + ".cert"
+	keyFileName := certName + ".key"
+
+	// Delete sslvserversslcertkeybinding
+	nClient.Delete(&dt.SslvserverSslcertkeyBindingReq{}, vipName, "args=certkeyname:"+certName)
+
+	// Delete sslcertkey
+	nClient.Delete(&dt.SslcertkeyReq{}, certName)
+
+	// Delete cert
+	nClient.Delete(&dt.SystemfileReq{}, certFileName, "args=fileLocation:"+"%2Fnsconfig%2Fssl%2F")
+
+	// Delete key
+	nClient.Delete(&dt.SystemfileReq{}, keyFileName, "args=fileLocation:"+"%2Fnsconfig%2Fssl%2F")
+}
+
+func getSecurityCertificateId(nClient *client.NitroClient, vipName string) (int, error) {
+	securityCertificateId := 0
+	res := dt.SslcertkeyRes{}
+	err := nClient.Get(&res, "")
+	if err != nil {
+		return 0, fmt.Errorf("Error getting securityCertificateId information : %s", err.Error())
+	}
+
+	//CertKey name is consisted of `vipName`_`securityCertificateId`.
+	for _, sslCertKey := range res.Sslcertkey {
+		sslCertKeyArr := strings.Split(*sslCertKey.Certkey, "_")
+		if len(sslCertKeyArr) < 2 || !strings.HasPrefix(*sslCertKey.Certkey, vipName+"_") {
+			continue
+		}
+
+		securityCertificateId, err = strconv.Atoi(sslCertKeyArr[len(sslCertKeyArr)-1])
+		if err != nil {
+			continue
+		} else {
+			return securityCertificateId, nil
+		}
+	}
+	return 0, fmt.Errorf("Error getting securityCertificateId information : No certificate for %s", vipName)
 }
