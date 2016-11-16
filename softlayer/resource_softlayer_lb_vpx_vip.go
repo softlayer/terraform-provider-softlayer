@@ -316,6 +316,9 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 	// security_certificated_id is only available when type is 'SSL'
 	if securityCertificateId > 0 && vipType != "SSL" {
 		return fmt.Errorf("Error creating VIP : security_certificated_id is only available when type is 'SSL'")
+	} else if securityCertificateId == 0 && vipType == "SSL" {
+		return fmt.Errorf("Error creating VIP : 'SSL' type requires security_certificated_id.")
+
 	}
 
 	// Create a virtual server
@@ -326,9 +329,13 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 
 	// Configure security_certificate for SSL Offload.
 	if vipType == "SSL" {
+		// Delete the previous security certificate.
+		deleteSecurityCertificate(nClient, vipName, securityCertificateId)
+
 		err = configureSecurityCertificate(nClient, meta.(*session.Session), vipName, securityCertificateId)
+
 		if err != nil {
-			// Delete VIP and return an error.
+			// Rollback VIP creation and return an error.
 			resourceSoftLayerLbVpxVipDelete105(d, meta)
 			return err
 		}
@@ -430,10 +437,14 @@ func resourceSoftLayerLbVpxVipRead105(d *schema.ResourceData, meta interface{}) 
 		d.Set("virtual_ip_address", *vip.Lbvserver[0].Ipv46)
 	}
 
-	// Read a certificate information
+	// Read a security certificate information
 	securityCertificateId, err := getSecurityCertificateId(nClient, vipName)
 	if err == nil {
 		d.Set("security_certificate_id", securityCertificateId)
+	} else {
+		if _, ok := d.GetOk("security_certificate_id"); ok {
+			d.Set("security_certificate_id", 0)
+		}
 	}
 
 	return nil
@@ -577,9 +588,9 @@ func resourceSoftLayerLbVpxVipDelete105(d *schema.ResourceData, meta interface{}
 		return fmt.Errorf("Error deleting Virtual Ip Address %s: %s", vipName, err)
 	}
 
-	// Delete a security certification
+	// Delete a security certificate
 	securityCertificateId, err := getSecurityCertificateId(nClient, vipName)
-	if err != nil {
+	if err == nil {
 		deleteSecurityCertificate(nClient, vipName, securityCertificateId)
 	}
 
@@ -645,7 +656,7 @@ func configureSecurityCertificate(nClient *client.NitroClient, sess *session.Ses
 	certFileName := certName + ".cert"
 	keyFileName := certName + ".key"
 
-	// Delete previous certificate
+	// Delete previous security certificate
 	deleteSecurityCertificate(nClient, vipName, securityCertificateId)
 
 	// Upload security_certificate
@@ -766,5 +777,5 @@ func getSecurityCertificateId(nClient *client.NitroClient, vipName string) (int,
 			return securityCertificateId, nil
 		}
 	}
-	return 0, fmt.Errorf("Error getting securityCertificateId information : No certificate for %s", vipName)
+	return 0, fmt.Errorf("Error getting securityCertificateId information : No security certificate for %s", vipName)
 }
