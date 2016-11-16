@@ -2,15 +2,16 @@ package softlayer
 
 import (
 	"fmt"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/minsikl/netscaler-nitro-go/client"
 	dt "github.com/minsikl/netscaler-nitro-go/datatypes"
 	"github.com/minsikl/netscaler-nitro-go/op"
 	"github.com/softlayer/softlayer-go/session"
-	"log"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func resourceSoftLayerLbVpxHa() *schema.Resource {
@@ -137,7 +138,7 @@ func configureHA(nClient1 *client.NitroClient, nClient2 *client.NitroClient, sta
 	// 7. VPX1 : Sync files
 	hafiles := dt.HafilesReq{
 		Hafiles: &dt.Hafiles{
-			[]string{"all"},
+			Mode: []string{"all"},
 		},
 	}
 	err = nClient1.Add(&hafiles, "action=sync")

@@ -540,8 +540,9 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 
 	d.Set(
 		"network_speed",
-		sl.Get(
-			result.PrimaryNetworkComponent.MaxSpeed,
+		sl.Grab(
+			result,
+			"PrimaryNetworkComponent.MaxSpeed",
 			d.Get("network_speed").(int),
 		),
 	)
