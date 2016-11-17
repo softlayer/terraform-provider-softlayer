@@ -319,6 +319,11 @@ func resourceSoftLayerLbVpxServiceCreate105(d *schema.ResourceData, meta interfa
 		return fmt.Errorf("Error creating LoadBalancer : type of VIP '%s' is null.", vipName)
 	}
 
+	// SSL offload
+	if *svcReq.Service.ServiceType == "SSL" {
+		*svcReq.Service.ServiceType = "HTTP"
+	}
+
 	log.Printf("[INFO] Creating LoadBalancer Service %s", serviceName)
 
 	// Add the service
