@@ -8,7 +8,6 @@ import (
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 )
 
 func dataSourceSoftLayerVlan() *schema.Resource {
@@ -49,7 +48,7 @@ func dataSourceSoftLayerVlan() *schema.Resource {
 }
 
 func dataSourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetAccountService(sess)
 
 	name := d.Get("name").(string)
@@ -106,7 +105,7 @@ func dataSourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error
 }
 
 func getVlan(vlanNumber int, primaryRouterHostname string, meta interface{}) (*datatypes.Network_Vlan, error) {
-	service := services.GetAccountService(meta.(*session.Session))
+	service := services.GetAccountService(meta.(ProviderConfig).SoftLayerSession())
 
 	networkVlans, err := service.
 		Mask("id,name,primarySubnets[networkIdentifier,cidr]").

@@ -3,8 +3,10 @@ package softlayer
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
@@ -16,8 +18,6 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
-	"log"
-	"time"
 )
 
 const (
@@ -118,7 +118,7 @@ func resourceSoftLayerVlan() *schema.Resource {
 }
 
 func resourceSoftLayerVlanCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	router := d.Get("router_hostname").(string)
 	name := d.Get("name").(string)
 
@@ -161,7 +161,7 @@ func resourceSoftLayerVlanCreate(d *schema.ResourceData, meta interface{}) error
 }
 
 func resourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkVlanService(sess)
 
 	vlanId, err := strconv.Atoi(d.Id())
@@ -215,7 +215,7 @@ func resourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceSoftLayerVlanUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkVlanService(sess)
 
 	vlanId, err := strconv.Atoi(d.Id())
@@ -238,7 +238,7 @@ func resourceSoftLayerVlanUpdate(d *schema.ResourceData, meta interface{}) error
 }
 
 func resourceSoftLayerVlanDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkVlanService(sess)
 
 	vlanId, err := strconv.Atoi(d.Id())
@@ -268,7 +268,7 @@ func resourceSoftLayerVlanDelete(d *schema.ResourceData, meta interface{}) error
 }
 
 func resourceSoftLayerVlanExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkVlanService(sess)
 
 	vlanId, err := strconv.Atoi(d.Id())

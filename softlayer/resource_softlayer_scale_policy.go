@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
 
@@ -134,7 +133,7 @@ func resourceSoftLayerScalePolicy() *schema.Resource {
 }
 
 func resourceSoftLayerScalePolicyCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetScalePolicyService(sess)
 
 	var err error
@@ -199,7 +198,7 @@ func resourceSoftLayerScalePolicyCreate(d *schema.ResourceData, meta interface{}
 }
 
 func resourceSoftLayerScalePolicyRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetScalePolicyService(sess)
 
 	scalePolicyId, err := strconv.Atoi(d.Id())
@@ -230,7 +229,7 @@ func resourceSoftLayerScalePolicyRead(d *schema.ResourceData, meta interface{}) 
 }
 
 func resourceSoftLayerScalePolicyUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	scalePolicyService := services.GetScalePolicyService(sess)
 	scalePolicyTriggerService := services.GetScalePolicyTriggerService(sess)
 
@@ -311,7 +310,7 @@ func resourceSoftLayerScalePolicyUpdate(d *schema.ResourceData, meta interface{}
 }
 
 func resourceSoftLayerScalePolicyDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetScalePolicyService(sess)
 
 	id, err := strconv.Atoi(d.Id())
@@ -331,7 +330,7 @@ func resourceSoftLayerScalePolicyDelete(d *schema.ResourceData, meta interface{}
 }
 
 func resourceSoftLayerScalePolicyExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetScalePolicyService(sess)
 
 	policyId, err := strconv.Atoi(d.Id())

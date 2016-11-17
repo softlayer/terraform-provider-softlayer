@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 	"strconv"
 	"strings"
@@ -93,7 +92,7 @@ func resourceSoftLayerSecurityCertificate() *schema.Resource {
 }
 
 func resourceSoftLayerSecurityCertificateCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetSecurityCertificateService(sess)
 
 	template := datatypes.Security_Certificate{
@@ -116,7 +115,7 @@ func resourceSoftLayerSecurityCertificateCreate(d *schema.ResourceData, meta int
 }
 
 func resourceSoftLayerSecurityCertificateRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetSecurityCertificateService(sess)
 
 	id, err := strconv.Atoi(d.Id())
@@ -151,7 +150,7 @@ func resourceSoftLayerSecurityCertificateRead(d *schema.ResourceData, meta inter
 }
 
 func resourceSoftLayerSecurityCertificateDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetSecurityCertificateService(sess)
 
 	_, err := service.Id(d.Get("id").(int)).DeleteObject()
@@ -164,7 +163,7 @@ func resourceSoftLayerSecurityCertificateDelete(d *schema.ResourceData, meta int
 }
 
 func resourceSoftLayerSecurityCertificateExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetSecurityCertificateService(sess)
 
 	id, err := strconv.Atoi(d.Id())

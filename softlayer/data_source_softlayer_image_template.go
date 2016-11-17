@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 )
 
 func dataSourceSoftLayerImageTemplate() *schema.Resource {
@@ -32,7 +31,7 @@ func dataSourceSoftLayerImageTemplate() *schema.Resource {
 }
 
 func dataSourceSoftLayerImageTemplateRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetAccountService(sess)
 
 	name := d.Get("name").(string)

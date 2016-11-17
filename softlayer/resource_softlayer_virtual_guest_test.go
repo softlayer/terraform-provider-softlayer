@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 )
 
 func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
@@ -141,7 +140,7 @@ func TestAccSoftLayerVirtualGuest_postInstallScriptUri(t *testing.T) {
 }
 
 func testAccCheckSoftLayerVirtualGuestDestroy(s *terraform.State) error {
-	service := services.GetVirtualGuestService(testAccProvider.Meta().(*session.Session))
+	service := services.GetVirtualGuestService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_virtual_guest" {
@@ -182,7 +181,7 @@ func testAccCheckSoftLayerVirtualGuestExists(n string, guest *datatypes.Virtual_
 			return err
 		}
 
-		service := services.GetVirtualGuestService(testAccProvider.Meta().(*session.Session))
+		service := services.GetVirtualGuestService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 		retrieveVirtGuest, err := service.Id(id).GetObject()
 
 		if err != nil {

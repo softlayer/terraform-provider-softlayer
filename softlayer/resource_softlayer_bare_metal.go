@@ -12,7 +12,6 @@ import (
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
 
@@ -254,7 +253,7 @@ func getBareMetalOrderFromResourceData(d *schema.ResourceData, meta interface{})
 }
 
 func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	hwService := services.GetHardwareService(sess)
 	orderService := services.GetProductOrderService(sess)
 
@@ -304,7 +303,7 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 }
 
 func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) error {
-	service := services.GetHardwareService(meta.(*session.Session))
+	service := services.GetHardwareService(meta.(ProviderConfig).SoftLayerSession())
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -389,7 +388,7 @@ func resourceSoftLayerBareMetalUpdate(d *schema.ResourceData, meta interface{}) 
 }
 
 func resourceSoftLayerBareMetalDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetHardwareService(sess)
 
 	id, err := strconv.Atoi(d.Id())
@@ -419,7 +418,7 @@ func resourceSoftLayerBareMetalDelete(d *schema.ResourceData, meta interface{}) 
 }
 
 func resourceSoftLayerBareMetalExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	service := services.GetHardwareService(meta.(*session.Session))
+	service := services.GetHardwareService(meta.(ProviderConfig).SoftLayerSession())
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -449,7 +448,7 @@ func waitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interfa
 		Pending: []string{"retry", "pending"},
 		Target:  []string{"provisioned"},
 		Refresh: func() (interface{}, string, error) {
-			service := services.GetAccountService(meta.(*session.Session))
+			service := services.GetAccountService(meta.(ProviderConfig).SoftLayerSession())
 			bms, err := service.Filter(
 				filter.Build(
 					filter.Path("hardware.hostname").Eq(hostname),
@@ -476,7 +475,7 @@ func waitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interfa
 
 func waitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}, error) {
 	log.Printf("Waiting for server (%d) to have zero active transactions", id)
-	service := services.GetHardwareServerService(meta.(*session.Session))
+	service := services.GetHardwareServerService(meta.(ProviderConfig).SoftLayerSession())
 
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"retry", "active"},
@@ -502,7 +501,7 @@ func waitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}
 }
 
 func setHardwareTags(id int, d *schema.ResourceData, meta interface{}) error {
-	service := services.GetHardwareService(meta.(*session.Session))
+	service := services.GetHardwareService(meta.(ProviderConfig).SoftLayerSession())
 
 	tags := getTags(d)
 	if tags != "" {

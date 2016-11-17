@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 )
 
 func TestAccSoftLayerDnsDomainRecord_Basic(t *testing.T) {
@@ -92,7 +91,7 @@ func testAccCheckSoftLayerDnsDomainRecordExists(n string, dns_domain_record *dat
 
 		dns_id, _ := strconv.Atoi(rs.Primary.ID)
 
-		service := services.GetDnsDomainResourceRecordService(testAccProvider.Meta().(*session.Session))
+		service := services.GetDnsDomainResourceRecordService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 		found_domain_record, err := service.Id(dns_id).GetObject()
 
 		if err != nil {

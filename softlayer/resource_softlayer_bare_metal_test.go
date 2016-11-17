@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
 
@@ -68,7 +67,7 @@ func TestAccSoftLayerBareMetal_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerBareMetalDestroy(s *terraform.State) error {
-	service := services.GetHardwareService(testAccProvider.Meta().(*session.Session))
+	service := services.GetHardwareService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_bare_metal" {
@@ -110,7 +109,7 @@ func testAccCheckSoftLayerBareMetalExists(n string, bareMetal *datatypes.Hardwar
 			return err
 		}
 
-		service := services.GetHardwareService(testAccProvider.Meta().(*session.Session))
+		service := services.GetHardwareService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 		bm, err := service.Id(id).GetObject()
 		if err != nil {
 			return err

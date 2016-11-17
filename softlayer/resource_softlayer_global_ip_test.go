@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"regexp"
 )
 
@@ -54,7 +53,7 @@ func testAccCheckSoftLayerGlobalIpExists(n string) resource.TestCheckFunc {
 
 		globalIpId, _ := strconv.Atoi(rs.Primary.ID)
 
-		service := services.GetNetworkSubnetIpAddressGlobalService(testAccProvider.Meta().(*session.Session))
+		service := services.GetNetworkSubnetIpAddressGlobalService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 		foundGlobalIp, err := service.Id(globalIpId).GetObject()
 
 		if err != nil {

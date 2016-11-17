@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"regexp"
 )
 
@@ -104,7 +103,7 @@ func TestAccSoftLayerUser_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerUserDestroy(s *terraform.State) error {
-	client := services.GetUserCustomerService(testAccProvider.Meta().(*session.Session))
+	client := services.GetUserCustomerService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_user" {
@@ -139,7 +138,7 @@ func testAccCheckSoftLayerUserExists(n string, user *datatypes.User_Customer) re
 
 		userID, _ := strconv.Atoi(rs.Primary.ID)
 
-		client := services.GetUserCustomerService(testAccProvider.Meta().(*session.Session))
+		client := services.GetUserCustomerService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 		foundUser, err := client.Id(userID).GetObject()
 
 		if err != nil {

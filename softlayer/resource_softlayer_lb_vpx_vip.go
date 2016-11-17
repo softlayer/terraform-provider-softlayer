@@ -1,9 +1,13 @@
 package softlayer
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -11,11 +15,7 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
-	"strconv"
-	"strings"
-	"time"
 
-	"encoding/base64"
 	"github.com/minsikl/netscaler-nitro-go/client"
 	dt "github.com/minsikl/netscaler-nitro-go/datatypes"
 	"github.com/minsikl/netscaler-nitro-go/op"
@@ -116,7 +116,7 @@ func resourceSoftLayerLbVpxVip() *schema.Resource {
 }
 
 func resourceSoftLayerLbVpxVipCreate(d *schema.ResourceData, meta interface{}) error {
-	version, err := getVPXVersion(d.Get("nad_controller_id").(int), meta.(*session.Session))
+	version, err := getVPXVersion(d.Get("nad_controller_id").(int), meta.(ProviderConfig).SoftLayerSession())
 	if err != nil {
 		return fmt.Errorf("Error creating Virtual Ip Address: %s", err)
 	}
@@ -134,7 +134,7 @@ func resourceSoftLayerLbVpxVipRead(d *schema.ResourceData, meta interface{}) err
 		return fmt.Errorf("Error Reading Virtual IP Address: %s", err)
 	}
 
-	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	version, err := getVPXVersion(nadcId, meta.(ProviderConfig).SoftLayerSession())
 	if err != nil {
 		return fmt.Errorf("Error Reading Virtual Ip Address: %s", err)
 	}
@@ -152,7 +152,7 @@ func resourceSoftLayerLbVpxVipUpdate(d *schema.ResourceData, meta interface{}) e
 		return fmt.Errorf("Error updating Virtual IP Address: %s", err)
 	}
 
-	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	version, err := getVPXVersion(nadcId, meta.(ProviderConfig).SoftLayerSession())
 	if err != nil {
 		return fmt.Errorf("Error updating Virtual Ip Address: %s", err)
 	}
@@ -170,7 +170,7 @@ func resourceSoftLayerLbVpxVipDelete(d *schema.ResourceData, meta interface{}) e
 		return fmt.Errorf("Error deleting Virtual Ip Address: %s", err)
 	}
 
-	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	version, err := getVPXVersion(nadcId, meta.(ProviderConfig).SoftLayerSession())
 	if err != nil {
 		return fmt.Errorf("Error deleting Virtual Ip Address: %s", err)
 	}
@@ -188,7 +188,7 @@ func resourceSoftLayerLbVpxVipExists(d *schema.ResourceData, meta interface{}) (
 		return false, fmt.Errorf("Error in exists: %s", err)
 	}
 
-	version, err := getVPXVersion(nadcId, meta.(*session.Session))
+	version, err := getVPXVersion(nadcId, meta.(ProviderConfig).SoftLayerSession())
 	if err != nil {
 		return false, fmt.Errorf("Error in exists: %s", err)
 	}
@@ -224,7 +224,7 @@ func resourceSoftLayerLbVpxVipCreate101(d *schema.ResourceData, meta interface{}
 		return fmt.Errorf("Error creating Virtual Ip Address: security_certificate_id is not supported with VPX 10.1.")
 	}
 
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	nadcId := d.Get("nad_controller_id").(int)
@@ -280,7 +280,7 @@ func resourceSoftLayerLbVpxVipCreate101(d *schema.ResourceData, meta interface{}
 
 func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}) error {
 	nadcId := d.Get("nad_controller_id").(int)
-	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	nClient, err := getNitroClient(meta.(ProviderConfig).SoftLayerSession(), nadcId)
 	if err != nil {
 		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
 	}
@@ -332,7 +332,7 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 		// Delete the previous security certificate.
 		deleteSecurityCertificate(nClient, vipName, securityCertificateId)
 
-		err = configureSecurityCertificate(nClient, meta.(*session.Session), vipName, securityCertificateId)
+		err = configureSecurityCertificate(nClient, meta.(ProviderConfig).SoftLayerSession(), vipName, securityCertificateId)
 
 		if err != nil {
 			// Rollback VIP creation and return an error.
@@ -349,7 +349,7 @@ func resourceSoftLayerLbVpxVipCreate105(d *schema.ResourceData, meta interface{}
 }
 
 func resourceSoftLayerLbVpxVipRead101(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	nadcId, vipName, err := parseId(d.Id())
 	if err != nil {
@@ -391,7 +391,7 @@ func resourceSoftLayerLbVpxVipRead105(d *schema.ResourceData, meta interface{}) 
 		return fmt.Errorf("softlayer_lb_vpx : %s", err)
 	}
 
-	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	nClient, err := getNitroClient(meta.(ProviderConfig).SoftLayerSession(), nadcId)
 	if err != nil {
 		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
 	}
@@ -451,7 +451,7 @@ func resourceSoftLayerLbVpxVipRead105(d *schema.ResourceData, meta interface{}) 
 }
 
 func resourceSoftLayerLbVpxVipUpdate101(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	nadcId := d.Get("nad_controller_id").(int)
@@ -492,7 +492,7 @@ func resourceSoftLayerLbVpxVipUpdate101(d *schema.ResourceData, meta interface{}
 
 func resourceSoftLayerLbVpxVipUpdate105(d *schema.ResourceData, meta interface{}) error {
 	nadcId := d.Get("nad_controller_id").(int)
-	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	nClient, err := getNitroClient(meta.(ProviderConfig).SoftLayerSession(), nadcId)
 	if err != nil {
 		return fmt.Errorf("Error getting netscaler information ID: %d", nadcId)
 	}
@@ -532,7 +532,7 @@ func resourceSoftLayerLbVpxVipUpdate105(d *schema.ResourceData, meta interface{}
 }
 
 func resourceSoftLayerLbVpxVipDelete101(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	nadcId, vipName, err := parseId(d.Id())
@@ -577,7 +577,7 @@ func resourceSoftLayerLbVpxVipDelete105(d *schema.ResourceData, meta interface{}
 		return fmt.Errorf("softlayer_lb_vpx : %s", err)
 	}
 
-	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	nClient, err := getNitroClient(meta.(ProviderConfig).SoftLayerSession(), nadcId)
 	if err != nil {
 		return fmt.Errorf("Error deleting Virtual Ip Address %s: %s", vipName, err)
 	}
@@ -598,7 +598,7 @@ func resourceSoftLayerLbVpxVipDelete105(d *schema.ResourceData, meta interface{}
 }
 
 func resourceSoftLayerLbVpxVipExists101(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	nadcId, vipName, err := parseId(d.Id())
 	if err != nil {
@@ -616,7 +616,7 @@ func resourceSoftLayerLbVpxVipExists105(d *schema.ResourceData, meta interface{}
 		return false, fmt.Errorf("softlayer_lb_vpx : %s", err)
 	}
 
-	nClient, err := getNitroClient(meta.(*session.Session), nadcId)
+	nClient, err := getNitroClient(meta.(ProviderConfig).SoftLayerSession(), nadcId)
 	if err != nil {
 		return false, err
 	}

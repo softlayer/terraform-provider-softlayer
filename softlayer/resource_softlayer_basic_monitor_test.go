@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 )
 
 func TestAccSoftLayerBasicMonitor_Basic(t *testing.T) {
@@ -60,7 +59,7 @@ func TestAccSoftLayerBasicMonitor_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerBasicMonitorDestroy(s *terraform.State) error {
-	service := services.GetNetworkMonitorVersion1QueryHostService(testAccProvider.Meta().(*session.Session))
+	service := services.GetNetworkMonitorVersion1QueryHostService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_basic_monitor" {
@@ -94,7 +93,7 @@ func testAccCheckSoftLayerBasicMonitorExists(n string, basicMonitor *datatypes.N
 
 		basicMonitorId, _ := strconv.Atoi(rs.Primary.ID)
 
-		service := services.GetNetworkMonitorVersion1QueryHostService(testAccProvider.Meta().(*session.Session))
+		service := services.GetNetworkMonitorVersion1QueryHostService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 		foundBasicMonitor, err := service.Id(basicMonitorId).GetObject()
 
 		if err != nil {
@@ -126,7 +125,7 @@ func testAccCheckSoftLayerBasicMonitorContainsUsers(n string, userId int) resour
 
 		basicMonitorId, _ := strconv.Atoi(rs.Primary.ID)
 
-		service := services.GetNetworkMonitorVersion1QueryHostService(testAccProvider.Meta().(*session.Session))
+		service := services.GetNetworkMonitorVersion1QueryHostService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 		basicMonitor, err := service.Id(basicMonitorId).GetObject()
 
 		if err != nil {
@@ -137,7 +136,7 @@ func testAccCheckSoftLayerBasicMonitorContainsUsers(n string, userId int) resour
 			return errors.New("Record not found")
 		}
 
-		notificationLinks, err := services.GetVirtualGuestService(testAccProvider.Meta().(*session.Session)).Mask("userId").Id(*basicMonitor.GuestId).GetMonitoringUserNotification()
+		notificationLinks, err := services.GetVirtualGuestService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession()).Mask("userId").Id(*basicMonitor.GuestId).GetMonitoringUserNotification()
 
 		if notificationLinks == nil {
 			return errors.New("Cannot get a ust list")

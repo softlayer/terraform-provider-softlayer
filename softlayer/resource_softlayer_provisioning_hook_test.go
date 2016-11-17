@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 )
 
 func TestAccSoftLayerProvisioningHook_Basic(t *testing.T) {
@@ -47,7 +46,7 @@ func TestAccSoftLayerProvisioningHook_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerProvisioningHookDestroy(s *terraform.State) error {
-	service := services.GetProvisioningHookService(testAccProvider.Meta().(*session.Session))
+	service := services.GetProvisioningHookService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_provisioning_hook" {
@@ -96,7 +95,7 @@ func testAccCheckSoftLayerProvisioningHookExists(n string, hook *datatypes.Provi
 
 		hookId, _ := strconv.Atoi(rs.Primary.ID)
 
-		service := services.GetProvisioningHookService(testAccProvider.Meta().(*session.Session))
+		service := services.GetProvisioningHookService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 		foundHook, err := service.Id(hookId).GetObject()
 
 		if err != nil {

@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
 
@@ -69,7 +68,7 @@ func TestAccSoftLayerDnsDomain_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerDnsDomainDestroy(s *terraform.State) error {
-	service := services.GetDnsDomainService(testAccProvider.Meta().(*session.Session))
+	service := services.GetDnsDomainService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_dns_domain" {
@@ -151,7 +150,7 @@ func saveSoftLayerDnsDomainId(dns *datatypes.Dns_Domain, id_holder *int) resourc
 
 func testAccCheckSoftLayerDnsDomainChanged(dns *datatypes.Dns_Domain) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		service := services.GetDnsDomainService(testAccProvider.Meta().(*session.Session))
+		service := services.GetDnsDomainService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 
 		_, err := service.Id(firstDnsId).Mask(
 			"id,name,updateDate,resourceRecords",
@@ -178,7 +177,7 @@ func testAccCheckSoftLayerDnsDomainExists(n string, dns_domain *datatypes.Dns_Do
 
 		dns_id, _ := strconv.Atoi(rs.Primary.ID)
 
-		service := services.GetDnsDomainService(testAccProvider.Meta().(*session.Session))
+		service := services.GetDnsDomainService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 		found_domain, err := service.Id(dns_id).Mask(
 			"id,name,updateDate,resourceRecords",
 		).GetObject()

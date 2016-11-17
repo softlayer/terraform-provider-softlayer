@@ -12,7 +12,6 @@ import (
 	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/helpers/order"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
 
@@ -43,7 +42,7 @@ func resourceSoftLayerObjectStorageAccount() *schema.Resource {
 }
 
 func resourceSoftLayerObjectStorageAccountCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	accountService := services.GetAccountService(sess)
 
 	// Check if an object storage account exists
@@ -108,7 +107,7 @@ func WaitForOrderCompletion(
 			var err error
 			var completed bool
 
-			sess := meta.(*session.Session)
+			sess := meta.(ProviderConfig).SoftLayerSession()
 			completed, billingOrderItem, err = order.CheckBillingOrderComplete(sess, receipt)
 			if err != nil {
 				return nil, "", err
@@ -130,7 +129,7 @@ func WaitForOrderCompletion(
 }
 
 func resourceSoftLayerObjectStorageAccountRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	accountService := services.GetAccountService(sess)
 	accountName := d.Id()
 	d.Set("name", accountName)

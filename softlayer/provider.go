@@ -79,6 +79,18 @@ func Provider() terraform.ResourceProvider {
 	}
 }
 
+type ProviderConfig interface {
+	SoftLayerSession() *session.Session
+}
+
+type providerConfig struct {
+	Session *session.Session
+}
+
+func (config providerConfig) SoftLayerSession() *session.Session {
+	return config.Session
+}
+
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	sess := session.Session{
 		UserName: d.Get("username").(string),
@@ -102,5 +114,5 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		sess.Debug = true
 	}
 
-	return &sess, nil
+	return providerConfig{Session: &sess}, nil
 }

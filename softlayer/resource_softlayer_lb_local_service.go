@@ -55,7 +55,7 @@ func resourceSoftLayerLbLocalService() *schema.Resource {
 }
 
 func resourceSoftLayerLbLocalServiceCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	// SoftLayer Local LBs consist of a multi-level hierarchy of types.
 	// (virtualIpAddress -> []virtualServer -> []serviceGroup -> []service)
@@ -143,7 +143,7 @@ func resourceSoftLayerLbLocalServiceCreate(d *schema.ResourceData, meta interfac
 }
 
 func resourceSoftLayerLbLocalServiceUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	// Using the ID stored in the config, find the IDs of the respective
 	// serviceGroup, virtualServer and virtualIpAddress
@@ -213,7 +213,7 @@ func resourceSoftLayerLbLocalServiceUpdate(d *schema.ResourceData, meta interfac
 }
 
 func resourceSoftLayerLbLocalServiceRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	svcID, _ := strconv.Atoi(d.Id())
 
@@ -236,7 +236,7 @@ func resourceSoftLayerLbLocalServiceRead(d *schema.ResourceData, meta interface{
 }
 
 func resourceSoftLayerLbLocalServiceDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	svcID, _ := strconv.Atoi(d.Id())
 
@@ -279,7 +279,7 @@ func resourceSoftLayerLbLocalServiceDelete(d *schema.ResourceData, meta interfac
 }
 
 func resourceSoftLayerLbLocalServiceExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	svcID, _ := strconv.Atoi(d.Id())
 

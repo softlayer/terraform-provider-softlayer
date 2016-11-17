@@ -8,7 +8,6 @@ import (
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 )
 
 func dataSourceSoftLayerSSHKey() *schema.Resource {
@@ -58,7 +57,7 @@ func dataSourceSoftLayerSSHKey() *schema.Resource {
 }
 
 func dataSourceSoftLayerSSHKeyRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetAccountService(sess)
 
 	label := d.Get("label").(string)

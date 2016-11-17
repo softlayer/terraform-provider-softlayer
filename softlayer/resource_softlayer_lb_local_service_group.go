@@ -60,7 +60,7 @@ func resourceSoftLayerLbLocalServiceGroup() *schema.Resource {
 }
 
 func resourceSoftLayerLbLocalServiceGroupCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	vipID := d.Get("load_balancer_id").(int)
 
@@ -121,7 +121,7 @@ func resourceSoftLayerLbLocalServiceGroupCreate(d *schema.ResourceData, meta int
 }
 
 func resourceSoftLayerLbLocalServiceGroupUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	vipID := d.Get("load_balancer_id").(int)
 	vsID, _ := strconv.Atoi(d.Id())
@@ -170,7 +170,7 @@ func resourceSoftLayerLbLocalServiceGroupUpdate(d *schema.ResourceData, meta int
 }
 
 func resourceSoftLayerLbLocalServiceGroupRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	vsID, _ := strconv.Atoi(d.Id())
 
@@ -193,7 +193,7 @@ func resourceSoftLayerLbLocalServiceGroupRead(d *schema.ResourceData, meta inter
 }
 
 func resourceSoftLayerLbLocalServiceGroupDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	vsID, _ := strconv.Atoi(d.Id())
 
@@ -209,7 +209,7 @@ func resourceSoftLayerLbLocalServiceGroupDelete(d *schema.ResourceData, meta int
 }
 
 func resourceSoftLayerLbLocalServiceGroupExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	vsID, _ := strconv.Atoi(d.Id())
 

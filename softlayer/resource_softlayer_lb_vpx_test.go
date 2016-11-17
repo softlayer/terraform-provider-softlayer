@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 )
 
 func TestAccSoftLayerLbVpx_Basic(t *testing.T) {
@@ -65,7 +64,7 @@ func testAccCheckSoftLayerLbVpxExists(n string, nadc *datatypes.Network_Applicat
 
 		nadcId, _ := strconv.Atoi(rs.Primary.ID)
 
-		service := services.GetNetworkApplicationDeliveryControllerService(testAccProvider.Meta().(*session.Session))
+		service := services.GetNetworkApplicationDeliveryControllerService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 		found, err := service.Id(nadcId).GetObject()
 		if err != nil {
 			return err

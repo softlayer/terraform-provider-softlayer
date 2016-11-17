@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
 
@@ -52,7 +51,7 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 }
 
 func resourceSoftLayerDnsDomainCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetDnsDomainService(sess)
 
 	// prepare creation parameters
@@ -86,7 +85,7 @@ func resourceSoftLayerDnsDomainCreate(d *schema.ResourceData, meta interface{}) 
 }
 
 func resourceSoftLayerDnsDomainRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetDnsDomainService(sess)
 
 	dnsId, _ := strconv.Atoi(d.Id())
@@ -117,7 +116,7 @@ func resourceSoftLayerDnsDomainRead(d *schema.ResourceData, meta interface{}) er
 
 func resourceSoftLayerDnsDomainUpdate(d *schema.ResourceData, meta interface{}) error {
 	// If the target has been updated, find the corresponding dns record and update its data.
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	domainId, _ := strconv.Atoi(d.Id())
 
 	if !d.HasChange("target") { // target is the only editable field
@@ -162,7 +161,7 @@ func resourceSoftLayerDnsDomainUpdate(d *schema.ResourceData, meta interface{}) 
 }
 
 func resourceSoftLayerDnsDomainDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetDnsDomainService(sess)
 
 	dnsId, err := strconv.Atoi(d.Id())
@@ -185,7 +184,7 @@ func resourceSoftLayerDnsDomainDelete(d *schema.ResourceData, meta interface{}) 
 }
 
 func resourceSoftLayerDnsDomainExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetDnsDomainService(sess)
 
 	dnsId, err := strconv.Atoi(d.Id())

@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 )
 
 func TestAccSoftLayerScaleGroup_Basic(t *testing.T) {
@@ -116,7 +115,7 @@ func TestAccSoftLayerScaleGroup_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerScaleGroupDestroy(s *terraform.State) error {
-	service := services.GetScaleGroupService(testAccProvider.Meta().(*session.Session))
+	service := services.GetScaleGroupService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_scale_group" {
@@ -174,7 +173,7 @@ func testAccCheckSoftLayerScaleGroupExists(n string, scalegroup *datatypes.Scale
 
 		scalegroupId, _ := strconv.Atoi(rs.Primary.ID)
 
-		service := services.GetScaleGroupService(testAccProvider.Meta().(*session.Session))
+		service := services.GetScaleGroupService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 		foundScaleGroup, err := service.Id(scalegroupId).Mask(strings.Join(SoftLayerScaleGroupObjectMask, ",")).GetObject()
 
 		if err != nil {

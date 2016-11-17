@@ -80,7 +80,7 @@ func resourceSoftLayerLbLocal() *schema.Resource {
 }
 
 func resourceSoftLayerLbLocalCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	connections := d.Get("connections").(int)
 	haEnabled := d.Get("ha_enabled").(bool)
@@ -196,7 +196,7 @@ func resourceSoftLayerLbLocalCreate(d *schema.ResourceData, meta interface{}) er
 }
 
 func resourceSoftLayerLbLocalUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	vipID, _ := strconv.Atoi(d.Id())
 
@@ -212,7 +212,7 @@ func resourceSoftLayerLbLocalUpdate(d *schema.ResourceData, meta interface{}) er
 }
 
 func resourceSoftLayerLbLocalRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	vipID, _ := strconv.Atoi(d.Id())
 
@@ -240,7 +240,7 @@ func resourceSoftLayerLbLocalRead(d *schema.ResourceData, meta interface{}) erro
 }
 
 func resourceSoftLayerLbLocalDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	vipService := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess)
 
 	vipID, _ := strconv.Atoi(d.Id())
@@ -276,7 +276,7 @@ func resourceSoftLayerLbLocalDelete(d *schema.ResourceData, meta interface{}) er
 }
 
 func resourceSoftLayerLbLocalExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	vipID, _ := strconv.Atoi(d.Id())
 

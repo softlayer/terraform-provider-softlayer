@@ -138,7 +138,7 @@ func getPermissions(d *schema.ResourceData) []datatypes.User_Customer_CustomerPe
 }
 
 func resourceSoftLayerUserCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetUserCustomerService(sess)
 
 	timezoneID, err := getTimezoneIDByName(sess, d.Get("timezone").(string))
@@ -217,7 +217,7 @@ func resourceSoftLayerUserCreate(d *schema.ResourceData, meta interface{}) error
 }
 
 func resourceSoftLayerUserRead(d *schema.ResourceData, meta interface{}) error {
-	service := services.GetUserCustomerService(meta.(*session.Session))
+	service := services.GetUserCustomerService(meta.(ProviderConfig).SoftLayerSession())
 
 	userID, _ := strconv.Atoi(d.Id())
 
@@ -284,7 +284,7 @@ func resourceSoftLayerUserRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetUserCustomerService(sess)
 
 	sluid, _ := strconv.Atoi(d.Id())
@@ -429,7 +429,7 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 }
 
 func resourceSoftLayerUserDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetUserCustomerService(sess)
 
 	id, _ := strconv.Atoi(d.Id())
@@ -449,7 +449,7 @@ func resourceSoftLayerUserDelete(d *schema.ResourceData, meta interface{}) error
 }
 
 func resourceSoftLayerUserExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	service := services.GetUserCustomerService(meta.(*session.Session))
+	service := services.GetUserCustomerService(meta.(ProviderConfig).SoftLayerSession())
 
 	id, err := strconv.Atoi(d.Id())
 

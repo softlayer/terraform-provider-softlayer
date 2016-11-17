@@ -13,7 +13,6 @@ import (
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
 
@@ -61,7 +60,7 @@ func resourceSoftLayerSSHKey() *schema.Resource {
 }
 
 func resourceSoftLayerSSHKeyCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetSecuritySshKeyService(sess)
 
 	// First check if the key exits by fingerprint
@@ -139,7 +138,7 @@ func resourceSoftLayerSSHKeyCreate(d *schema.ResourceData, meta interface{}) err
 }
 
 func resourceSoftLayerSSHKeyRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetSecuritySshKeyService(sess)
 
 	keyId, _ := strconv.Atoi(d.Id())
@@ -169,7 +168,7 @@ func resourceSoftLayerSSHKeyRead(d *schema.ResourceData, meta interface{}) error
 }
 
 func resourceSoftLayerSSHKeyUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetSecuritySshKeyService(sess)
 
 	keyId, _ := strconv.Atoi(d.Id())
@@ -195,7 +194,7 @@ func resourceSoftLayerSSHKeyUpdate(d *schema.ResourceData, meta interface{}) err
 }
 
 func resourceSoftLayerSSHKeyDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetSecuritySshKeyService(sess)
 
 	id, err := strconv.Atoi(d.Id())
@@ -214,7 +213,7 @@ func resourceSoftLayerSSHKeyDelete(d *schema.ResourceData, meta interface{}) err
 }
 
 func resourceSoftLayerSSHKeyExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetSecuritySshKeyService(sess)
 
 	keyId, err := strconv.Atoi(d.Id())

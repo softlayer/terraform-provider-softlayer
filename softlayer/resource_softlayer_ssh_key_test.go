@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 )
 
 func TestAccSoftLayerSSHKey_Basic(t *testing.T) {
@@ -53,7 +52,7 @@ func TestAccSoftLayerSSHKey_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerSSHKeyDestroy(s *terraform.State) error {
-	service := services.GetSecuritySshKeyService(testAccProvider.Meta().(*session.Session))
+	service := services.GetSecuritySshKeyService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_ssh_key" {
@@ -98,7 +97,7 @@ func testAccCheckSoftLayerSSHKeyExists(n string, key *datatypes.Security_Ssh_Key
 
 		keyId, _ := strconv.Atoi(rs.Primary.ID)
 
-		service := services.GetSecuritySshKeyService(testAccProvider.Meta().(*session.Session))
+		service := services.GetSecuritySshKeyService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 		foundKey, err := service.Id(keyId).GetObject()
 
 		if err != nil {

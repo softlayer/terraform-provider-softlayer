@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
 
@@ -42,7 +41,7 @@ func resourceSoftLayerProvisioningHook() *schema.Resource {
 }
 
 func resourceSoftLayerProvisioningHookCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetProvisioningHookService(sess)
 
 	opts := datatypes.Provisioning_Hook{
@@ -62,7 +61,7 @@ func resourceSoftLayerProvisioningHookCreate(d *schema.ResourceData, meta interf
 }
 
 func resourceSoftLayerProvisioningHookRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetProvisioningHookService(sess)
 
 	hookId, _ := strconv.Atoi(d.Id())
@@ -85,7 +84,7 @@ func resourceSoftLayerProvisioningHookRead(d *schema.ResourceData, meta interfac
 }
 
 func resourceSoftLayerProvisioningHookUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetProvisioningHookService(sess)
 
 	hookId, _ := strconv.Atoi(d.Id())
@@ -109,7 +108,7 @@ func resourceSoftLayerProvisioningHookUpdate(d *schema.ResourceData, meta interf
 }
 
 func resourceSoftLayerProvisioningHookDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetProvisioningHookService(sess)
 
 	hookId, err := strconv.Atoi(d.Id())
@@ -123,7 +122,7 @@ func resourceSoftLayerProvisioningHookDelete(d *schema.ResourceData, meta interf
 }
 
 func resourceSoftLayerProvisioningHookExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetProvisioningHookService(sess)
 
 	hookId, err := strconv.Atoi(d.Id())

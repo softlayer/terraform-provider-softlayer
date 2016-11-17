@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
 
@@ -63,7 +62,7 @@ func resourceSoftLayerBasicMonitor() *schema.Resource {
 }
 
 func resourceSoftLayerBasicMonitorCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	virtualGuestService := services.GetVirtualGuestService(sess)
 	monitorService := services.GetNetworkMonitorVersion1QueryHostService(sess)
 
@@ -112,7 +111,7 @@ func resourceSoftLayerBasicMonitorCreate(d *schema.ResourceData, meta interface{
 }
 
 func createNotifications(d *schema.ResourceData, meta interface{}, guestId int) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	virtualGuestService := services.GetVirtualGuestService(sess)
 	notificationService := services.GetUserCustomerNotificationVirtualGuestService(sess)
 
@@ -159,7 +158,7 @@ func contains(s []int, e int) bool {
 }
 
 func resourceSoftLayerBasicMonitorRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkMonitorVersion1QueryHostService(sess)
 	virtualGuestService := services.GetVirtualGuestService(sess)
 
@@ -203,7 +202,7 @@ func resourceSoftLayerBasicMonitorRead(d *schema.ResourceData, meta interface{})
 }
 
 func resourceSoftLayerBasicMonitorUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkMonitorVersion1QueryHostService(sess)
 
 	basicMonitorId, _ := strconv.Atoi(d.Id())
@@ -239,7 +238,7 @@ func resourceSoftLayerBasicMonitorUpdate(d *schema.ResourceData, meta interface{
 }
 
 func resourceSoftLayerBasicMonitorDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkMonitorVersion1QueryHostService(sess)
 
 	// Delete the basic monitor
@@ -256,7 +255,7 @@ func resourceSoftLayerBasicMonitorDelete(d *schema.ResourceData, meta interface{
 }
 
 func resourceSoftLayerBasicMonitorExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkMonitorVersion1QueryHostService(sess)
 
 	basicMonitorId, err := strconv.Atoi(d.Id())

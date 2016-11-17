@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"strconv"
 	"strings"
 	"testing"
@@ -66,7 +65,7 @@ func TestAccSoftLayerScalePolicy_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerScalePolicyDestroy(s *terraform.State) error {
-	service := services.GetScalePolicyService(testAccProvider.Meta().(*session.Session))
+	service := services.GetScalePolicyService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_scale_policy" {
@@ -176,7 +175,7 @@ func testAccCheckSoftLayerScalePolicyExists(n string, scalepolicy *datatypes.Sca
 
 		scalepolicyId, _ := strconv.Atoi(rs.Primary.ID)
 
-		service := services.GetScalePolicyService(testAccProvider.Meta().(*session.Session))
+		service := services.GetScalePolicyService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 		foundScalePolicy, err := service.Id(scalepolicyId).Mask("id").GetObject()
 
 		if err != nil {

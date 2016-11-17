@@ -2,6 +2,10 @@ package softlayer
 
 import (
 	"fmt"
+	"log"
+	"strconv"
+	"time"
+
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -10,9 +14,6 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
-	"log"
-	"strconv"
-	"time"
 )
 
 const (
@@ -50,7 +51,7 @@ func resourceSoftLayerGlobalIp() *schema.Resource {
 }
 
 func resourceSoftLayerGlobalIpCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	// Find price items with AdditionalServicesGlobalIpAddresses
 	productOrderContainer, err := buildGlobalIpProductOrderContainer(d, sess, AdditionalServicesGlobalIpAddressesPackageType)
@@ -82,7 +83,7 @@ func resourceSoftLayerGlobalIpCreate(d *schema.ResourceData, meta interface{}) e
 }
 
 func resourceSoftLayerGlobalIpRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkSubnetIpAddressGlobalService(sess)
 
 	globalIpId, err := strconv.Atoi(d.Id())
@@ -104,7 +105,7 @@ func resourceSoftLayerGlobalIpRead(d *schema.ResourceData, meta interface{}) err
 }
 
 func resourceSoftLayerGlobalIpUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkSubnetIpAddressGlobalService(sess)
 
 	globalIpId, err := strconv.Atoi(d.Id())
@@ -148,7 +149,7 @@ func resourceSoftLayerGlobalIpUpdate(d *schema.ResourceData, meta interface{}) e
 }
 
 func resourceSoftLayerGlobalIpDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkSubnetIpAddressGlobalService(sess)
 
 	globalIpId, err := strconv.Atoi(d.Id())
@@ -171,7 +172,7 @@ func resourceSoftLayerGlobalIpDelete(d *schema.ResourceData, meta interface{}) e
 }
 
 func resourceSoftLayerGlobalIpExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkSubnetIpAddressGlobalService(sess)
 
 	globalIpId, err := strconv.Atoi(d.Id())

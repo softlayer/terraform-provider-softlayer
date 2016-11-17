@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"errors"
+
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -141,7 +142,7 @@ func resourceSoftLayerLbVpx() *schema.Resource {
 }
 
 func getSubnetId(subnet string, meta interface{}) (int, error) {
-	service := services.GetAccountService(meta.(*session.Session))
+	service := services.GetAccountService(meta.(ProviderConfig).SoftLayerSession())
 
 	subnetInfo := strings.Split(subnet, "/")
 	if len(subnetInfo) != 2 {
@@ -202,7 +203,7 @@ func getPublicIpItemKeyName(ipCount int) string {
 }
 
 func findVPXPriceItems(version string, speed int, plan string, ipCount int, meta interface{}) ([]datatypes.Product_Item_Price, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	// Get VPX package type.
 	productPackage, err := product.GetPackageByType(sess, "ADDITIONAL_SERVICES_APPLICATION_DELIVERY_APPLIANCE")
@@ -258,7 +259,7 @@ func findVPXPriceItems(version string, speed int, plan string, ipCount int, meta
 }
 
 func findVPXByOrderId(orderId int, meta interface{}) (datatypes.Network_Application_Delivery_Controller, error) {
-	service := services.GetAccountService(meta.(*session.Session))
+	service := services.GetAccountService(meta.(ProviderConfig).SoftLayerSession())
 
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"pending"},
@@ -349,7 +350,7 @@ func prepareHardwareOptions(d *schema.ResourceData, meta interface{}) ([]datatyp
 }
 
 func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	productOrderService := services.GetProductOrderService(sess)
 	NADCService := services.GetNetworkApplicationDeliveryControllerService(sess)
@@ -463,7 +464,7 @@ func resourceSoftLayerLbVpxCreate(d *schema.ResourceData, meta interface{}) erro
 }
 
 func resourceSoftLayerLbVpxRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 	id, err := strconv.Atoi(d.Id())
@@ -557,7 +558,7 @@ func resourceSoftLayerLbVpxRead(d *schema.ResourceData, meta interface{}) error 
 }
 
 func resourceSoftLayerLbVpxDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetNetworkApplicationDeliveryControllerService(sess)
 
 	id, err := strconv.Atoi(d.Id())
@@ -586,7 +587,7 @@ func resourceSoftLayerLbVpxDelete(d *schema.ResourceData, meta interface{}) erro
 }
 
 func resourceSoftLayerLbVpxExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	service := services.GetNetworkApplicationDeliveryControllerService(meta.(*session.Session))
+	service := services.GetNetworkApplicationDeliveryControllerService(meta.(ProviderConfig).SoftLayerSession())
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {

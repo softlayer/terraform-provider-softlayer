@@ -247,7 +247,7 @@ func getVirtualGuestTemplate(vGuestTemplateList []interface{}, meta interface{})
 }
 
 func resourceSoftLayerScaleGroupCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetScaleGroupService(sess)
 
 	virtualGuestTemplateOpts, err := getVirtualGuestTemplate(d.Get("virtual_guest_member_template").([]interface{}), meta)
@@ -335,7 +335,7 @@ func buildLoadBalancers(d *schema.ResourceData) ([]datatypes.Scale_LoadBalancer,
 }
 
 func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetScaleGroupService(sess)
 
 	groupId, _ := strconv.Atoi(d.Id())
@@ -450,7 +450,7 @@ func populateMemberTemplateResourceData(template datatypes.Virtual_Guest) []map[
 }
 
 func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	scaleGroupService := services.GetScaleGroupService(sess)
 	scaleNetworkVlanService := services.GetScaleNetworkVlanService(sess)
 	scaleLoadBalancerService := services.GetScaleLoadBalancerService(sess)
@@ -548,7 +548,7 @@ func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{})
 }
 
 func resourceSoftLayerScaleGroupDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	scaleGroupService := services.GetScaleGroupService(sess)
 
 	id, err := strconv.Atoi(d.Id())
@@ -568,7 +568,7 @@ func resourceSoftLayerScaleGroupDelete(d *schema.ResourceData, meta interface{})
 }
 
 func waitForActiveStatus(d *schema.ResourceData, meta interface{}) (interface{}, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	scaleGroupService := services.GetScaleGroupService(sess)
 
 	log.Printf("Waiting for scale group (%s) to become active", d.Id())
@@ -610,7 +610,7 @@ func waitForActiveStatus(d *schema.ResourceData, meta interface{}) (interface{},
 }
 
 func resourceSoftLayerScaleGroupExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	scaleGroupService := services.GetScaleGroupService(sess)
 
 	groupId, err := strconv.Atoi(d.Id())

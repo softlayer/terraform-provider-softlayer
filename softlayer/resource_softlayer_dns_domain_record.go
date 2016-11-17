@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
 
@@ -168,7 +167,7 @@ func resourceSoftLayerDnsDomainRecord() *schema.Resource {
 //  Creates DNS Domain Resource Record
 //  https://sldn.softlayer.com/reference/services/SoftLayer_Dns_Domain_ResourceRecord/createObject
 func resourceSoftLayerDnsDomainRecordCreate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetDnsDomainResourceRecordService(sess)
 
 	opts := datatypes.Dns_Domain_ResourceRecord{
@@ -261,7 +260,7 @@ func resourceSoftLayerDnsDomainRecordCreate(d *schema.ResourceData, meta interfa
 //  Reads DNS Domain Resource Record from SL system
 //  https://sldn.softlayer.com/reference/services/SoftLayer_Dns_Domain_ResourceRecord/getObject
 func resourceSoftLayerDnsDomainRecordRead(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetDnsDomainResourceRecordService(sess)
 
 	id, err := strconv.Atoi(d.Id())
@@ -302,7 +301,7 @@ func resourceSoftLayerDnsDomainRecordRead(d *schema.ResourceData, meta interface
 //  Updates DNS Domain Resource Record in SL system
 //  https://sldn.softlayer.com/reference/services/SoftLayer_Dns_Domain_ResourceRecord/editObject
 func resourceSoftLayerDnsDomainRecordUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	recordId, _ := strconv.Atoi(d.Id())
 
 	service := services.GetDnsDomainResourceRecordService(sess)
@@ -395,7 +394,7 @@ func resourceSoftLayerDnsDomainRecordUpdate(d *schema.ResourceData, meta interfa
 //  Deletes DNS Domain Resource Record in SL system
 //  https://sldn.softlayer.com/reference/services/SoftLayer_Dns_Domain_ResourceRecord/deleteObject
 func resourceSoftLayerDnsDomainRecordDelete(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetDnsDomainResourceRecordService(sess)
 
 	id, err := strconv.Atoi(d.Id())
@@ -415,7 +414,7 @@ func resourceSoftLayerDnsDomainRecordDelete(d *schema.ResourceData, meta interfa
 // Exists function is called by refresh
 // if the entity is absent - it is deleted from the .tfstate file
 func resourceSoftLayerDnsDomainRecordExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetDnsDomainResourceRecordService(sess)
 
 	id, err := strconv.Atoi(d.Id())

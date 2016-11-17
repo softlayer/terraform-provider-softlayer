@@ -18,7 +18,6 @@ import (
 	"github.com/softlayer/softlayer-go/helpers/product"
 	"github.com/softlayer/softlayer-go/helpers/virtual"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
 
@@ -370,7 +369,7 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 	if imgId, ok := d.GetOk("image_id"); ok {
 		imageId := imgId.(int)
 		service := services.
-			GetVirtualGuestBlockDeviceTemplateGroupService(meta.(*session.Session))
+			GetVirtualGuestBlockDeviceTemplateGroupService(meta.(ProviderConfig).SoftLayerSession())
 
 		image, err := service.
 			Mask("id,globalIdentifier").Id(imageId).
@@ -462,7 +461,7 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 }
 
 func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{}) error {
-	service := services.GetVirtualGuestService(meta.(*session.Session))
+	service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
 
 	opts, err := getVirtualGuestTemplateFromResourceData(d, meta)
 	if err != nil {
@@ -506,7 +505,7 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 }
 
 func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{}) error {
-	service := services.GetVirtualGuestService(meta.(*session.Session))
+	service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -615,7 +614,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 }
 
 func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(*session.Session)
+	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetVirtualGuestService(sess)
 
 	id, err := strconv.Atoi(d.Id())
@@ -694,7 +693,7 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 }
 
 func resourceSoftLayerVirtualGuestDelete(d *schema.ResourceData, meta interface{}) error {
-	service := services.GetVirtualGuestService(meta.(*session.Session))
+	service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -735,7 +734,7 @@ func WaitForUpgradeTransactionsToAppear(d *schema.ResourceData, meta interface{}
 		Pending: []string{"retry", "pending_upgrade"},
 		Target:  []string{"upgrade_started"},
 		Refresh: func() (interface{}, string, error) {
-			service := services.GetVirtualGuestService(meta.(*session.Session))
+			service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
 			transactions, err := service.Id(id).GetActiveTransactions()
 			if err != nil {
 				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
@@ -780,7 +779,7 @@ func WaitForIPAvailable(d *schema.ResourceData, meta interface{}, private bool) 
 		Target:  []string{"available"},
 		Refresh: func() (interface{}, string, error) {
 			fmt.Println("Refreshing server state...")
-			service := services.GetVirtualGuestService(meta.(*session.Session))
+			service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
 
 			result, err := service.Id(id).GetObject()
 			if err != nil {
@@ -817,7 +816,7 @@ func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (inte
 		Pending: []string{"retry", "active"},
 		Target:  []string{"idle"},
 		Refresh: func() (interface{}, string, error) {
-			service := services.GetVirtualGuestService(meta.(*session.Session))
+			service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
 			transactions, err := service.Id(id).GetActiveTransactions()
 			if err != nil {
 				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
@@ -842,7 +841,7 @@ func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (inte
 }
 
 func resourceSoftLayerVirtualGuestExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	service := services.GetVirtualGuestService(meta.(*session.Session))
+	service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
 	guestId, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
@@ -877,7 +876,7 @@ func getTags(d *schema.ResourceData) string {
 }
 
 func setGuestTags(id int, d *schema.ResourceData, meta interface{}) error {
-	service := services.GetVirtualGuestService(meta.(*session.Session))
+	service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
 
 	tags := getTags(d)
 	if tags != "" {

@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 
 	"github.com/softlayer/softlayer-go/helpers/network"
-	"github.com/softlayer/softlayer-go/session"
 )
 
 func TestAccSoftLayerLbVpxVip_Basic(t *testing.T) {
@@ -46,7 +45,7 @@ func TestAccSoftLayerLbVpxVip_Basic(t *testing.T) {
 }
 
 func testAccCheckSoftLayerLbVpxVipDestroy(s *terraform.State) error {
-	sess := testAccProvider.Meta().(*session.Session)
+	sess := testAccProvider.Meta().(ProviderConfig).SoftLayerSession()
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "softlayer_lb_vpx_vip" {
