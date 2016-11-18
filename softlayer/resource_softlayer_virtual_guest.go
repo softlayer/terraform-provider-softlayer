@@ -496,12 +496,10 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 	}
 
 	privateNetworkOnly := d.Get("private_network_only").(bool)
-	if !privateNetworkOnly {
-		_, err = WaitForPublicIpAvailable(d, meta)
-		if err != nil {
-			return fmt.Errorf(
-				"Error waiting for virtual machine (%s) public ip to become ready: %s", d.Id(), err)
-		}
+	_, err = WaitForIPAvailable(d, meta, privateNetworkOnly)
+	if err != nil {
+		return fmt.Errorf(
+			"Error waiting for virtual machine (%s) ip to become ready: %s", d.Id(), err)
 	}
 
 	return resourceSoftLayerVirtualGuestRead(d, meta)
@@ -763,9 +761,14 @@ func WaitForUpgradeTransactionsToAppear(d *schema.ResourceData, meta interface{}
 	return stateConf.WaitForState()
 }
 
-// WaitForPublicIpAvailable Wait for the public ip to be available
-func WaitForPublicIpAvailable(d *schema.ResourceData, meta interface{}) (interface{}, error) {
-	log.Printf("Waiting for server (%s) to get a public IP", d.Id())
+// WaitForIPAvailable Wait for the public ip to be available
+func WaitForIPAvailable(d *schema.ResourceData, meta interface{}, private bool) (interface{}, error) {
+	field := "PrimaryIpAddress"
+	if private {
+		field = "PrimaryBackendIpAddress"
+	}
+
+	log.Printf("Waiting for server (%s) to get a %s", d.Id(), field)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -788,7 +791,7 @@ func WaitForPublicIpAvailable(d *schema.ResourceData, meta interface{}) (interfa
 				return false, "retry", nil
 			}
 
-			if result.PrimaryIpAddress == nil || *result.PrimaryIpAddress == "" {
+			if sl.Grab(result, field) == "" {
 				return result, "unavailable", nil
 			}
 
