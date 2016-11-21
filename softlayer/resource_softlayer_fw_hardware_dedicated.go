@@ -17,20 +17,21 @@ import (
 	"github.com/softlayer/softlayer-go/sl"
 	"log"
 	"time"
+	"math"
 )
 
 const (
 	FwHardwareDedicatedPackageType = "ADDITIONAL_SERVICES_FIREWALL"
 
-	fwMask = "firewallNetworkComponents,networkVlanFirewall.billingItem.orderItemId,dedicatedFirewallFlag" +
+	vlanMask = "firewallNetworkComponents,networkVlanFirewall.billingItem.orderItemId,dedicatedFirewallFlag" +
 		",firewallGuestNetworkComponents,firewallInterfaces,firewallRules,highAvailabilityFirewallFlag"
+	fwMask = "id,networkVlan.highAvailabilityFirewallFlag"
 )
 
 func resourceSoftLayerFwHardwareDedicated() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceSoftLayerFwHardwareDedicatedCreate,
 		Read:   resourceSoftLayerFwHardwareDedicatedRead,
-		//		Update:   resourceSoftLayerFwHardwareDedicatedUpdate,
 		Delete:   resourceSoftLayerFwHardwareDedicatedDelete,
 		Exists:   resourceSoftLayerFwHardwareDedicatedExists,
 		Importer: &schema.ResourceImporter{},
@@ -113,77 +114,42 @@ func resourceSoftLayerFwHardwareDedicatedCreate(d *schema.ResourceData, meta int
 	d.Set("ha_enabled", *vlan.HighAvailabilityFirewallFlag)
 	d.Set("public_vlan_id", *vlan.Id)
 
-	log.Printf("[INFO] Load Balancer ID: %s", d.Id())
+	log.Printf("[INFO] Firewall ID: %s", d.Id())
 
 	return resourceSoftLayerFwHardwareDedicatedRead(d, meta)
-}
-
-func resourceSoftLayerFwHardwareDedicatedUpdate(d *schema.ResourceData, meta interface{}) error {
-	sess := meta.(ProviderConfig).SoftLayerSession()
-
-	vipID, _ := strconv.Atoi(d.Id())
-
-	certID := d.Get("security_certificate_id").(int)
-
-	err := setLocalLBSecurityCert(sess, vipID, certID)
-
-	if err != nil {
-		return fmt.Errorf("Update load balancer failed: %s", err)
-	}
-
-	return resourceSoftLayerLbLocalRead(d, meta)
 }
 
 func resourceSoftLayerFwHardwareDedicatedRead(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ProviderConfig).SoftLayerSession()
 
-	vipID, _ := strconv.Atoi(d.Id())
+	fwID, _ := strconv.Atoi(d.Id())
 
-	vip, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
-		Id(vipID).
-		Mask(lbMask).
+	fw, err := services.GetNetworkVlanFirewallService(sess).
+		Id(fwID).
+		Mask(fwMask).
 		GetObject()
 
 	if err != nil {
-		return fmt.Errorf("Error retrieving load balancer: %s", err)
+		return fmt.Errorf("Error retrieving firewall information: %s", err)
 	}
 
-	d.Set("connections", getConnectionLimit(*vip.ConnectionLimit))
-	d.Set("datacenter", *vip.LoadBalancerHardware[0].Datacenter.Name)
-	d.Set("ip_address", *vip.IpAddress.IpAddress)
-	d.Set("subnet_id", *vip.IpAddress.SubnetId)
-	d.Set("ha_enabled", *vip.HighAvailabilityFlag)
-	d.Set("dedicated", *vip.DedicatedFlag)
-	d.Set("ssl_enabled", *vip.SslEnabledFlag)
-
-	// Optional fields.  Guard against nil pointer dereferences
-	d.Set("security_certificate_id", sl.Get(vip.SecurityCertificateId, nil))
+	d.Set("public_vlan_id", *fw.NetworkVlan.Id)
+	d.Set("ha_enabled", *fw.NetworkVlan.HighAvailabilityFirewallFlag)
 
 	return nil
 }
 
 func resourceSoftLayerFwHardwareDedicatedDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ProviderConfig).SoftLayerSession()
-	vipService := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess)
+	fwService := services.GetNetworkVlanFirewallService(sess)
 
-	vipID, _ := strconv.Atoi(d.Id())
+	fwID, _ := strconv.Atoi(d.Id())
 
-	var billingItem datatypes.Billing_Item_Network_LoadBalancer
-	var err error
-
-	// Get billing item associated with the load balancer
-	if d.Get("dedicated").(bool) {
-		billingItem, err = vipService.
-			Id(vipID).
-			GetDedicatedBillingItem()
-	} else {
-		billingItem.Billing_Item, err = vipService.
-			Id(vipID).
-			GetBillingItem()
-	}
+	// Get billing item associated with the firewall
+	billingItem, err := fwService.Id(fwID).GetBillingItem()
 
 	if err != nil {
-		return fmt.Errorf("Error while looking up billing item associated with the load balancer: %s", err)
+		return fmt.Errorf("Error while looking up billing item associated with the firewall: %s", err)
 	}
 
 	success, err := services.GetBillingItemService(sess).Id(*billingItem.Id).CancelService()
@@ -201,15 +167,20 @@ func resourceSoftLayerFwHardwareDedicatedDelete(d *schema.ResourceData, meta int
 func resourceSoftLayerFwHardwareDedicatedExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	sess := meta.(ProviderConfig).SoftLayerSession()
 
-	vipID, _ := strconv.Atoi(d.Id())
+	fwID, err := strconv.Atoi(d.Id())
+	if err != nil {
+		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
+	}
 
-	_, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
-		Id(vipID).
-		Mask("id").
+	_, err = services.GetNetworkVlanFirewallService(sess).
+		Id(fwID).
 		GetObject()
 
 	if err != nil {
-		return false, err
+		if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
+			return false, nil
+		}
+		return false, fmt.Errorf("Error retrieving firewall information: %s", err)
 	}
 
 	return true, nil
@@ -226,7 +197,7 @@ func findDedicatedFirewallByOrderId(sess *session.Session, orderId int) (datatyp
 				Filter(filter.Build(
 					filter.Path(filterPath).
 						Eq(strconv.Itoa(orderId)))).
-				Mask(fwMask).
+				Mask(vlanMask).
 				GetNetworkVlans()
 			if err != nil {
 				return datatypes.Network_Vlan{}, "", err
