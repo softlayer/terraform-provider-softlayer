@@ -148,6 +148,10 @@ func resourceSoftLayerFwHardwareDedicatedDelete(d *schema.ResourceData, meta int
 		return fmt.Errorf("Error while looking up billing item associated with the firewall: %s", err)
 	}
 
+	if billingItem.Id == nil {
+		return fmt.Errorf("Error while looking up billing item associated with the firewall: No billing item for ID:%d", fwID)
+	}
+
 	success, err := services.GetBillingItemService(sess).Id(*billingItem.Id).CancelService()
 	if err != nil {
 		return err
