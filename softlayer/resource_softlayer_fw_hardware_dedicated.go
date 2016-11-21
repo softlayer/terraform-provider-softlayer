@@ -2,22 +2,18 @@ package softlayer
 
 import (
 	"fmt"
-	//	"log"
 	"strconv"
 
-	//	"github.com/hashicorp/terraform/helper/resource"
+	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/filter"
-	//	"github.com/softlayer/softlayer-go/helpers/location"
-	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/softlayer/softlayer-go/helpers/product"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 	"log"
 	"time"
-	"math"
 )
 
 const (
@@ -30,8 +26,8 @@ const (
 
 func resourceSoftLayerFwHardwareDedicated() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerFwHardwareDedicatedCreate,
-		Read:   resourceSoftLayerFwHardwareDedicatedRead,
+		Create:   resourceSoftLayerFwHardwareDedicatedCreate,
+		Read:     resourceSoftLayerFwHardwareDedicatedRead,
 		Delete:   resourceSoftLayerFwHardwareDedicatedDelete,
 		Exists:   resourceSoftLayerFwHardwareDedicatedExists,
 		Importer: &schema.ResourceImporter{},
