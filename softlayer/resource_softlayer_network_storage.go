@@ -22,7 +22,7 @@ var (
 		"endurance": 240,
 	}
 	CONTAINERS = map[string]string{
-		"endurance": "Softlayer_Container_Product_Order_Network_EnduranceStorage_Iscsi",
+		"endurance": "Softlayer_Container_Product_Order_Network_Storage_Enterprise",
 	}
 	CATEGORY_CODES = map[string]string{
 		"endurance": "storage_service_enterprise",
@@ -86,12 +86,6 @@ func resourceSoftLayerNetworkStorage() *schema.Resource {
 				Computed: true,
 				ForceNew: true,
 			},
-			"hourly_pricing": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  true,
-				ForceNew: true,
-			},
 		},
 	}
 }
@@ -144,8 +138,27 @@ func resourceSoftLayerNetworkStorageRead(d *schema.ResourceData, meta interface{
 	return nil
 }
 
-func hasCategory(categoryCode string, categories []datatypes.Product_Item_Category) (result bool) {
-	result = false
+func getLocationID(sess *session.Session, location string) (*string, error) {
+	locationServ := services.GetLocationService(sess)
+	datacenters, err := locationServ.Mask("longName,id,name").GetDatacenters()
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, datacenter := range datacenters {
+		if *datacenter.Name == location {
+			id := strconv.Itoa(*datacenter.Id)
+
+			return &id, nil
+		}
+	}
+
+	return nil, fmt.Errorf("No datacenter found with name %s", location)
+}
+
+func hasCategory(categoryCode string, categories []datatypes.Product_Item_Category) bool {
+	result := false
 
 	for _, category := range categories {
 		if *category.CategoryCode == categoryCode {
@@ -176,31 +189,45 @@ func findPrice(items []datatypes.Product_Item, category string) (*datatypes.Prod
 func findIOPSPrice(tier int, items []datatypes.Product_Item) (*datatypes.Product_Item_Price, error) {
 	category := "storage_tier_level"
 	for _, item := range items { //Product_Item
-		for _, attribute := range item.Attributes {
-			value64, err := strconv.ParseInt(*attribute.Value, 10, 0)
+		if item.Attributes != nil {
+			for _, attribute := range item.Attributes {
+				value64, err := strconv.ParseInt(*attribute.Value, 10, 0)
+				if err != nil {
+					return nil, err
+				}
 
-			if err != nil {
-				return nil, err
+				attrJSON, err := json.Marshal(attribute)
+				if err != nil {
+					return nil, err
+				}
+
+				fmt.Printf("%q\n", attrJSON)
+
+				if err != nil {
+					return nil, err
+				}
+
+				if err != nil {
+					return nil, err
+				}
+
+				value := int(value64)
+				if value == tier {
+					for _, price := range item.Prices {
+						if price.LocationGroupId != nil {
+							continue
+						}
+
+						if !hasCategory(category, price.Categories) {
+							continue
+						}
+						return &price, nil
+					}
+					break
+				} else {
+					continue
+				}
 			}
-
-			value := int(value64)
-			if value == tier {
-				break
-			} else {
-				continue
-			}
-
-		}
-
-		for _, price := range item.Prices {
-			if price.LocationGroupId != nil {
-				continue
-			}
-
-			if !hasCategory(category, price.Categories) {
-				continue
-			}
-			return &price, nil
 		}
 	}
 
@@ -256,6 +283,15 @@ func resourceSoftLayerNetworkStorageCreate(schem *schema.ResourceData, meta inte
 	nasType := schem.Get("nas_type").(string)
 	capacity := schem.Get("capacity_gb").(int)
 
+	//Get Location ID
+	loc, err := getLocationID(sess, schem.Get("datacenter").(string))
+
+	if err != nil {
+		return err
+	}
+
+	schem.Set("datacenter", loc)
+
 	//Get the Product_Package for storage in question.
 	pack, err := getPackagePrices(sess, tier)
 
@@ -281,6 +317,8 @@ func resourceSoftLayerNetworkStorageCreate(schem *schema.ResourceData, meta inte
 
 	//IOPS prices.
 	iopsCategory := ENDURANCE_TIERS[schem.Get("iops").(float64)]
+
+	fmt.Printf("%d", iopsCategory)
 	iopsPrice, err := findIOPSPrice(iopsCategory, pack.Items)
 
 	if err != nil {
@@ -310,6 +348,13 @@ func resourceSoftLayerNetworkStorageCreate(schem *schema.ResourceData, meta inte
 
 	//Build Order
 	order, err := buildOrder(prices, schem)
+	orderJSON, err := json.Marshal(order)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%q\n", orderJSON)
 	//TODO: Verify Order
 	orderService := services.GetProductOrderService(sess)
 	verify, err := orderService.VerifyOrder(&order)
@@ -331,21 +376,17 @@ func resourceSoftLayerNetworkStorageCreate(schem *schema.ResourceData, meta inte
 	return nil
 }
 
-func buildOrder(prices []datatypes.Product_Item_Price, schem *schema.ResourceData) (order datatypes.Container_Product_Order_Network_PerformanceStorage_Iscsi, err error) {
-	hourlyPricing := sl.Bool(schem.Get("hourly_pricing").(bool))
+func buildOrder(prices []datatypes.Product_Item_Price, schem *schema.ResourceData) (order datatypes.Container_Product_Order_Network_Storage_Enterprise, err error) {
 	tier := "endurance"
 
 	//This limits one to only ordering Iscsi, need to figure out how to do File type as well.
-	performStorContainer := datatypes.Container_Product_Order_Network_PerformanceStorage_Iscsi{
-		Container_Product_Order_Network_PerformanceStorage: datatypes.Container_Product_Order_Network_PerformanceStorage{
-			Container_Product_Order: datatypes.Container_Product_Order{
-				ComplexType:      sl.String(CONTAINERS[tier]),
-				Location:         sl.String(schem.Get("datacenter").(string)),
-				PackageId:        sl.Int(PACKAGE_IDS[tier]),
-				Prices:           prices,
-				Quantity:         sl.Int(1),
-				UseHourlyPricing: hourlyPricing,
-			},
+	performStorContainer := datatypes.Container_Product_Order_Network_Storage_Enterprise{
+		Container_Product_Order: datatypes.Container_Product_Order{
+			ComplexType: sl.String(CONTAINERS[tier]),
+			Location:    sl.String(schem.Get("datacenter").(string)),
+			PackageId:   sl.Int(PACKAGE_IDS[tier]),
+			Prices:      prices,
+			Quantity:    sl.Int(1),
 		},
 	}
 
