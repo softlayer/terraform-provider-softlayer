@@ -27,7 +27,6 @@ resource "softlayer_user" "joe" {
     ]
     state        = "GA"
     timezone     = "EST"
-    username     = "joedoe"
 }
 ```
 
@@ -96,13 +95,6 @@ The following arguments are supported:
       [SoftLayer_User_Customer_Status](http://sldn.softlayer.com/reference/datatypes/SoftLayer_User_Customer_Status).
     * *Optional*
     * *Default*: "ACTIVE"
-* `username` | *string*
-    * A name that uniquely identifies a user globally across all SoftLayer
-      logins. It is also the login userid. Once a user login is created,
-      it cannot be changed.
-    * **Required**
-
-All fields except `username` are editable.
 
 ## Attributes Reference
 
@@ -113,6 +105,11 @@ The following computed attributes are returned:
     * *Computed*
 * `id` | *string*
     * Unique SoftLayer id for this new user.
+    * *Computed*
+* `username` | *string*
+    * A name that uniquely identifies a user globally across all SoftLayer
+      logins. It is also the login userid. Once a user login is created,
+      it cannot be changed.
     * *Computed*
 
 ## Additional notes
