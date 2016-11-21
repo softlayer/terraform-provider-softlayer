@@ -34,8 +34,7 @@ func resourceSoftLayerUser() *schema.Resource {
 
 			"username": &schema.Schema{
 				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Computed: true,
 			},
 
 			"first_name": &schema.Schema{
@@ -153,7 +152,7 @@ func resourceSoftLayerUserCreate(d *schema.ResourceData, meta interface{}) error
 
 	// Build up our creation options
 	opts := datatypes.User_Customer{
-		Username:     sl.String(d.Get("username").(string)),
+		Username:     sl.String("dummy"), // TODO: Remove if API does not require this.
 		FirstName:    sl.String(d.Get("first_name").(string)),
 		LastName:     sl.String(d.Get("last_name").(string)),
 		Email:        sl.String(d.Get("email").(string)),

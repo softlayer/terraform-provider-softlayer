@@ -7,11 +7,12 @@ import (
 
 	"crypto/sha1"
 	"encoding/hex"
+	"regexp"
+
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
-	"regexp"
 )
 
 func TestAccSoftLayerUser_Basic(t *testing.T) {
@@ -27,13 +28,11 @@ func TestAccSoftLayerUser_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerUserExists("softlayer_user.testuser", &user),
 					resource.TestCheckResourceAttr(
-						"softlayer_user.testuser", "username", testAccRandomUserName),
-					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "first_name", "first_name"),
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "last_name", "last_name"),
 					resource.TestCheckResourceAttr(
-						"softlayer_user.testuser", "email", "first.last@example.com"),
+						"softlayer_user.testuser", "email", testAccRandomUserName+"@example.com"),
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "company_name", "company_name"),
 					resource.TestCheckResourceAttr(
@@ -65,13 +64,11 @@ func TestAccSoftLayerUser_Basic(t *testing.T) {
 				Config: testAccCheckSoftLayerUserConfig_updated,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
-						"softlayer_user.testuser", "username", testAccRandomUserName),
-					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "first_name", "new_first_name"),
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "last_name", "new_last_name"),
 					resource.TestCheckResourceAttr(
-						"softlayer_user.testuser", "email", "new_first.new_last@example.com"),
+						"softlayer_user.testuser", "email", "new"+testAccRandomUserName+"@example.com"),
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "company_name", "new_company_name"),
 					resource.TestCheckResourceAttr(
@@ -157,10 +154,9 @@ func testAccCheckSoftLayerUserExists(n string, user *datatypes.User_Customer) re
 
 var testAccCheckSoftLayerUserConfig_basic = fmt.Sprintf(`
 resource "softlayer_user" "testuser" {
-    username = "%s"
     first_name = "first_name"
     last_name = "last_name"
-    email = "first.last@example.com"
+    email = "%s@example.com"
     company_name = "company_name"
     address1 = "1 Main St."
     address2 = "Suite 345"
@@ -178,10 +174,9 @@ resource "softlayer_user" "testuser" {
 
 var testAccCheckSoftLayerUserConfig_updated = fmt.Sprintf(`
 resource "softlayer_user" "testuser" {
-    username = "%s"
     first_name = "new_first_name"
     last_name = "new_last_name"
-    email = "new_first.new_last@example.com"
+    email = "new%s@example.com"
     company_name = "new_company_name"
     address1 = "1 1st Avenue"
     address2 = "Apartment 2"
