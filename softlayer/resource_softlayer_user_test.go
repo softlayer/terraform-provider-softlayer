@@ -57,6 +57,8 @@ func TestAccSoftLayerUser_Basic(t *testing.T) {
 						"softlayer_user.testuser", "has_api_key", "true"),
 					resource.TestMatchResourceAttr(
 						"softlayer_user.testuser", "api_key", apiKeyRegexp),
+					resource.TestCheckResourceAttrSet(
+						"softlayer_user.testuser", "username"),
 				),
 			},
 
@@ -93,6 +95,8 @@ func TestAccSoftLayerUser_Basic(t *testing.T) {
 						"softlayer_user.testuser", "has_api_key", "false"),
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "api_key", ""),
+					resource.TestCheckResourceAttrSet(
+						"softlayer_user.testuser", "username"),
 				),
 			},
 		},

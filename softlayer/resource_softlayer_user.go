@@ -416,9 +416,16 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 		} else {
 			// If false, then delete the key if there was one.
 			if len(keys) > 0 {
-				_, err = service.RemoveApiAuthenticationKey(keys[0].Id)
+				success, err := service.RemoveApiAuthenticationKey(keys[0].Id)
 				if err != nil {
 					return fmt.Errorf("Error deleting API key while editing softlayer_user resource: %s", err)
+				}
+
+				if !success {
+					return fmt.Errorf(
+						"The API reported removal of the api key was not successful for %s",
+						d.Get("email").(string),
+					)
 				}
 			}
 			d.Set("api_key", nil)
