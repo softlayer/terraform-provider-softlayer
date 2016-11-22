@@ -19,7 +19,7 @@ import (
 const (
 	FwHardwareDedicatedPackageType = "ADDITIONAL_SERVICES_FIREWALL"
 
-	vlanMask = "firewallNetworkComponents,networkVlanFirewall.billingItem.orderItemId,dedicatedFirewallFlag" +
+	vlanMask = "firewallNetworkComponents,networkVlanFirewall.billingItem.orderItem.order.id,dedicatedFirewallFlag" +
 		",firewallGuestNetworkComponents,firewallInterfaces,firewallRules,highAvailabilityFirewallFlag"
 	fwMask = "id,networkVlan.highAvailabilityFirewallFlag"
 )
@@ -105,6 +105,9 @@ func resourceSoftLayerFwHardwareDedicatedCreate(d *schema.ResourceData, meta int
 		return fmt.Errorf("Error during creation of dedicated hardware firewall: %s", err)
 	}
 	vlan, err := findDedicatedFirewallByOrderId(sess, *receipt.OrderId)
+	if err != nil {
+		return fmt.Errorf("Error during creation of dedicated hardware firewall: %s", err)
+	}
 
 	d.SetId(fmt.Sprintf("%d", *vlan.NetworkVlanFirewall.Id))
 	d.Set("ha_enabled", *vlan.HighAvailabilityFirewallFlag)
@@ -187,7 +190,7 @@ func resourceSoftLayerFwHardwareDedicatedExists(d *schema.ResourceData, meta int
 }
 
 func findDedicatedFirewallByOrderId(sess *session.Session, orderId int) (datatypes.Network_Vlan, error) {
-	filterPath := "networkVlans.networkVlanFirewall.billingItem.orderItemId"
+	filterPath := "networkVlans.networkVlanFirewall.billingItem.orderItem.order.id"
 
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"pending"},
@@ -211,9 +214,9 @@ func findDedicatedFirewallByOrderId(sess *session.Session, orderId int) (datatyp
 				return nil, "", fmt.Errorf("Expected one dedicated firewall: %s", err)
 			}
 		},
-		Timeout:    10 * time.Minute,
-		Delay:      5 * time.Second,
-		MinTimeout: 3 * time.Second,
+		Timeout:    45 * time.Minute,
+		Delay:      10 * time.Second,
+		MinTimeout: 10 * time.Second,
 	}
 
 	pendingResult, err := stateConf.WaitForState()
