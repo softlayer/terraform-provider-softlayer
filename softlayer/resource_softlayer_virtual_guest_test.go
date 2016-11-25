@@ -120,6 +120,29 @@ func TestAccSoftLayerVirtualGuest_BlockDeviceTemplateGroup(t *testing.T) {
 	})
 }
 
+func TestAccSoftLayerVirtualGuest_CustomImageMultipleDisks(t *testing.T) {
+	var guest datatypes.Virtual_Guest
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckSoftLayerVirtualGuestDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCheckSoftLayerVirtualGuestConfig_customImageMultipleDisks,
+				Check: resource.ComposeTestCheckFunc(
+					// image_id value is hardcoded. If it's valid then virtual guest will be created well
+					testAccCheckSoftLayerVirtualGuestExists("softlayer_virtual_guest.terraform-acceptance-test-disks", &guest),
+					resource.TestCheckResourceAttr(
+						"softlayer_virtual_guest.terraform-acceptance-test-disks", "disks.0", "25"),
+					resource.TestCheckResourceAttr(
+						"softlayer_virtual_guest.terraform-acceptance-test-disks", "disks.1", "10"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccSoftLayerVirtualGuest_postInstallScriptUri(t *testing.T) {
 	var guest datatypes.Virtual_Guest
 
@@ -341,5 +364,20 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-BDTGroup" {
     memory = 1024
     local_disk = false
     image_id = 1025457
+}
+`
+
+const testAccCheckSoftLayerVirtualGuestConfig_customImageMultipleDisks = `
+resource "softlayer_virtual_guest" "terraform-acceptance-test-disks" {
+    hostname = "terraform-test-blockDeviceTemplateGroup"
+    domain = "bar.example.com"
+    datacenter = "wdc01"
+    network_speed = 10
+    hourly_billing = false
+    cores = 1
+    memory = 1024
+    local_disk = false
+    image_id = 1025457
+    disks = [25, 10]
 }
 `
