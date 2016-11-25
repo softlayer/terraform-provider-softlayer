@@ -3,19 +3,19 @@ package softlayer
 import (
 	"errors"
 	"fmt"
-	"strconv"
-	"testing"
-
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
+	"strconv"
+	"testing"
 )
 
 func TestAccSoftLayerNetworkStorage_Read(t *testing.T) {
 	var netStore datatypes.Network_Storage
+
 	t.Log("Running Resource Test")
 
 	resource.Test(t, resource.TestCase{
@@ -56,19 +56,17 @@ func testCheckSoftlayerNetworkStorageExists(name string, netStore *datatypes.Net
 
 		//Manually check Softlayer for the NetworkStorage
 		service := services.GetNetworkStorageService(testAccProvider.Meta().(*session.Session))
-		bm, err := service.Id(id).GetObject()
+		storage, err := service.Id(id).GetObject()
 
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("The ID is %d", *bm.Id)
-
-		if *bm.Id != id {
+		if *storage.Id != id {
 			return errors.New("NetworkStorage not found")
 		}
 
-		*netStore = bm
+		*netStore = storage
 
 		return nil
 
@@ -77,7 +75,6 @@ func testCheckSoftlayerNetworkStorageExists(name string, netStore *datatypes.Net
 
 func testAccCheckSoftLayerNetworkStorageDestroy(s *terraform.State) error {
 	service := services.GetNetworkStorageService(testAccProvider.Meta().(*session.Session))
-
 	for _, rsrc := range s.RootModule().Resources {
 		if rsrc.Type != "softlayer_network_storage" {
 			continue
@@ -108,5 +105,6 @@ resource "softlayer_network_storage" "test-iscsi" {
 	tier = "endurance"
 	nas_type = "block"
 	notes = "terraform_test"
+	os_type = "LINUX"
 }
 `
