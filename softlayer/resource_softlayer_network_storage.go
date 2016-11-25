@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	//"github.com/hashicorp/terraform/helper/resource"
+	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/filter"
@@ -14,7 +14,7 @@ import (
 	//"log"
 	"strconv"
 	"strings"
-	//"time"
+	"time"
 )
 
 var (
@@ -41,8 +41,8 @@ func resourceSoftLayerNetworkStorage() *schema.Resource {
 		Create: resourceSoftLayerNetworkStorageCreate,
 		Read:   resourceSoftLayerNetworkStorageRead,
 		//		Update: resourceSoftLayerEnduranceStorageUpdate,
-		//		Delete: resourceSoftLayerEnduranceStorageDelete,
-		//		Exists: resourceSoftLayerEnduranceStorageExists,
+		Delete: resourceSoftLayerNetworkStorageDelete,
+		Exists: resourceSoftLayerNetworkStorageExists,
 		//		Importer: &schema.ResourceImporter{},
 		//FORCENEW is here until an Update method is created.
 		Schema: map[string]*schema.Schema{
@@ -81,6 +81,11 @@ func resourceSoftLayerNetworkStorage() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
+			"os_type": {
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
+			},
 			"id": {
 				Type:     schema.TypeInt,
 				Computed: true,
@@ -88,6 +93,43 @@ func resourceSoftLayerNetworkStorage() *schema.Resource {
 			},
 		},
 	}
+}
+
+func waitForDriveProvision(sess *session.Session, order *datatypes.Container_Product_Order_Receipt) (interface{}, error) {
+
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"retry", "pending"},
+		Target:  []string{"provisioned"},
+		Refresh: func() (interface{}, string, error) {
+			service := services.GetAccountService(sess)
+			path := strings.Join([]string{
+				"iscsiNetworkStorage",
+				"billingItem",
+				"orderItem",
+				"order",
+				"id",
+			}, ".")
+
+			stores, err := service.
+				Filter(filter.Path(path).Eq(order.OrderId).Build()).
+				GetIscsiNetworkStorage()
+
+			if err != nil {
+				return false, "retry", err
+			}
+
+			if len(stores) == 0 || stores[0].CreateDate == nil {
+				return nil, "pending", nil
+			} else {
+				return stores[0], "provisioned", nil
+			}
+		},
+		Timeout:    10 * time.Minute,
+		Delay:      30 * time.Second,
+		MinTimeout: 5 * time.Minute,
+	}
+
+	return stateConf.WaitForState()
 }
 
 func resourceSoftLayerNetworkStorageRead(d *schema.ResourceData, meta interface{}) error {
@@ -98,44 +140,38 @@ func resourceSoftLayerNetworkStorageRead(d *schema.ResourceData, meta interface{
 		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
 
-	mask := strings.Join([]string{
-		"allowableHardware",
-		"allowableVirtualGuests",
-		"allowedHardware",
-		"allowedIpAddresses",
-		"allowedReplicationHardware",
-		"allowedReplicationIpAddresses",
-		"allowedReplicationSubnets",
-		"allowedReplicationVirtualGuests",
-		"allowedSubnets",
-		"allowedVirtualGuests",
-		"bytesUsed",
-		"credentials",
-		"dailySchedule",
-		"hardware",
-		"hasEncryptionAtRest",
-		"hourlySchedule",
-		"iops",
-		"lunId",
-		"mountableFlag",
-		"osType",
-		"osTypeId",
-		"virtualGuest",
-		"hourlySchedule",
-		"weeklySchedule",
-	}, ",")
-
-	result, err := service.Id(id).Mask(mask).GetObject()
+	result, err := service.Id(id).GetObject()
 
 	if err != nil {
-		return fmt.Errorf("Error retrieving storage volume: %s", err)
+		return err
 	}
+	resJSON, err := json.Marshal(result)
 
-	d.Set("id", *result.Id)
+	if err != nil {
+		return err
+	}
 	d.Set("capacity_gb", *result.CapacityGb)
 	d.Set("create_date", *result.CreateDate)
 
 	return nil
+}
+
+func findBlockOSId(sess *session.Session, osName string) (*datatypes.Network_Storage_Iscsi_OS_Type, error) {
+	osService := services.GetNetworkStorageIscsiOSTypeService(sess)
+
+	oses, err := osService.GetAllObjects()
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, os := range oses {
+		if *os.KeyName == osName {
+			return &os, nil
+		}
+	}
+
+	return nil, fmt.Errorf("No OS found matching %s.", osName)
 }
 
 func getLocationID(sess *session.Session, location string) (*string, error) {
@@ -195,13 +231,6 @@ func findIOPSPrice(tier int, items []datatypes.Product_Item) (*datatypes.Product
 				if err != nil {
 					return nil, err
 				}
-
-				attrJSON, err := json.Marshal(attribute)
-				if err != nil {
-					return nil, err
-				}
-
-				fmt.Printf("%q\n", attrJSON)
 
 				if err != nil {
 					return nil, err
@@ -318,7 +347,6 @@ func resourceSoftLayerNetworkStorageCreate(schem *schema.ResourceData, meta inte
 	//IOPS prices.
 	iopsCategory := ENDURANCE_TIERS[schem.Get("iops").(float64)]
 
-	fmt.Printf("%d", iopsCategory)
 	iopsPrice, err := findIOPSPrice(iopsCategory, pack.Items)
 
 	if err != nil {
@@ -336,48 +364,48 @@ func resourceSoftLayerNetworkStorageCreate(schem *schema.ResourceData, meta inte
 
 	prices = append(prices, *spacePrice)
 
-	pricesJSON, err := json.Marshal(prices)
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%q\n", pricesJSON)
-
-	//TODO: SNAPSHOT SPACE prices.
+	//SNAPSHOT SPACE prices.
 
 	//Build Order
-	order, err := buildOrder(prices, schem)
-	orderJSON, err := json.Marshal(order)
+	order, err := buildOrder(sess, prices, schem)
 
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("%q\n", orderJSON)
-	//TODO: Verify Order
+	//Verify Order
 	orderService := services.GetProductOrderService(sess)
-	verify, err := orderService.VerifyOrder(&order)
+	_, err = orderService.VerifyOrder(order)
 
 	if err != nil {
 		return err
 	}
 
-	verifyJSON, err := json.Marshal(verify)
+	orderService = services.GetProductOrderService(sess)
+	saveAsQuote := false
+	bill, err := orderService.PlaceOrder(order, &saveAsQuote)
 
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("%q\n", verifyJSON)
+	store, err := waitForDriveProvision(sess, &bill)
 
-	//TODO: SNAPSHOT SCHEDULES
+	id := strconv.Itoa(*store.(datatypes.Network_Storage).
+		Id)
 
-	return nil
+	schem.SetId(id)
+
+	return resourceSoftLayerNetworkStorageRead(schem, sess)
 }
 
-func buildOrder(prices []datatypes.Product_Item_Price, schem *schema.ResourceData) (order datatypes.Container_Product_Order_Network_Storage_Enterprise, err error) {
+func buildOrder(sess *session.Session, prices []datatypes.Product_Item_Price, schem *schema.ResourceData) (order *datatypes.Container_Product_Order_Network_Storage_Enterprise, err error) {
 	tier := "endurance"
+	osName := schem.Get("os_type").(string)
+	os, err := findBlockOSId(sess, osName)
+
+	if err != nil {
+		return nil, err
+	}
 
 	//This limits one to only ordering Iscsi, need to figure out how to do File type as well.
 	performStorContainer := datatypes.Container_Product_Order_Network_Storage_Enterprise{
@@ -388,9 +416,9 @@ func buildOrder(prices []datatypes.Product_Item_Price, schem *schema.ResourceDat
 			Prices:      prices,
 			Quantity:    sl.Int(1),
 		},
+		OsFormatType: os,
 	}
-
-	return performStorContainer, nil
+	return &performStorContainer, nil
 }
 
 /*
@@ -427,4 +455,47 @@ func getPackagePrices(sess *session.Session, storeType string) (pack *datatypes.
 	} else {
 		return nil, errors.New("No Package Prices were returned from SoftLayer.")
 	}
+}
+
+func resourceSoftLayerNetworkStorageExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	service := services.GetNetworkStorageService(meta.(*session.Session))
+
+	id, err := strconv.Atoi(d.Id())
+	if err != nil {
+		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
+	}
+
+	result, err := service.Id(id).GetObject()
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); !ok || apiErr.StatusCode != 404 {
+			return false, fmt.Errorf("Error trying to retrieve Network Storage with ID %d : %s", id, err)
+		}
+	}
+
+	return err == nil && result.Id != nil && *result.Id == id, nil
+}
+
+func resourceSoftLayerNetworkStorageDelete(d *schema.ResourceData, meta interface{}) error {
+	sess := meta.(*session.Session)
+	service := services.GetNetworkStorageService(sess)
+
+	id, err := strconv.Atoi(d.Id())
+	if err != nil {
+		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
+	}
+
+	billingItem, err := service.Id(id).GetBillingItem()
+	if err != nil {
+		return fmt.Errorf("Error getting billing item for bare metal server: %s", err)
+	}
+
+	billingItemService := services.GetBillingItemService(sess)
+	_, err = billingItemService.Id(*billingItem.Id).CancelItem(
+		sl.Bool(true), sl.Bool(true), sl.String("No longer required"), sl.String("Please cancel this server"),
+	)
+	if err != nil {
+		return fmt.Errorf("Error canceling the Network Storage (%d): %s", id, err)
+	}
+
+	return nil
 }
