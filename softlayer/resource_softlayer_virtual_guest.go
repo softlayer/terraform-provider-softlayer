@@ -475,22 +475,7 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 	if opts.BlockDevices != nil && opts.BlockDeviceTemplateGroup != nil {
 		bd := *opts.BlockDeviceTemplateGroup
 		opts.BlockDeviceTemplateGroup = nil
-
-		// Find a temporary OS reference code that will be used to generate a template
-		tgService := services.GetVirtualGuestBlockDeviceTemplateGroupService(meta.(ProviderConfig).SoftLayerSession())
-		descriptions, err := tgService.GetVhdImportSoftwareDescriptions()
-		if err != nil {
-			return fmt.Errorf("Error getting vhdi descriptions: %s", err)
-		}
-		var referenceCode *string
-		for _, d := range descriptions {
-			if *d.Name == "Ubuntu" {
-				referenceCode = d.ReferenceCode
-				break
-			}
-		}
-
-		opts.OperatingSystemReferenceCode = referenceCode
+		opts.OperatingSystemReferenceCode = sl.String("UBUNTU_LATEST")
 		template, err := service.GenerateOrderTemplate(&opts)
 		if err != nil {
 			return fmt.Errorf("Error generating order template: %s", err)
