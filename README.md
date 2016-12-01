@@ -4,11 +4,7 @@
 
 ## Install
 
-```
-$ go get -u github.com/softlayer/terraform-provider-softlayer
-```
-
-Alternatively, you can now also [download binaries](https://github.com/softlayer/terraform-provider-softlayer/releases) of the provider.
+[Download the binary](https://github.com/softlayer/terraform-provider-softlayer/releases) of the provider.
 
 Create or edit this file to specify the location of the terraform softlayer provider binary:
 
@@ -29,14 +25,16 @@ Go to the [documentation directory](docs/).
 
 1. Ensure you have a [_$GOPATH_ environment variable set](https://golang.org/doc/code.html#GOPATH).
 1. Ensure you have _$GOPATH/bin_ in your _$PATH_ (e.g. `export PATH=$GOPATH/bin:PATH`).
-1. Install _terraform-provider-softlayer_ as described above in the **install** section.
-1. Get the main dependencies:
+1. Install _terraform-provider-softlayer_.
 ```
-$ go get github.com/softlayer/softlayer-go/...
+$ go get -u github.com/softlayer/terraform-provider-softlayer
+```
+1. Get the main dependency:
+```
 $ go get github.com/hashicorp/terraform
 ```
 
-The project will exist at _$GOPATH/src/github.com/softlayer/terraform-provider-softlayer_.
+The project will exist at `$GOPATH/src/github.com/softlayer/terraform-provider-softlayer`.
 
 ### Build
 
@@ -48,6 +46,13 @@ make bin
 
 ```
 make
+```
+
+To run the acceptance tests (**warning**: Requires a SoftLayer
+account and resources will be provisioned):
+
+```
+make testacc
 ```
 
 ### Updating dependencies
