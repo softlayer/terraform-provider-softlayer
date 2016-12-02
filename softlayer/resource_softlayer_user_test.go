@@ -159,7 +159,11 @@ func testAccCheckSoftLayerUserExists(n string, user *datatypes.User_Customer) re
 
 // Use session.New() to get a new session because the function should be called before testAccProvider is configured.
 func testGetAccountId() string {
-	service := services.GetAccountService(session.New())
+	sess := session.New()
+	if sess == nil {
+		return ""
+	}
+	service := services.GetAccountService(sess)
 	account, _ := service.Mask("id").GetObject()
 	return strconv.Itoa(*account.Id)
 }
