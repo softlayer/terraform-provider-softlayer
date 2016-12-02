@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
+	"github.com/softlayer/softlayer-go/session"
 )
 
 func TestAccSoftLayerUser_Basic(t *testing.T) {
@@ -32,7 +33,7 @@ func TestAccSoftLayerUser_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "last_name", "last_name"),
 					resource.TestCheckResourceAttr(
-						"softlayer_user.testuser", "email", testAccRandomUserName+"@example.com"),
+						"softlayer_user.testuser", "email", testAccRandomEmail),
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "company_name", "company_name"),
 					resource.TestCheckResourceAttr(
@@ -70,7 +71,7 @@ func TestAccSoftLayerUser_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "last_name", "new_last_name"),
 					resource.TestCheckResourceAttr(
-						"softlayer_user.testuser", "email", "new"+testAccRandomUserName+"@example.com"),
+						"softlayer_user.testuser", "email", "new"+testAccRandomEmail),
 					resource.TestCheckResourceAttr(
 						"softlayer_user.testuser", "company_name", "new_company_name"),
 					resource.TestCheckResourceAttr(
@@ -156,11 +157,18 @@ func testAccCheckSoftLayerUserExists(n string, user *datatypes.User_Customer) re
 	}
 }
 
+// Use session.New() to get a new session because the function should be called before testAccProvider is configured.
+func testGetAccountId() string {
+	service := services.GetAccountService(session.New())
+	account, _ := service.Mask("id").GetObject()
+	return strconv.Itoa(*account.Id)
+}
+
 var testAccCheckSoftLayerUserConfig_basic = fmt.Sprintf(`
 resource "softlayer_user" "testuser" {
     first_name = "first_name"
     last_name = "last_name"
-    email = "%s@example.com"
+    email = "%s"
     company_name = "company_name"
     address1 = "1 Main St."
     address2 = "Suite 345"
@@ -168,19 +176,20 @@ resource "softlayer_user" "testuser" {
     state = "GA"
     country = "US"
     timezone = "EST"
+    username = "%s"
     password = "%s"
     permissions = [
         "SERVER_ADD",
         "ACCESS_ALL_GUEST"
     ]
     has_api_key = true
-}`, testAccRandomUserName, testAccUserPassword)
+}`, testAccRandomEmail, testAccRandomUser, testAccUserPassword)
 
 var testAccCheckSoftLayerUserConfig_updated = fmt.Sprintf(`
 resource "softlayer_user" "testuser" {
     first_name = "new_first_name"
     last_name = "new_last_name"
-    email = "new%s@example.com"
+    email = "new%s"
     company_name = "new_company_name"
     address1 = "1 1st Avenue"
     address2 = "Apartment 2"
@@ -189,6 +198,7 @@ resource "softlayer_user" "testuser" {
     country = "CA"
     timezone = "MST"
     user_status = "INACTIVE"
+    username = "%s"
     password = "%s"
     permissions = [
         "SERVER_ADD",
@@ -196,9 +206,10 @@ resource "softlayer_user" "testuser" {
         "TICKET_EDIT"
     ]
     has_api_key = false
-}`, testAccRandomUserName, testAccUserPassword)
+}`, testAccRandomEmail, testAccRandomUser, testAccUserPassword)
 
-var testAccRandomUserName = resource.UniqueId()
+var testAccRandomEmail = resource.UniqueId() + "@example.com"
+var testAccRandomUser = testGetAccountId() + "_" + testAccRandomEmail
 var testAccUserPassword = "T3stp@ss"
 var apiKeyRegexp, _ = regexp.Compile(`\w+`)
 
