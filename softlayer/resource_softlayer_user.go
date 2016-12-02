@@ -314,7 +314,7 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 		"state",
 		"country",
 		"timezone.shortName",
-		"userStatus.keyMame",
+		"userStatus.keyName",
 		"permissions.keyName",
 		"apiAuthenticationKeys.authenticationKey",
 		"apiAuthenticationKeys.id",
@@ -323,35 +323,47 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 	service = service.Id(sluid)
 	userObj, err := service.Mask(mask).GetObject()
 
+	// Check if editObject should be invoked.
+	invokeEditObject := false
+
 	// Some fields cannot be updated such as username. Computed fields also cannot be updated
 	// by explicitly providing a value. So only update the fields that are editable.
 	// Password changes can also not be fully automated, and are not supported
 	if d.HasChange("first_name") {
 		userObj.FirstName = sl.String(d.Get("first_name").(string))
+		invokeEditObject = true
 	}
 	if d.HasChange("last_name") {
 		userObj.LastName = sl.String(d.Get("last_name").(string))
+		invokeEditObject = true
 	}
 	if d.HasChange("email") {
 		userObj.Email = sl.String(d.Get("email").(string))
+		invokeEditObject = true
 	}
 	if d.HasChange("company_name") {
 		userObj.CompanyName = sl.String(d.Get("company_name").(string))
+		invokeEditObject = true
 	}
 	if d.HasChange("address1") {
 		userObj.Address1 = sl.String(d.Get("address1").(string))
+		invokeEditObject = true
 	}
 	if d.HasChange("address2") {
 		userObj.Address2 = sl.String(d.Get("address2").(string))
+		invokeEditObject = true
 	}
 	if d.HasChange("city") {
 		userObj.City = sl.String(d.Get("city").(string))
+		invokeEditObject = true
 	}
 	if d.HasChange("state") {
 		userObj.State = sl.String(d.Get("state").(string))
+		invokeEditObject = true
 	}
 	if d.HasChange("country") {
 		userObj.Country = sl.String(d.Get("country").(string))
+		invokeEditObject = true
 	}
 	if d.HasChange("timezone") {
 		tzID, err := getTimezoneIDByName(sess, d.Get("timezone").(string))
@@ -359,6 +371,7 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 			return err
 		}
 		userObj.TimezoneId = &tzID
+		invokeEditObject = true
 	}
 	if d.HasChange("user_status") {
 		userStatusID, err := getUserStatusIDByName(sess, d.Get("user_status").(string))
@@ -366,11 +379,14 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 			return err
 		}
 		userObj.UserStatusId = &userStatusID
+		invokeEditObject = true
 	}
 
-	_, err = service.EditObject(&userObj)
-	if err != nil {
-		return fmt.Errorf("Error received while editing softlayer_user: %s", err)
+	if invokeEditObject {
+		_, err = service.EditObject(&userObj)
+		if err != nil {
+			return fmt.Errorf("Error received while editing softlayer_user: %s", err)
+		}
 	}
 
 	if d.HasChange("permissions") {
@@ -428,6 +444,7 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 			}
 		} else {
 			// If false, then delete the key if there was one.
+			log.Printf("*********************** KEYS : %s", *keys[0].AuthenticationKey)
 			if len(keys) > 0 {
 				success, err := service.RemoveApiAuthenticationKey(keys[0].Id)
 				if err != nil {
