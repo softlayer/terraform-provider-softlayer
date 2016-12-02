@@ -428,7 +428,6 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 			}
 		} else {
 			// If false, then delete the key if there was one.
-			log.Printf("*********************** KEYS : %s", *keys[0].AuthenticationKey)
 			if len(keys) > 0 {
 				success, err := service.RemoveApiAuthenticationKey(keys[0].Id)
 				if err != nil {
