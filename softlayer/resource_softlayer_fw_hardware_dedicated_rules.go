@@ -10,6 +10,7 @@ import (
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 	"log"
+	"time"
 )
 
 const (
@@ -33,14 +34,10 @@ func resourceSoftLayerFwHardwareDedicatedRules() *schema.Resource {
 			},
 
 			"rules": {
-				Type:     schema.TypeSet,
+				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"order_value": {
-							Type:     schema.TypeInt,
-							Required: true,
-						},
 						"action": {
 							Type:     schema.TypeString,
 							Required: true,
@@ -63,11 +60,11 @@ func resourceSoftLayerFwHardwareDedicatedRules() *schema.Resource {
 						},
 						"dst_port_range_start": {
 							Type:     schema.TypeInt,
-							Required: true,
+							Optional: true,
 						},
 						"dst_port_range_end": {
 							Type:     schema.TypeInt,
-							Required: true,
+							Optional: true,
 						},
 						"protocol": {
 							Type:     schema.TypeString,
@@ -79,29 +76,29 @@ func resourceSoftLayerFwHardwareDedicatedRules() *schema.Resource {
 						},
 					},
 				},
-				Set: func(v interface{}) int {
-					rule := v.(map[string]interface{})
-					return rule["order_value"].(int)
-				},
 			},
 		},
 	}
 }
 
 func prepareRules(d *schema.ResourceData) []datatypes.Network_Firewall_Update_Request_Rule {
-	ruleList := d.Get("rules").(*schema.Set).List()
+	ruleList := d.Get("rules").([]interface{})
 	rules := make([]datatypes.Network_Firewall_Update_Request_Rule, 0)
-	for _, ruleItem := range ruleList {
+	for i, ruleItem := range ruleList {
 		ruleMap := ruleItem.(map[string]interface{})
 		var rule datatypes.Network_Firewall_Update_Request_Rule
-		rule.OrderValue = sl.Int(ruleMap["order_value"].(int))
+		rule.OrderValue = sl.Int(i + 1)
 		rule.Action = sl.String(ruleMap["action"].(string))
 		rule.SourceIpAddress = sl.String(ruleMap["src_ip_address"].(string))
 		rule.SourceIpCidr = sl.Int(ruleMap["src_ip_cidr"].(int))
 		rule.DestinationIpAddress = sl.String(ruleMap["dst_ip_address"].(string))
 		rule.DestinationIpCidr = sl.Int(ruleMap["dst_ip_cidr"].(int))
-		rule.DestinationPortRangeStart = sl.Int(ruleMap["dst_port_range_start"].(int))
-		rule.DestinationPortRangeEnd = sl.Int(ruleMap["dst_port_range_end"].(int))
+		if ruleMap["dst_port_range_start"] != nil {
+			rule.DestinationPortRangeStart = sl.Int(ruleMap["dst_port_range_start"].(int))
+		}
+		if ruleMap["dst_port_range_end"] != nil {
+			rule.DestinationPortRangeEnd = sl.Int(ruleMap["dst_port_range_end"].(int))
+		}
 		rule.Protocol = sl.String(ruleMap["protocol"].(string))
 		if len(ruleMap["notes"].(string)) > 0 {
 			rule.Notes = sl.String(ruleMap["notes"].(string))
@@ -155,6 +152,8 @@ func resourceSoftLayerFwHardwareDedicatedRulesCreate(d *schema.ResourceData, met
 	d.SetId(strconv.Itoa(fwId))
 
 	log.Printf("[INFO] Firewall rules ID: %s", d.Id())
+	log.Printf("[INFO] Wait one minute for applying the ruls.")
+	time.Sleep(time.Minute)
 
 	return resourceSoftLayerFwHardwareDedicatedRulesRead(d, meta)
 }
@@ -176,14 +175,17 @@ func resourceSoftLayerFwHardwareDedicatedRulesRead(d *schema.ResourceData, meta 
 	rules := make([]map[string]interface{}, 0, len(fw.Rules))
 	for _, rule := range fw.Rules {
 		r := make(map[string]interface{})
-		r["order_value"] = *rule.OrderValue
 		r["action"] = *rule.Action
 		r["src_ip_address"] = *rule.SourceIpAddress
 		r["src_ip_cidr"] = *rule.SourceIpCidr
 		r["dst_ip_address"] = *rule.DestinationIpAddress
 		r["dst_ip_cidr"] = *rule.DestinationIpCidr
-		r["dst_port_range_start"] = *rule.DestinationPortRangeStart
-		r["dst_port_range_end"] = *rule.DestinationPortRangeEnd
+		if rule.DestinationPortRangeStart != nil {
+			r["dst_port_range_start"] = *rule.DestinationPortRangeStart
+		}
+		if rule.DestinationPortRangeEnd != nil {
+			r["dst_port_range_end"] = *rule.DestinationPortRangeEnd
+		}
 		r["protocol"] = *rule.Protocol
 		if len(*rule.Notes) > 0 {
 			r["notes"] = *rule.Notes
@@ -195,6 +197,20 @@ func resourceSoftLayerFwHardwareDedicatedRulesRead(d *schema.ResourceData, meta 
 	d.Set("rules", rules)
 
 	return nil
+}
+
+func appendAnyOpenRule(rules []datatypes.Network_Firewall_Update_Request_Rule, protocol string) []datatypes.Network_Firewall_Update_Request_Rule {
+	ruleAnyOpen := datatypes.Network_Firewall_Update_Request_Rule{
+		OrderValue:                sl.Int(len(rules) + 1),
+		Action:                    sl.String("permit"),
+		SourceIpAddress:           sl.String("any"),
+		DestinationIpAddress:      sl.String("any"),
+		DestinationPortRangeStart: sl.Int(1),
+		DestinationPortRangeEnd:   sl.Int(65535),
+		Protocol:                  sl.String(protocol),
+		Notes:                     sl.String("terraform-default-anyopen-" + protocol),
+	}
+	return append(rules, ruleAnyOpen)
 }
 
 func resourceSoftLayerFwHardwareDedicatedRulesUpdate(d *schema.ResourceData, meta interface{}) error {
@@ -221,34 +237,42 @@ func resourceSoftLayerFwHardwareDedicatedRulesUpdate(d *schema.ResourceData, met
 	if err != nil {
 		return fmt.Errorf("Error during updating of dedicated hardware firewall rules: %s", err)
 	}
+	time.Sleep(time.Minute)
+
 	return resourceSoftLayerFwHardwareDedicatedRulesRead(d, meta)
 }
 
 func resourceSoftLayerFwHardwareDedicatedRulesDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ProviderConfig).SoftLayerSession()
-	fwService := services.GetNetworkVlanFirewallService(sess)
-
-	fwID, _ := strconv.Atoi(d.Id())
-
-	// Get billing item associated with the firewall
-	billingItem, err := fwService.Id(fwID).GetBillingItem()
-
+	fwId, err := strconv.Atoi(d.Id())
 	if err != nil {
-		return fmt.Errorf("Error while looking up billing item associated with the firewall: %s", err)
+		return fmt.Errorf("Not a valid firewall ID, must be an integer: %s", err)
 	}
 
-	if billingItem.Id == nil {
-		return fmt.Errorf("Error while looking up billing item associated with the firewall: No billing item for ID:%d", fwID)
-	}
-
-	success, err := services.GetBillingItemService(sess).Id(*billingItem.Id).CancelService()
+	fwContextACLId, err := getFirewallContextAccessControlListId(fwId, sess)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error during deleting of dedicated hardware firewall rules: %s", err)
 	}
 
-	if !success {
-		return fmt.Errorf("SoftLayer reported an unsuccessful cancellation")
+	ruleTemplate := datatypes.Network_Firewall_Update_Request{
+		FirewallContextAccessControlListId: sl.Int(fwContextACLId),
 	}
+
+	ruleTemplate.Rules = appendAnyOpenRule(ruleTemplate.Rules, "tcp")
+	ruleTemplate.Rules = appendAnyOpenRule(ruleTemplate.Rules, "udp")
+	ruleTemplate.Rules = appendAnyOpenRule(ruleTemplate.Rules, "icmp")
+	ruleTemplate.Rules = appendAnyOpenRule(ruleTemplate.Rules, "gre")
+	ruleTemplate.Rules = appendAnyOpenRule(ruleTemplate.Rules, "pptp")
+	ruleTemplate.Rules = appendAnyOpenRule(ruleTemplate.Rules, "ah")
+	ruleTemplate.Rules = appendAnyOpenRule(ruleTemplate.Rules, "esp")
+
+	log.Println("[INFO] Deleting dedicated hardware firewall rules")
+
+	_, err = services.GetNetworkFirewallUpdateRequestService(sess).CreateObject(&ruleTemplate)
+	if err != nil {
+		return fmt.Errorf("Error during deleting of dedicated hardware firewall rules: %s", err)
+	}
+	time.Sleep(time.Minute)
 
 	return nil
 }
@@ -256,20 +280,22 @@ func resourceSoftLayerFwHardwareDedicatedRulesDelete(d *schema.ResourceData, met
 func resourceSoftLayerFwHardwareDedicatedRulesExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	sess := meta.(ProviderConfig).SoftLayerSession()
 
-	fwID, err := strconv.Atoi(d.Id())
+	fwRulesID, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
 	}
 
-	_, err = services.GetNetworkVlanFirewallService(sess).
-		Id(fwID).
+	fw, err := services.GetNetworkVlanFirewallService(sess).
+		Id(fwRulesID).
+		Mask("rules").
 		GetObject()
 
 	if err != nil {
-		if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
-			return false, nil
-		}
-		return false, fmt.Errorf("Error retrieving firewall information: %s", err)
+		return false, fmt.Errorf("Error retrieving firewall rules: %s", err)
+	}
+
+	if len(fw.Rules) == 0 {
+		return false, nil
 	}
 
 	return true, nil
