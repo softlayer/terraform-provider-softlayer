@@ -482,12 +482,15 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 		}
 
 		// Remove temporary OS from actual order
-		for i, p := range template.Prices {
-			if strings.Contains(*p.Item.Description, "Ubuntu") {
-				template.Prices = append(template.Prices[:i], template.Prices[i+1:]...)
-				break
+		prices := make([]datatypes.Product_Item_Price, len(template.Prices))
+		i := 0
+		for _, p := range template.Prices {
+			if !strings.Contains(*p.Item.Description, "Ubuntu") {
+				prices[i] = p
+				i++
 			}
 		}
+		template.Prices = prices[:i]
 
 		template.ImageTemplateId = sl.Int(d.Get("image_id").(int))
 		template.VirtualGuests[0].BlockDeviceTemplateGroup = &bd
