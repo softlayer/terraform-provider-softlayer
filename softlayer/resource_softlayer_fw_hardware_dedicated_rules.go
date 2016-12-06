@@ -58,6 +58,7 @@ func resourceSoftLayerFwHardwareDedicatedRules() *schema.Resource {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
+						// ICMP, GRE, AH, and ESP don't require port ranges.
 						"dst_port_range_start": {
 							Type:     schema.TypeInt,
 							Optional: true,
@@ -93,12 +94,14 @@ func prepareRules(d *schema.ResourceData) []datatypes.Network_Firewall_Update_Re
 		rule.SourceIpCidr = sl.Int(ruleMap["src_ip_cidr"].(int))
 		rule.DestinationIpAddress = sl.String(ruleMap["dst_ip_address"].(string))
 		rule.DestinationIpCidr = sl.Int(ruleMap["dst_ip_cidr"].(int))
+
 		if ruleMap["dst_port_range_start"] != nil {
 			rule.DestinationPortRangeStart = sl.Int(ruleMap["dst_port_range_start"].(int))
 		}
 		if ruleMap["dst_port_range_end"] != nil {
 			rule.DestinationPortRangeEnd = sl.Int(ruleMap["dst_port_range_end"].(int))
 		}
+
 		rule.Protocol = sl.String(ruleMap["protocol"].(string))
 		if len(ruleMap["notes"].(string)) > 0 {
 			rule.Notes = sl.String(ruleMap["notes"].(string))
@@ -152,7 +155,7 @@ func resourceSoftLayerFwHardwareDedicatedRulesCreate(d *schema.ResourceData, met
 	d.SetId(strconv.Itoa(fwId))
 
 	log.Printf("[INFO] Firewall rules ID: %s", d.Id())
-	log.Printf("[INFO] Wait one minute for applying the ruls.")
+	log.Printf("[INFO] Wait one minute for applying the rules.")
 	time.Sleep(time.Minute)
 
 	return resourceSoftLayerFwHardwareDedicatedRulesRead(d, meta)
