@@ -470,12 +470,50 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 
 	log.Println("[INFO] Creating virtual machine")
 
-	guest, err := service.CreateObject(&opts)
-	if err != nil {
-		return fmt.Errorf("Error creating virtual guest: %s", err)
+	var id int
+
+	if opts.BlockDevices != nil && opts.BlockDeviceTemplateGroup != nil {
+		bd := *opts.BlockDeviceTemplateGroup
+		opts.BlockDeviceTemplateGroup = nil
+		opts.OperatingSystemReferenceCode = sl.String("UBUNTU_LATEST")
+		template, err := service.GenerateOrderTemplate(&opts)
+		if err != nil {
+			return fmt.Errorf("Error generating order template: %s", err)
+		}
+
+		// Remove temporary OS from actual order
+		prices := make([]datatypes.Product_Item_Price, len(template.Prices))
+		i := 0
+		for _, p := range template.Prices {
+			if !strings.Contains(*p.Item.Description, "Ubuntu") {
+				prices[i] = p
+				i++
+			}
+		}
+		template.Prices = prices[:i]
+
+		template.ImageTemplateId = sl.Int(d.Get("image_id").(int))
+		template.VirtualGuests[0].BlockDeviceTemplateGroup = &bd
+		template.VirtualGuests[0].OperatingSystemReferenceCode = nil
+
+		order := &datatypes.Container_Product_Order_Virtual_Guest{
+			Container_Product_Order_Hardware_Server: datatypes.Container_Product_Order_Hardware_Server{Container_Product_Order: template},
+		}
+
+		orderService := services.GetProductOrderService(meta.(ProviderConfig).SoftLayerSession())
+		receipt, err := orderService.PlaceOrder(order, sl.Bool(false))
+		if err != nil {
+			return fmt.Errorf("Error ordering virtual guest: %s", err)
+		}
+		id = *receipt.OrderDetails.VirtualGuests[0].Id
+	} else {
+		guest, err := service.CreateObject(&opts)
+		if err != nil {
+			return fmt.Errorf("Error creating virtual guest: %s", err)
+		}
+		id = *guest.Id
 	}
 
-	id := *guest.Id
 	d.SetId(fmt.Sprintf("%d", id))
 
 	log.Printf("[INFO] Virtual Machine ID: %s", d.Id())
