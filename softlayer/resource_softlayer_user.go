@@ -31,22 +31,19 @@ func resourceSoftLayerUser() *schema.Resource {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
-
 			"username": &schema.Schema{
 				Type:     schema.TypeString,
+				Optional: true,
 				Computed: true,
 			},
-
 			"first_name": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 			},
-
 			"last_name": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 			},
-
 			"email": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
@@ -86,7 +83,7 @@ func resourceSoftLayerUser() *schema.Resource {
 			},
 			"password": &schema.Schema{
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 				StateFunc: func(v interface{}) string {
 					hash := sha1.Sum([]byte(v.(string)))
 					return hex.EncodeToString(hash[:])
@@ -106,6 +103,10 @@ func resourceSoftLayerUser() *schema.Resource {
 			"api_key": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
+			},
+			"ibm_id": &schema.Schema{
+				Type:     schema.TypeString,
 				Computed: true,
 			},
 		},
@@ -152,7 +153,6 @@ func resourceSoftLayerUserCreate(d *schema.ResourceData, meta interface{}) error
 
 	// Build up our creation options
 	opts := datatypes.User_Customer{
-		Username:     sl.String("dummy"), // TODO: Remove if API does not require this.
 		FirstName:    sl.String(d.Get("first_name").(string)),
 		LastName:     sl.String(d.Get("last_name").(string)),
 		Email:        sl.String(d.Get("email").(string)),
@@ -169,9 +169,17 @@ func resourceSoftLayerUserCreate(d *schema.ResourceData, meta interface{}) error
 		opts.Address2 = sl.String(address2.(string))
 	}
 
-	password := d.Get("password").(string)
+	if username, ok := d.GetOk("username"); ok {
+		opts.Username = sl.String(username.(string))
+	}
 
-	res, err := service.CreateObject(&opts, &password, nil)
+	pass := sl.String(d.Get("password").(string))
+	if *pass == "" {
+		pass = nil
+	}
+
+	res, err := service.CreateObject(&opts, pass, nil)
+
 	if err != nil {
 		return fmt.Errorf("Error creating SoftLayer User: %s", err)
 	}
@@ -236,6 +244,7 @@ func resourceSoftLayerUserRead(d *schema.ResourceData, meta interface{}) error {
 		"userStatus.keyName",
 		"permissions.keyName",
 		"apiAuthenticationKeys.authenticationKey",
+		"openIdConnectUserName",
 	}, ";")
 
 	sluserObj, err := service.Id(userID).Mask(mask).GetObject()
@@ -279,6 +288,10 @@ func resourceSoftLayerUserRead(d *schema.ResourceData, meta interface{}) error {
 		d.Set("has_api_key", false)
 	}
 
+	if sluserObj.OpenIdConnectUserName != nil {
+		d.Set("ibm_id", sluserObj.OpenIdConnectUserName)
+	}
+
 	return nil
 }
 
@@ -301,7 +314,7 @@ func resourceSoftLayerUserUpdate(d *schema.ResourceData, meta interface{}) error
 		"state",
 		"country",
 		"timezone.shortName",
-		"userStatus.keyMame",
+		"userStatus.keyName",
 		"permissions.keyName",
 		"apiAuthenticationKeys.authenticationKey",
 		"apiAuthenticationKeys.id",
