@@ -173,12 +173,12 @@ func resourceSoftLayerUserCreate(d *schema.ResourceData, meta interface{}) error
 		opts.Username = sl.String(username.(string))
 	}
 
-	var res datatypes.User_Customer
-	if password, ok := d.GetOk("password"); ok {
-		res, err = service.CreateObject(&opts, sl.String(password.(string)), nil)
-	} else {
-		res, err = service.CreateObject(&opts, nil, nil)
+	pass := sl.String(d.Get("password").(string))
+	if *pass == "" {
+		pass = nil
 	}
+
+	res, err := service.CreateObject(&opts, pass, nil)
 
 	if err != nil {
 		return fmt.Errorf("Error creating SoftLayer User: %s", err)
