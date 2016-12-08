@@ -471,12 +471,14 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 	log.Println("[INFO] Creating virtual machine")
 
 	var id int
+	var template datatypes.Container_Product_Order
 
+	// Build an order template with a custom image.
 	if opts.BlockDevices != nil && opts.BlockDeviceTemplateGroup != nil {
 		bd := *opts.BlockDeviceTemplateGroup
 		opts.BlockDeviceTemplateGroup = nil
 		opts.OperatingSystemReferenceCode = sl.String("UBUNTU_LATEST")
-		template, err := service.GenerateOrderTemplate(&opts)
+		template, err = service.GenerateOrderTemplate(&opts)
 		if err != nil {
 			return fmt.Errorf("Error generating order template: %s", err)
 		}
@@ -495,24 +497,23 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 		template.ImageTemplateId = sl.Int(d.Get("image_id").(int))
 		template.VirtualGuests[0].BlockDeviceTemplateGroup = &bd
 		template.VirtualGuests[0].OperatingSystemReferenceCode = nil
-
-		order := &datatypes.Container_Product_Order_Virtual_Guest{
-			Container_Product_Order_Hardware_Server: datatypes.Container_Product_Order_Hardware_Server{Container_Product_Order: template},
-		}
-
-		orderService := services.GetProductOrderService(meta.(ProviderConfig).SoftLayerSession())
-		receipt, err := orderService.PlaceOrder(order, sl.Bool(false))
-		if err != nil {
-			return fmt.Errorf("Error ordering virtual guest: %s", err)
-		}
-		id = *receipt.OrderDetails.VirtualGuests[0].Id
 	} else {
-		guest, err := service.CreateObject(&opts)
+		// Build an order template with os_reference_code
+		template, err = service.GenerateOrderTemplate(&opts)
 		if err != nil {
-			return fmt.Errorf("Error creating virtual guest: %s", err)
+			return fmt.Errorf("Error generating order template: %s", err)
 		}
-		id = *guest.Id
 	}
+	order := &datatypes.Container_Product_Order_Virtual_Guest{
+		Container_Product_Order_Hardware_Server: datatypes.Container_Product_Order_Hardware_Server{Container_Product_Order: template},
+	}
+
+	orderService := services.GetProductOrderService(meta.(ProviderConfig).SoftLayerSession())
+	receipt, err := orderService.PlaceOrder(order, sl.Bool(false))
+	if err != nil {
+		return fmt.Errorf("Error ordering virtual guest: %s", err)
+	}
+	id = *receipt.OrderDetails.VirtualGuests[0].Id
 
 	d.SetId(fmt.Sprintf("%d", id))
 
