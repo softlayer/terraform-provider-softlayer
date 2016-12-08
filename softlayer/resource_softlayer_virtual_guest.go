@@ -263,10 +263,10 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Computed: true,
 			},
 
+			// SoftLayer doesnot support public_subnet6 configuration in vm creation. So, public_subnet6
+			// is defined as a computed parameter.  
 			"public_subnet6": {
 				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
 				Computed: true,
 			},
 
@@ -417,7 +417,6 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 
 	publicVlanId := d.Get("public_vlan_id").(int)
 	publicSubnet := d.Get("public_subnet").(string)
-	publicSubnet6 := d.Get("public_subnet6").(string)
 	privateVlanId := d.Get("private_vlan_id").(int)
 	privateSubnet := d.Get("private_subnet").(string)
 
@@ -438,18 +437,7 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 		primaryNetworkComponent.NetworkVlan.PrimarySubnetId = &primarySubnetId
 	}
 
-	// Apply frontend subnet6 if provided
-	if publicSubnet6 != "" {
-		primarySubnetId6, err := getSubnetId(publicSubnet6, meta)
-		if err != nil {
-			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
-		}
-		primaryNetworkComponent.NetworkVlan.PrimarySubnetVersion6 = &datatypes.Network_Subnet{
-			Id: &primarySubnetId6,
-		}
-	}
-
-	if publicVlanId > 0 || publicSubnet != "" || publicSubnet6 != "" {
+	if publicVlanId > 0 || publicSubnet != "" {
 		opts.PrimaryNetworkComponent = &primaryNetworkComponent
 	}
 
