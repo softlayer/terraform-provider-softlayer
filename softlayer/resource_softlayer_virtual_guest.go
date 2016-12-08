@@ -417,6 +417,7 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 
 	publicVlanId := d.Get("public_vlan_id").(int)
 	publicSubnet := d.Get("public_subnet").(string)
+	publicSubnet6 := d.Get("public_subnet6").(string)
 	privateVlanId := d.Get("private_vlan_id").(int)
 	privateSubnet := d.Get("private_subnet").(string)
 
@@ -437,7 +438,18 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 		primaryNetworkComponent.NetworkVlan.PrimarySubnetId = &primarySubnetId
 	}
 
-	if publicVlanId > 0 || publicSubnet != "" {
+	// Apply frontend subnet6 if provided
+	if publicSubnet6 != "" {
+		primarySubnetId6, err := getSubnetId(publicSubnet6, meta)
+		if err != nil {
+			return opts, fmt.Errorf("Error creating virtual guest: %s", err)
+		}
+		primaryNetworkComponent.NetworkVlan.PrimarySubnetVersion6 = &datatypes.Network_Subnet{
+			Id: &primarySubnetId6,
+		}
+	}
+
+	if publicVlanId > 0 || publicSubnet != "" || publicSubnet6 != "" {
 		opts.PrimaryNetworkComponent = &primaryNetworkComponent
 	}
 
