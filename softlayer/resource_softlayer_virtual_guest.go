@@ -496,6 +496,9 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 		template.VirtualGuests[0].BlockDeviceTemplateGroup = &bd
 		template.VirtualGuests[0].OperatingSystemReferenceCode = nil
 
+		// GenerateOrderTemplate omits UserData, so we set it manually
+		template.VirtualGuests[0].UserData = opts.UserData
+
 		order := &datatypes.Container_Product_Order_Virtual_Guest{
 			Container_Product_Order_Hardware_Server: datatypes.Container_Product_Order_Hardware_Server{Container_Product_Order: template},
 		}
