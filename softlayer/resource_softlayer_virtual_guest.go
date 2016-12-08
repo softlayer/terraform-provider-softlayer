@@ -246,6 +246,30 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Computed: true,
 			},
 
+			"ipv6_enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				ForceNew: true,
+				Default:  false,
+			},
+
+			"ipv6_address": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+
+			"ip_address_id6": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+
+			"public_subnet6": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
+			},
+
 			"ssh_key_ids": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -508,23 +532,25 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 	}
 
 	// Add an IPv6 price item
-	ipv6Items, err := services.GetProductPackageService(sess).
-		Id(*template.PackageId).
-		Mask("id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode]]").
-		Filter(filter.Build(filter.Path("items.keyName").Eq("1_IPV6_ADDRESS"))).
-		GetItems()
-	if err != nil {
-		return fmt.Errorf("Error generating order template: %s", err)
-	}
-	if len(ipv6Items) == 0 {
-		return fmt.Errorf("No product items matching 1_IPV6_ADDRESS could be found")
-	}
+	if d.Get("ipv6_enabled").(bool) {
+		ipv6Items, err := services.GetProductPackageService(sess).
+			Id(*template.PackageId).
+			Mask("id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode]]").
+			Filter(filter.Build(filter.Path("items.keyName").Eq("1_IPV6_ADDRESS"))).
+			GetItems()
+		if err != nil {
+			return fmt.Errorf("Error generating order template: %s", err)
+		}
+		if len(ipv6Items) == 0 {
+			return fmt.Errorf("No product items matching 1_IPV6_ADDRESS could be found")
+		}
 
-	template.Prices = append(template.Prices,
-		datatypes.Product_Item_Price{
-			Id: ipv6Items[0].Prices[0].Id,
-		},
-	)
+		template.Prices = append(template.Prices,
+			datatypes.Product_Item_Price{
+				Id: ipv6Items[0].Prices[0].Id,
+			},
+		)
+	}
 
 	order := &datatypes.Container_Product_Order_Virtual_Guest{
 		Container_Product_Order_Hardware_Server: datatypes.Container_Product_Order_Hardware_Server{Container_Product_Order: template},
@@ -580,6 +606,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 			"userData[value],tagReferences[id,tag[name]]," +
 			"datacenter[id,name,longName]," +
 			"primaryNetworkComponent[networkVlan[id]," +
+			"primaryVersion6IpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]," +
 			"primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]," +
 			"primaryBackendNetworkComponent[networkVlan[id]," +
 			"primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]",
@@ -640,6 +667,16 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		"private_subnet",
 		fmt.Sprintf("%s/%d", *privateSubnet.NetworkIdentifier, *privateSubnet.Cidr),
 	)
+
+	if result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord != nil {
+		d.Set("ipv6_address", *result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord.IpAddress)
+		d.Set("ip_address_id6", *result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
+		publicSubnet := result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord.Subnet
+		d.Set(
+			"public_subnet6",
+			fmt.Sprintf("%s/%d", *publicSubnet.NetworkIdentifier, *publicSubnet.Cidr),
+		)
+	}
 
 	userData := result.UserData
 	if userData != nil && len(userData) > 0 {
