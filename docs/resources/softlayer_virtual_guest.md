@@ -124,6 +124,10 @@ The following arguments are supported:
 *   `tags` | *array* of strings
     * Set tags on this virtual guest. The characters permitted are A-Z, 0-9, whitespace, _ (underscore), - (hyphen), . (period), and : (colon). All other characters will be stripped away.
     * *Optional*
+*   `ipv6_enabled` | *boolean*
+    * Provides a primary public IPv6 address.
+    * *Optional*
+    * *Default*: false
 
 ## Attributes Reference
 
@@ -131,6 +135,11 @@ The following attributes are exported:
 
 * `id` - id of the virtual guest.
 * `ipv4_address` - Public IPv4 address of the virtual guest.
-* `ip_address_id_private` - Unique ID for the private ID address assigned to the virtual_guest.
+* `ip_address_id_private` - Unique ID for the private IPv4 address assigned to the virtual_guest.
 * `ipv4_address_private` - Private IPv4 address of the virtual guest.
-* `ip_address_id` - Unique ID for the public ID address assigned to the virtual_guest.
+* `ip_address_id` - Unique ID for the public IPv4 address assigned to the virtual_guest.
+* `ipv6_address` - Public IPv6 address of the virtual guest. It is provided when `ipv6_enabled` is `true`.
+* `ip_address_id6` - Unique ID for the public IPv6 address assigned to the virtual_guest. It is provided when `ipv6_enabled` is `true`.
+* `public_subnet6` - Public IPv6 subnet. It is provided when `ipv6_enabled` is `true`.
+
+

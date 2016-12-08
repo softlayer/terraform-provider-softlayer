@@ -264,7 +264,7 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 			},
 
 			// SoftLayer doesnot support public_subnet6 configuration in vm creation. So, public_subnet6
-			// is defined as a computed parameter.  
+			// is defined as a computed parameter.
 			"public_subnet6": {
 				Type:     schema.TypeString,
 				Computed: true,
