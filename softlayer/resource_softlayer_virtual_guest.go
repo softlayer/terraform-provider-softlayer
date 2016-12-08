@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
+	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/helpers/product"
 	"github.com/softlayer/softlayer-go/helpers/virtual"
 	"github.com/softlayer/softlayer-go/services"
@@ -462,6 +463,7 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 
 func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{}) error {
 	service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	opts, err := getVirtualGuestTemplateFromResourceData(d, meta)
 	if err != nil {
@@ -504,11 +506,31 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 			return fmt.Errorf("Error generating order template: %s", err)
 		}
 	}
+
+	// Add an IPv6 price item
+	ipv6Items, err := services.GetProductPackageService(sess).
+		Id(*template.PackageId).
+		Mask("id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode]]").
+		Filter(filter.Build(filter.Path("items.keyName").Eq("1_IPV6_ADDRESS"))).
+		GetItems()
+	if err != nil {
+		return fmt.Errorf("Error generating order template: %s", err)
+	}
+	if len(ipv6Items) == 0 {
+		return fmt.Errorf("No product items matching 1_IPV6_ADDRESS could be found")
+	}
+
+	template.Prices = append(template.Prices,
+		datatypes.Product_Item_Price{
+			Id: ipv6Items[0].Prices[0].Id,
+		},
+	)
+
 	order := &datatypes.Container_Product_Order_Virtual_Guest{
 		Container_Product_Order_Hardware_Server: datatypes.Container_Product_Order_Hardware_Server{Container_Product_Order: template},
 	}
 
-	orderService := services.GetProductOrderService(meta.(ProviderConfig).SoftLayerSession())
+	orderService := services.GetProductOrderService(sess)
 	receipt, err := orderService.PlaceOrder(order, sl.Bool(false))
 	if err != nil {
 		return fmt.Errorf("Error ordering virtual guest: %s", err)
