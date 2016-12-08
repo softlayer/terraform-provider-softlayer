@@ -672,6 +672,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	)
 
 	if result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord != nil {
+		d.Set("ipv6_enabled", true)
 		d.Set("ipv6_address", *result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord.IpAddress)
 		d.Set("ip_address_id6", *result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
 		publicSubnet := result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord.Subnet
@@ -679,6 +680,8 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 			"public_subnet6",
 			fmt.Sprintf("%s/%d", *publicSubnet.NetworkIdentifier, *publicSubnet.Cidr),
 		)
+	} else {
+		d.Set("ipv6_enabled", false)
 	}
 
 	userData := result.UserData
@@ -686,7 +689,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		data, err := base64.StdEncoding.DecodeString(*userData[0].Value)
 		if err != nil {
 			log.Printf("Can't base64 decode user data %s. error: %s", *userData[0].Value, err)
-			d.Set("user_metadata", userData)
+			d.Set("user_metadata", *userData[0].Value)
 		} else {
 			d.Set("user_metadata", string(data))
 		}
