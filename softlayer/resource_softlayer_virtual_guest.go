@@ -564,6 +564,9 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 		)
 	}
 
+	// GenerateOrderTemplate omits UserData, subnet, and maxSpeed, so configure virtual_guest.
+	template.VirtualGuests[0] = opts
+
 	order := &datatypes.Container_Product_Order_Virtual_Guest{
 		Container_Product_Order_Hardware_Server: datatypes.Container_Product_Order_Hardware_Server{Container_Product_Order: template},
 	}
