@@ -6,14 +6,15 @@ firewall. One `softlayer_fw_hardware_dedicated_rules` can have multiple
 rules. For additional details please refer to
 [Configure a Hardware Firewall (Dedicated)](https://knowledgelayer.softlayer.com/procedure/configure-hardware-firewall-dedicated).
 
-_Please Note_: Target VLAN should have at least one subnet for rule configuration.
-
-_Please Note_: To express _ANY IP addresses_ in external side, configure `src_ip_address` as `0.0.0.0` and `src_ip_cidr` as `0`.
-
-_Please Note_: To express _API IP addresses_ in internal side, configure `dst_ip_address` as `any` and `src_ip_cidr` as `32`.
-
-_Please Note_: Firewall rule removal is not allowed in SoftLayer. If terraform destroys `softlayer_fw_hardware_dedicated_rules` resources, 
-_permit from any to any with TCP, UDP, ICMP, GRE, PPTP, ESP, and HA_ rules will be configured. 
+_Please Note_: Target VLAN should have at least one subnet for rule 
+configuration. To express _ANY IP addresses_ in external side, configure 
+`src_ip_address` as `0.0.0.0` and `src_ip_cidr` as `0`. To express _API 
+IP addresses_ in internal side, configure `dst_ip_address` as `any` and 
+`src_ip_cidr` as `32`. Once `softlayer_fw_hardware_dedicated_rules` resource 
+is created, it cannot be deleted. SoftLayer doesnot allow entire rule deleting. 
+Firewalls should have at least one rule. If terraform destroys 
+`softlayer_fw_hardware_dedicated_rules` resources, _permit from any to any
+ with TCP, UDP, ICMP, GRE, PPTP, ESP, and HA_ rules will be configured. 
 
 ```hcl
 resource "softlayer_fw_hardware_dedicated" "demofw" {
