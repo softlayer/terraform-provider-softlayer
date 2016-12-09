@@ -54,11 +54,9 @@ func resourceSoftLayerFwHardwareDedicatedCreate(d *schema.ResourceData, meta int
 	haEnabled := d.Get("ha_enabled").(bool)
 	publicVlanId := d.Get("public_vlan_id").(int)
 
-	var keyName string
+	keyName := "HARDWARE_FIREWALL_DEDICATED"
 	if haEnabled {
 		keyName = "HARDWARE_FIREWALL_HIGH_AVAILABILITY"
-	} else {
-		keyName = "HARDWARE_FIREWALL_DEDICATED"
 	}
 
 	pkg, err := product.GetPackageByType(sess, FwHardwareDedicatedPackageType)
