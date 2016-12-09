@@ -532,7 +532,13 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 	}
 
 	// Add an IPv6 price item
+	privateNetworkOnly := d.Get("private_network_only").(bool)
+
 	if d.Get("ipv6_enabled").(bool) {
+		if privateNetworkOnly {
+			return fmt.Errorf("Unable to configure a public IPv6 address with a private_network_only option.")
+		}
+
 		ipv6Items, err := services.GetProductPackageService(sess).
 			Id(*template.PackageId).
 			Mask("id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode]]").
@@ -584,7 +590,6 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 			"Error waiting for virtual machine (%s) to become ready: %s", d.Id(), err)
 	}
 
-	privateNetworkOnly := d.Get("private_network_only").(bool)
 	_, err = WaitForIPAvailable(d, meta, privateNetworkOnly)
 	if err != nil {
 		return fmt.Errorf(
