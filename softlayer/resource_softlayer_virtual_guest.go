@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
+	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/helpers/product"
 	"github.com/softlayer/softlayer-go/helpers/virtual"
 	"github.com/softlayer/softlayer-go/services"
@@ -245,6 +246,30 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Computed: true,
 			},
 
+			"ipv6_enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				ForceNew: true,
+				Default:  false,
+			},
+
+			"ipv6_address": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+
+			"ipv6_address_id": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+
+			// SoftLayer does not support public_ipv6_subnet configuration in vm creation. So, public_ipv6_subnet
+			// is defined as a computed parameter.
+			"public_ipv6_subnet": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+
 			"ssh_key_ids": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -462,6 +487,7 @@ func getVirtualGuestTemplateFromResourceData(d *schema.ResourceData, meta interf
 
 func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{}) error {
 	service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	opts, err := getVirtualGuestTemplateFromResourceData(d, meta)
 	if err != nil {
@@ -471,12 +497,14 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 	log.Println("[INFO] Creating virtual machine")
 
 	var id int
+	var template datatypes.Container_Product_Order
 
+	// Build an order template with a custom image.
 	if opts.BlockDevices != nil && opts.BlockDeviceTemplateGroup != nil {
 		bd := *opts.BlockDeviceTemplateGroup
 		opts.BlockDeviceTemplateGroup = nil
 		opts.OperatingSystemReferenceCode = sl.String("UBUNTU_LATEST")
-		template, err := service.GenerateOrderTemplate(&opts)
+		template, err = service.GenerateOrderTemplate(&opts)
 		if err != nil {
 			return fmt.Errorf("Error generating order template: %s", err)
 		}
@@ -495,27 +523,54 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 		template.ImageTemplateId = sl.Int(d.Get("image_id").(int))
 		template.VirtualGuests[0].BlockDeviceTemplateGroup = &bd
 		template.VirtualGuests[0].OperatingSystemReferenceCode = nil
-
-		// GenerateOrderTemplate omits UserData, so we set it manually
-		template.VirtualGuests[0].UserData = opts.UserData
-
-		order := &datatypes.Container_Product_Order_Virtual_Guest{
-			Container_Product_Order_Hardware_Server: datatypes.Container_Product_Order_Hardware_Server{Container_Product_Order: template},
-		}
-
-		orderService := services.GetProductOrderService(meta.(ProviderConfig).SoftLayerSession())
-		receipt, err := orderService.PlaceOrder(order, sl.Bool(false))
-		if err != nil {
-			return fmt.Errorf("Error ordering virtual guest: %s", err)
-		}
-		id = *receipt.OrderDetails.VirtualGuests[0].Id
 	} else {
-		guest, err := service.CreateObject(&opts)
+		// Build an order template with os_reference_code
+		template, err = service.GenerateOrderTemplate(&opts)
 		if err != nil {
-			return fmt.Errorf("Error creating virtual guest: %s", err)
+			return fmt.Errorf("Error generating order template: %s", err)
 		}
-		id = *guest.Id
 	}
+
+	// Add an IPv6 price item
+	privateNetworkOnly := d.Get("private_network_only").(bool)
+
+	if d.Get("ipv6_enabled").(bool) {
+		if privateNetworkOnly {
+			return fmt.Errorf("Unable to configure a public IPv6 address with a private_network_only option.")
+		}
+
+		ipv6Items, err := services.GetProductPackageService(sess).
+			Id(*template.PackageId).
+			Mask("id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode]]").
+			Filter(filter.Build(filter.Path("items.keyName").Eq("1_IPV6_ADDRESS"))).
+			GetItems()
+		if err != nil {
+			return fmt.Errorf("Error generating order template: %s", err)
+		}
+		if len(ipv6Items) == 0 {
+			return fmt.Errorf("No product items matching 1_IPV6_ADDRESS could be found")
+		}
+
+		template.Prices = append(template.Prices,
+			datatypes.Product_Item_Price{
+				Id: ipv6Items[0].Prices[0].Id,
+			},
+		)
+	}
+
+	// GenerateOrderTemplate omits UserData, subnet, and maxSpeed, so configure virtual_guest.
+	template.VirtualGuests[0] = opts
+
+	order := &datatypes.Container_Product_Order_Virtual_Guest{
+		Container_Product_Order_Hardware_Server: datatypes.Container_Product_Order_Hardware_Server{Container_Product_Order: template},
+	}
+
+	orderService := services.GetProductOrderService(sess)
+	receipt, err := orderService.PlaceOrder(order, sl.Bool(false))
+	if err != nil {
+		return fmt.Errorf("Error ordering virtual guest: %s", err)
+	}
+	id = *receipt.OrderDetails.VirtualGuests[0].Id
 
 	d.SetId(fmt.Sprintf("%d", id))
 
@@ -535,7 +590,6 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 			"Error waiting for virtual machine (%s) to become ready: %s", d.Id(), err)
 	}
 
-	privateNetworkOnly := d.Get("private_network_only").(bool)
 	_, err = WaitForIPAvailable(d, meta, privateNetworkOnly)
 	if err != nil {
 		return fmt.Errorf(
@@ -560,6 +614,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 			"userData[value],tagReferences[id,tag[name]]," +
 			"datacenter[id,name,longName]," +
 			"primaryNetworkComponent[networkVlan[id]," +
+			"primaryVersion6IpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]," +
 			"primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]," +
 			"primaryBackendNetworkComponent[networkVlan[id]," +
 			"primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]",
@@ -621,12 +676,24 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		fmt.Sprintf("%s/%d", *privateSubnet.NetworkIdentifier, *privateSubnet.Cidr),
 	)
 
+	d.Set("ipv6_enabled", false)
+	if result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord != nil {
+		d.Set("ipv6_enabled", true)
+		d.Set("ipv6_address", *result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord.IpAddress)
+		d.Set("ipv6_address_id", *result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
+		publicSubnet := result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord.Subnet
+		d.Set(
+			"public_ipv6_subnet",
+			fmt.Sprintf("%s/%d", *publicSubnet.NetworkIdentifier, *publicSubnet.Cidr),
+		)
+	}
+
 	userData := result.UserData
 	if userData != nil && len(userData) > 0 {
 		data, err := base64.StdEncoding.DecodeString(*userData[0].Value)
 		if err != nil {
 			log.Printf("Can't base64 decode user data %s. error: %s", *userData[0].Value, err)
-			d.Set("user_metadata", userData)
+			d.Set("user_metadata", *userData[0].Value)
 		} else {
 			d.Set("user_metadata", string(data))
 		}

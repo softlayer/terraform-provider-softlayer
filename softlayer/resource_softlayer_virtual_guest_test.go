@@ -31,7 +31,7 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "domain", "bar.example.com"),
 					resource.TestCheckResourceAttr(
-						"softlayer_virtual_guest.terraform-acceptance-test-1", "datacenter", "wdc01"),
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "datacenter", "wdc04"),
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "network_speed", "10"),
 					resource.TestCheckResourceAttr(
@@ -58,6 +58,14 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 						"softlayer_virtual_guest.terraform-acceptance-test-1",
 						"tags", []string{"collectd"},
 					),
+					resource.TestCheckResourceAttrSet(
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "ipv6_enabled"),
+					resource.TestCheckResourceAttrSet(
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "ipv6_address"),
+					resource.TestCheckResourceAttrSet(
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "ipv6_address_id"),
+					resource.TestCheckResourceAttrSet(
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "public_ipv6_subnet"),
 				),
 			},
 
@@ -266,7 +274,7 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     hostname = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "wdc01"
+    datacenter = "wdc04"
     network_speed = 10
     hourly_billing = true
 	private_network_only = false
@@ -277,6 +285,7 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     tags = ["collectd"]
     dedicated_acct_host_only = true
     local_disk = false
+    ipv6_enabled = true
 }
 `
 
@@ -285,7 +294,7 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     hostname = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "wdc01"
+    datacenter = "wdc04"
     network_speed = 10
     hourly_billing = true
     cores = 1
@@ -295,6 +304,7 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     tags = ["mesos-master"]
     dedicated_acct_host_only = true
     local_disk = false
+    ipv6_enabled = true
 }
 `
 
@@ -303,7 +313,7 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     hostname = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "wdc01"
+    datacenter = "wdc04"
     network_speed = 100
     hourly_billing = true
     cores = 1
@@ -313,6 +323,7 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     tags = ["mesos-master"]
     dedicated_acct_host_only = true
     local_disk = false
+    ipv6_enabled = true
 }
 `
 
@@ -321,7 +332,7 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     hostname = "terraform-test"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "wdc01"
+    datacenter = "wdc04"
     network_speed = 100
     hourly_billing = true
     cores = 2
@@ -339,7 +350,7 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-pISU" {
     hostname = "terraform-test-pISU"
     domain = "bar.example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "wdc01"
+    datacenter = "wdc04"
     network_speed = 10
     hourly_billing = true
 	private_network_only = false
@@ -357,7 +368,7 @@ const testAccCheckSoftLayerVirtualGuestConfig_blockDeviceTemplateGroup = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-BDTGroup" {
     hostname = "terraform-test-blockDeviceTemplateGroup"
     domain = "bar.example.com"
-    datacenter = "wdc01"
+    datacenter = "wdc04"
     network_speed = 10
     hourly_billing = false
     cores = 1
@@ -371,7 +382,7 @@ const testAccCheckSoftLayerVirtualGuestConfig_customImageMultipleDisks = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-disks" {
     hostname = "terraform-test-blockDeviceTemplateGroup"
     domain = "bar.example.com"
-    datacenter = "wdc01"
+    datacenter = "wdc04"
     network_speed = 10
     hourly_billing = false
     cores = 1
