@@ -63,9 +63,9 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "ipv6_address"),
 					resource.TestCheckResourceAttrSet(
-						"softlayer_virtual_guest.terraform-acceptance-test-1", "ip_address_id6"),
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "ipv6_address_id"),
 					resource.TestCheckResourceAttrSet(
-						"softlayer_virtual_guest.terraform-acceptance-test-1", "public_subnet6"),
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "public_ipv6_subnet"),
 				),
 			},
 

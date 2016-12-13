@@ -258,14 +258,14 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Computed: true,
 			},
 
-			"ip_address_id6": {
+			"ipv6_address_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
 
-			// SoftLayer does not support public_subnet6 configuration in vm creation. So, public_subnet6
+			// SoftLayer does not support public_ipv6_subnet configuration in vm creation. So, public_ipv6_subnet
 			// is defined as a computed parameter.
-			"public_subnet6": {
+			"public_ipv6_subnet": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -680,10 +680,10 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	if result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord != nil {
 		d.Set("ipv6_enabled", true)
 		d.Set("ipv6_address", *result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord.IpAddress)
-		d.Set("ip_address_id6", *result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
+		d.Set("ipv6_address_id", *result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord.GuestNetworkComponentBinding.IpAddressId)
 		publicSubnet := result.PrimaryNetworkComponent.PrimaryVersion6IpAddressRecord.Subnet
 		d.Set(
-			"public_subnet6",
+			"public_ipv6_subnet",
 			fmt.Sprintf("%s/%d", *publicSubnet.NetworkIdentifier, *publicSubnet.Cidr),
 		)
 	}

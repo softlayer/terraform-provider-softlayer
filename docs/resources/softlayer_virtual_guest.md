@@ -139,7 +139,7 @@ The following attributes are exported:
 * `ipv4_address_private` - Private IPv4 address of the virtual guest.
 * `ip_address_id` - Unique ID for the public IPv4 address assigned to the virtual_guest.
 * `ipv6_address` - Public IPv6 address of the virtual guest. It is provided when `ipv6_enabled` is `true`.
-* `ip_address_id6` - Unique ID for the public IPv6 address assigned to the virtual_guest. It is provided when `ipv6_enabled` is `true`.
-* `public_subnet6` - Public IPv6 subnet. It is provided when `ipv6_enabled` is `true`.
+* `ipv6_address_id` - Unique ID for the public IPv6 address assigned to the virtual_guest. It is provided when `ipv6_enabled` is `true`.
+* `public_ipv6_subnet` - Public IPv6 subnet. It is provided when `ipv6_enabled` is `true`.
 
 
