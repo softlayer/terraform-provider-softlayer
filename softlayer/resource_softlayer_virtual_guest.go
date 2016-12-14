@@ -270,6 +270,19 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Computed: true,
 			},
 
+			"secondary_ip_count": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				ForceNew: true,
+				Default:  0,
+			},
+
+			"secondary_ip_addresses": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+
 			"ssh_key_ids": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -554,6 +567,31 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 		template.Prices = append(template.Prices,
 			datatypes.Product_Item_Price{
 				Id: ipv6Items[0].Prices[0].Id,
+			},
+		)
+	}
+
+	// Configure secondary IPs
+	secondaryIpCount := d.Get("secondary_ip_count").(int)
+	if secondaryIpCount > 0 {
+		if privateNetworkOnly {
+			return fmt.Errorf("Unable to configure public secondary addresses with a private_network_only option.")
+		}
+		staticIpItems, err := services.GetProductPackageService(sess).
+			Id(*template.PackageId).
+			Mask("id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode]]").
+			Filter(filter.Build(filter.Path("items.keyName").Eq(strconv.Itoa(secondaryIpCount) + "_PUBLIC_IP_ADDRESSES"))).
+			GetItems()
+		if err != nil {
+			return fmt.Errorf("Error generating order template: %s", err)
+		}
+		if len(staticIpItems) == 0 {
+			return fmt.Errorf("No product items matching %d_PUBLIC_IP_ADDRESSES could be found", secondaryIpCount)
+		}
+
+		template.Prices = append(template.Prices,
+			datatypes.Product_Item_Price{
+				Id: staticIpItems[0].Prices[0].Id,
 			},
 		)
 	}
