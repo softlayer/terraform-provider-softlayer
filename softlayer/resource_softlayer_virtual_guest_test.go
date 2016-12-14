@@ -66,6 +66,10 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "ipv6_address_id"),
 					resource.TestCheckResourceAttrSet(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "public_ipv6_subnet"),
+					resource.TestCheckResourceAttr(
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "secondary_ip_count", "4"),
+					resource.TestCheckResourceAttrSet(
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "secondary_ip_addresses.3"),
 				),
 			},
 
@@ -286,6 +290,7 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     dedicated_acct_host_only = true
     local_disk = false
     ipv6_enabled = true
+    secondary_ip_count = 4
 }
 `
 
@@ -305,6 +310,7 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     dedicated_acct_host_only = true
     local_disk = false
     ipv6_enabled = true
+    secondary_ip_count = 4
 }
 `
 
@@ -324,6 +330,7 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     dedicated_acct_host_only = true
     local_disk = false
     ipv6_enabled = true
+    secondary_ip_count = 4
 }
 `
 
