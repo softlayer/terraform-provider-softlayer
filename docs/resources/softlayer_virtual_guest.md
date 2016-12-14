@@ -128,6 +128,10 @@ The following arguments are supported:
     * Provides a primary public IPv6 address.
     * *Optional*
     * *Default*: false
+*   `secondary_ip_count` | *int*
+    * Provides secondary public IPv4 addresses.
+    * *Optional*
+    * *Default*: 0
 
 ## Attributes Reference
 
@@ -141,5 +145,6 @@ The following attributes are exported:
 * `ipv6_address` - Public IPv6 address of the virtual guest. It is provided when `ipv6_enabled` is `true`.
 * `ipv6_address_id` - Unique ID for the public IPv6 address assigned to the virtual_guest. It is provided when `ipv6_enabled` is `true`.
 * `public_ipv6_subnet` - Public IPv6 subnet. It is provided when `ipv6_enabled` is `true`.
+* `secondary_ip_addresses` - Public secondary IPv4 addresses of the virtual guest.
 
 
