@@ -756,6 +756,28 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	}
 	d.SetConnInfo(connInfo)
 
+	// Read secondary IP addresses
+
+	if result.PrimaryIpAddress != nil {
+		secondarySubnetResult, err := services.GetAccountService(meta.(ProviderConfig).SoftLayerSession()).
+			Mask("ipAddresses[id,ipAddress]").
+			Filter(filter.Build(filter.Path("publicSubnets.endPointIpAddress.ipAddress").Eq(*result.PrimaryIpAddress))).
+			GetPublicSubnets()
+		if err != nil {
+			log.Printf("Error getting secondary Ip addresses: %s", err)
+		}
+
+		secondaryIps := make([]string, 0)
+		for _, subnet := range secondarySubnetResult {
+			for _, ipAddressObj := range subnet.IpAddresses {
+				secondaryIps = append(secondaryIps, *ipAddressObj.IpAddress)
+			}
+		}
+		if len(secondaryIps) > 0 {
+			d.Set("secondary_ip_addresses", secondaryIps)
+		}
+	}
+
 	return nil
 }
 
