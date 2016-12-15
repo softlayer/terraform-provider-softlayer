@@ -129,7 +129,7 @@ The following arguments are supported:
     * *Optional*
     * *Default*: false
 *   `secondary_ip_count` | *int*
-    * Provides secondary public IPv4 addresses.
+    * Provides secondary public IPv4 addresses. Acceptable values are 4 and 8. 
     * *Optional*
     * *Default*: 0
 

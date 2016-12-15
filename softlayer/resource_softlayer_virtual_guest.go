@@ -634,6 +634,15 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 			"Error waiting for virtual machine (%s) ip to become ready: %s", d.Id(), err)
 	}
 
+	// wait for secondary IP availability
+	if secondaryIpCount > 0 {
+		_, err = WaitForSecondaryIPAvailable(d, meta)
+		if err != nil {
+			return fmt.Errorf(
+				"Error waiting for virtual machine (%s) ip to become ready: %s", d.Id(), err)
+		}
+	}
+
 	return resourceSoftLayerVirtualGuestRead(d, meta)
 }
 
@@ -757,7 +766,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	d.SetConnInfo(connInfo)
 
 	// Read secondary IP addresses
-
+	d.Set("secondary_ip_addresses", nil)
 	if result.PrimaryIpAddress != nil {
 		secondarySubnetResult, err := services.GetAccountService(meta.(ProviderConfig).SoftLayerSession()).
 			Mask("ipAddresses[id,ipAddress]").
@@ -775,6 +784,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		}
 		if len(secondaryIps) > 0 {
 			d.Set("secondary_ip_addresses", secondaryIps)
+			d.Set("secondary_ip_count", len(secondaryIps))
 		}
 	}
 
@@ -969,6 +979,34 @@ func WaitForIPAvailable(d *schema.ResourceData, meta interface{}, private bool) 
 		MinTimeout: 10 * time.Second,
 	}
 
+	return stateConf.WaitForState()
+}
+
+// WaitForSecondaryIpAvailable Wait for the secondary ips to be available
+func WaitForSecondaryIPAvailable(d *schema.ResourceData, meta interface{}) (interface{}, error) {
+	log.Printf("Waiting for server (%s) to get secondary IPs", d.Id())
+
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"unavailable"},
+		Target:  []string{"available"},
+		Refresh: func() (interface{}, string, error) {
+			fmt.Println("Refreshing secondary IPs state...")
+			secondarySubnetResult, err := services.GetAccountService(meta.(ProviderConfig).SoftLayerSession()).
+				Mask("ipAddresses[id,ipAddress]").
+				Filter(filter.Build(filter.Path("publicSubnets.endPointIpAddress.virtualGuest.id").Eq(d.Id()))).
+				GetPublicSubnets()
+			if err != nil {
+				return nil, "", err
+			}
+			if len(secondarySubnetResult) == 0 {
+				return secondarySubnetResult, "unavailable", nil
+			}
+			return secondarySubnetResult, "available", nil
+		},
+		Timeout:    45 * time.Minute,
+		Delay:      10 * time.Second,
+		MinTimeout: 10 * time.Second,
+	}
 	return stateConf.WaitForState()
 }
 
