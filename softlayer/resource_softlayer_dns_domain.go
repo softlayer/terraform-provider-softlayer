@@ -44,7 +44,7 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 
 			"target": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 		},
 	}
@@ -59,14 +59,17 @@ func resourceSoftLayerDnsDomainCreate(d *schema.ResourceData, meta interface{}) 
 		Name: sl.String(d.Get("name").(string)),
 	}
 
-	// Create dns domain zone with default A record based on the target value
-	opts.ResourceRecords = []datatypes.Dns_Domain_ResourceRecord{
-		{
-			Data: sl.String(d.Get("target").(string)),
-			Host: sl.String("@"),
-			Ttl:  sl.Int(86400),
-			Type: sl.String("a"),
-		},
+	if targetString := sl.String(d.Get("target").(string)); *targetString != "" {
+		opts.ResourceRecords = []datatypes.Dns_Domain_ResourceRecord{
+			{
+				Data: sl.String(d.Get("target").(string)),
+				Host: sl.String("@"),
+				Ttl:  sl.Int(86400),
+				Type: sl.String("a"),
+			},
+		}
+	} else {
+		opts.ResourceRecords = []datatypes.Dns_Domain_ResourceRecord{}
 	}
 
 	// create Dns_Domain object
