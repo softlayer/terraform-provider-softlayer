@@ -274,7 +274,6 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				ForceNew: true,
-				Default:  0,
 			},
 
 			"secondary_ip_addresses": {

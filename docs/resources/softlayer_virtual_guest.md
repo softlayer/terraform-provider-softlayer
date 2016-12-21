@@ -131,7 +131,6 @@ The following arguments are supported:
 *   `secondary_ip_count` | *int*
     * Provides secondary public IPv4 addresses. Acceptable values are 4 and 8. 
     * *Optional*
-    * *Default*: 0
 
 ## Attributes Reference
 
