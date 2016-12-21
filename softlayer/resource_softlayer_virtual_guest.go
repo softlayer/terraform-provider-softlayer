@@ -112,10 +112,6 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 			"cores": {
 				Type:     schema.TypeInt,
 				Required: true,
-				// TODO: This fields for now requires recreation, because currently for some reason SoftLayer resets "dedicated_acct_host_only"
-				// TODO: flag to false, while upgrading CPUs. That problem is reported to SoftLayer team. "ForceNew" can be set back
-				// TODO: to false as soon as it is fixed at their side. Also corresponding test for virtual guest upgrade will be uncommented.
-				ForceNew: true,
 			},
 
 			"cpu": {
