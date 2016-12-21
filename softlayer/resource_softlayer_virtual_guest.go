@@ -270,6 +270,18 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Computed: true,
 			},
 
+			"secondary_ip_count": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				ForceNew: true,
+			},
+
+			"secondary_ip_addresses": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+
 			"ssh_key_ids": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -558,6 +570,31 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 		)
 	}
 
+	// Configure secondary IPs
+	secondaryIpCount := d.Get("secondary_ip_count").(int)
+	if secondaryIpCount > 0 {
+		if privateNetworkOnly {
+			return fmt.Errorf("Unable to configure public secondary addresses with a private_network_only option.")
+		}
+		staticIpItems, err := services.GetProductPackageService(sess).
+			Id(*template.PackageId).
+			Mask("id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode]]").
+			Filter(filter.Build(filter.Path("items.keyName").Eq(strconv.Itoa(secondaryIpCount) + "_PUBLIC_IP_ADDRESSES"))).
+			GetItems()
+		if err != nil {
+			return fmt.Errorf("Error generating order template: %s", err)
+		}
+		if len(staticIpItems) == 0 {
+			return fmt.Errorf("No product items matching %d_PUBLIC_IP_ADDRESSES could be found", secondaryIpCount)
+		}
+
+		template.Prices = append(template.Prices,
+			datatypes.Product_Item_Price{
+				Id: staticIpItems[0].Prices[0].Id,
+			},
+		)
+	}
+
 	// GenerateOrderTemplate omits UserData, subnet, and maxSpeed, so configure virtual_guest.
 	template.VirtualGuests[0] = opts
 
@@ -594,6 +631,15 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 	if err != nil {
 		return fmt.Errorf(
 			"Error waiting for virtual machine (%s) ip to become ready: %s", d.Id(), err)
+	}
+
+	// wait for secondary IP availability
+	if secondaryIpCount > 0 {
+		_, err = WaitForSecondaryIPAvailable(d, meta)
+		if err != nil {
+			return fmt.Errorf(
+				"Error waiting for virtual machine (%s) ip to become ready: %s", d.Id(), err)
+		}
 	}
 
 	return resourceSoftLayerVirtualGuestRead(d, meta)
@@ -717,6 +763,29 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		connInfo["host"] = *result.PrimaryBackendIpAddress
 	}
 	d.SetConnInfo(connInfo)
+
+	// Read secondary IP addresses
+	d.Set("secondary_ip_addresses", nil)
+	if result.PrimaryIpAddress != nil {
+		secondarySubnetResult, err := services.GetAccountService(meta.(ProviderConfig).SoftLayerSession()).
+			Mask("ipAddresses[id,ipAddress]").
+			Filter(filter.Build(filter.Path("publicSubnets.endPointIpAddress.ipAddress").Eq(*result.PrimaryIpAddress))).
+			GetPublicSubnets()
+		if err != nil {
+			log.Printf("Error getting secondary Ip addresses: %s", err)
+		}
+
+		secondaryIps := make([]string, 0)
+		for _, subnet := range secondarySubnetResult {
+			for _, ipAddressObj := range subnet.IpAddresses {
+				secondaryIps = append(secondaryIps, *ipAddressObj.IpAddress)
+			}
+		}
+		if len(secondaryIps) > 0 {
+			d.Set("secondary_ip_addresses", secondaryIps)
+			d.Set("secondary_ip_count", len(secondaryIps))
+		}
+	}
 
 	return nil
 }
@@ -909,6 +978,34 @@ func WaitForIPAvailable(d *schema.ResourceData, meta interface{}, private bool) 
 		MinTimeout: 10 * time.Second,
 	}
 
+	return stateConf.WaitForState()
+}
+
+// WaitForSecondaryIpAvailable Wait for the secondary ips to be available
+func WaitForSecondaryIPAvailable(d *schema.ResourceData, meta interface{}) (interface{}, error) {
+	log.Printf("Waiting for server (%s) to get secondary IPs", d.Id())
+
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"unavailable"},
+		Target:  []string{"available"},
+		Refresh: func() (interface{}, string, error) {
+			fmt.Println("Refreshing secondary IPs state...")
+			secondarySubnetResult, err := services.GetAccountService(meta.(ProviderConfig).SoftLayerSession()).
+				Mask("ipAddresses[id,ipAddress]").
+				Filter(filter.Build(filter.Path("publicSubnets.endPointIpAddress.virtualGuest.id").Eq(d.Id()))).
+				GetPublicSubnets()
+			if err != nil {
+				return nil, "", err
+			}
+			if len(secondarySubnetResult) == 0 {
+				return secondarySubnetResult, "unavailable", nil
+			}
+			return secondarySubnetResult, "available", nil
+		},
+		Timeout:    45 * time.Minute,
+		Delay:      10 * time.Second,
+		MinTimeout: 10 * time.Second,
+	}
 	return stateConf.WaitForState()
 }
 
