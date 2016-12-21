@@ -88,27 +88,17 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 			},
 
 			{
-				Config: testAccCheckSoftLayerVirtualGuestConfig_upgradeMemoryNetworkSpeed,
+				Config: testAccCheckSoftLayerVirtualGuestConfig_upgradeCoresMemoryNetworkSpeed,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerVirtualGuestExists("softlayer_virtual_guest.terraform-acceptance-test-1", &guest),
+					resource.TestCheckResourceAttr(
+						"softlayer_virtual_guest.terraform-acceptance-test-1", "cores", "2"),
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "memory", "2048"),
 					resource.TestCheckResourceAttr(
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "network_speed", "100"),
 				),
 			},
-
-			// TODO: currently CPU upgrade test is disabled, due to unexpected behavior of field "dedicated_acct_host_only".
-			// TODO: For some reason it is reset by SoftLayer to "false". Daniel Bright reported corresponding issue to SoftLayer team.
-			//			{
-			//				Config: testAccCheckSoftLayerVirtualGuestConfig_vmUpgradeCPUs,
-			//				Check: resource.ComposeTestCheckFunc(
-			//					testAccCheckSoftLayerVirtualGuestExists("softlayer_virtual_guest.terraform-acceptance-test-1", &guest),
-			//					resource.TestCheckResourceAttr(
-			//						"softlayer_virtual_guest.terraform-acceptance-test-1", "cores", "2"),
-			//				),
-			//			},
-
 		},
 	})
 }
@@ -314,27 +304,7 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
 }
 `
 
-const testAccCheckSoftLayerVirtualGuestConfig_upgradeMemoryNetworkSpeed = `
-resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
-    hostname = "terraform-test"
-    domain = "bar.example.com"
-    os_reference_code = "DEBIAN_7_64"
-    datacenter = "wdc04"
-    network_speed = 100
-    hourly_billing = true
-    cores = 1
-    memory = 2048
-    disks = [25, 10, 20]
-    user_metadata = "updatedData"
-    tags = ["mesos-master"]
-    dedicated_acct_host_only = true
-    local_disk = false
-    ipv6_enabled = true
-    secondary_ip_count = 4
-}
-`
-
-const testAccCheckSoftLayerVirtualGuestConfig_vmUpgradeCPUs = `
+const testAccCheckSoftLayerVirtualGuestConfig_upgradeCoresMemoryNetworkSpeed = `
 resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     hostname = "terraform-test"
     domain = "bar.example.com"
@@ -349,6 +319,8 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-1" {
     tags = ["mesos-master"]
     dedicated_acct_host_only = true
     local_disk = false
+    ipv6_enabled = true
+    secondary_ip_count = 4
 }
 `
 
