@@ -14,7 +14,7 @@ resource "softlayer_dns_domain" "dns-domain-test" {
 The following arguments are supported:
 
 * `name` | *string* - (Required) A domain's name including top-level domain, for example "example.com". When the domain is created, proper `NS` and `SOA`  records are created automatically for it.
-* `target`|*string* - (Required) The primary target IP address that the domain will resolve to. Upon creation, an `A` record will be created with a host value of `@` and a data-target value of the IP address provided which will be associated to the new domain.
+* `target`|*string* - (Optional) The primary target IP address that the domain will resolve to. Upon creation, an `A` record will be created with a host value of `@` and a data-target value of the IP address provided which will be associated to the new domain.
 
 ## Attributes Reference
 
