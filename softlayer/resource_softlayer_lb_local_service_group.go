@@ -1,18 +1,20 @@
 package softlayer
 
 import (
-	"errors"
 	"fmt"
 	"log"
 
 	"strconv"
 
+	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/filter"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
+	"strings"
+	"time"
 )
 
 func resourceSoftLayerLbLocalServiceGroup() *schema.Resource {
@@ -89,22 +91,16 @@ func resourceSoftLayerLbLocalServiceGroupCreate(d *schema.ResourceData, meta int
 
 	log.Println("[INFO] Creating load balancer service group")
 
-	success, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
-		Id(vipID).
-		EditObject(&vip)
+	err = updateLoadBalancerService(sess, vipID, &vip)
 
 	if err != nil {
 		return fmt.Errorf("Error creating load balancer service group: %s", err)
 	}
 
-	if !success {
-		return errors.New("Error creating load balancer service group")
-	}
-
 	// Retrieve the newly created object, to obtain its ID
 	vs, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
 		Id(vipID).
-		Filter(filter.New(filter.Path("serviceGroups.port").Eq(d.Get("port"))).Build()).
+		Filter(filter.New(filter.Path("virtualServers.port").Eq(d.Get("port"))).Build()).
 		Mask("id,serviceGroups[id]").
 		GetVirtualServers()
 
@@ -154,16 +150,10 @@ func resourceSoftLayerLbLocalServiceGroupUpdate(d *schema.ResourceData, meta int
 
 	log.Println("[INFO] Updating load balancer service group")
 
-	success, err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualIpAddressService(sess).
-		Id(vipID).
-		EditObject(&vip)
+	err = updateLoadBalancerService(sess, vipID, &vip)
 
 	if err != nil {
-		return fmt.Errorf("Error updating load balancer service group: %s", err)
-	}
-
-	if !success {
-		return errors.New("Error updating load balancer service group")
+		return fmt.Errorf("Error creating load balancer service group: %s", err)
 	}
 
 	return resourceSoftLayerLbLocalServiceGroupRead(d, meta)
@@ -197,9 +187,38 @@ func resourceSoftLayerLbLocalServiceGroupDelete(d *schema.ResourceData, meta int
 
 	vsID, _ := strconv.Atoi(d.Id())
 
-	err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualServerService(sess).
-		Id(vsID).
-		DeleteObject()
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"pending"},
+		Target:  []string{"complete"},
+		Refresh: func() (interface{}, string, error) {
+			err := services.GetNetworkApplicationDeliveryControllerLoadBalancerVirtualServerService(sess).
+				Id(vsID).
+				DeleteObject()
+
+			if apiErr, ok := err.(sl.Error); ok {
+				switch {
+				case apiErr.Exception == "SoftLayer_Exception_Network_Timeout" ||
+					strings.Contains(apiErr.Message, "There was a problem saving your configuration to the load balancer.") ||
+					strings.Contains(apiErr.Message, "The selected group could not be removed from the load balancer."):
+					// The LB is busy with another transaction. Retry
+					return false, "pending", nil
+				case apiErr.StatusCode == 404:
+					// 404 - service was deleted on the previous attempt
+					return true, "complete", nil
+				default:
+					// Any other error is unexpected. Abort
+					return false, "", err
+				}
+			}
+
+			return true, "complete", nil
+		},
+		Timeout:    10 * time.Minute,
+		Delay:      5 * time.Second,
+		MinTimeout: 3 * time.Second,
+	}
+
+	_, err := stateConf.WaitForState()
 
 	if err != nil {
 		return fmt.Errorf("Error deleting service: %s", err)
