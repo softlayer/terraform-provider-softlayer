@@ -13,6 +13,7 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
+	"strings"
 )
 
 func resourceSoftLayerLbLocalService() *schema.Resource {
@@ -250,8 +251,10 @@ func resourceSoftLayerLbLocalServiceDelete(d *schema.ResourceData, meta interfac
 
 			if apiErr, ok := err.(sl.Error); ok {
 				switch {
-				case apiErr.StatusCode == 500 && apiErr.Exception == "SoftLayer_Exception_Network_Timeout":
-					// 500/Network_Timeout could mean that the LB is busy with another transaction. Retry
+				case apiErr.Exception == "SoftLayer_Exception_Network_Timeout" ||
+					strings.Contains(apiErr.Message, "There was a problem saving your configuration to the load balancer.") ||
+					strings.Contains(apiErr.Message, "The selected group could not be removed from the load balancer."):
+					// The LB is busy with another transaction. Retry
 					return false, "pending", nil
 				case apiErr.StatusCode == 404:
 					// 404 - service was deleted on the previous attempt
@@ -325,7 +328,9 @@ func updateLoadBalancerService(sess *session.Session, vipID int, vip *datatypes.
 
 			if apiErr, ok := err.(sl.Error); ok {
 				// 500 could mean that the LB is busy with another transaction. Retry
-				if apiErr.StatusCode == 500 {
+				if apiErr.Exception == "SoftLayer_Exception_Network_Timeout" ||
+					strings.Contains(apiErr.Message, "There was a problem saving your configuration to the load balancer.") ||
+					strings.Contains(apiErr.Message, "The selected group could not be removed from the load balancer.") {
 					return false, "pending", nil
 				}
 
