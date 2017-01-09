@@ -327,7 +327,7 @@ func updateLoadBalancerService(sess *session.Session, vipID int, vip *datatypes.
 				EditObject(vip)
 
 			if apiErr, ok := err.(sl.Error); ok {
-				// 500 could mean that the LB is busy with another transaction. Retry
+				// The LB is busy with another transaction. Retry
 				if apiErr.Exception == "SoftLayer_Exception_Network_Timeout" ||
 					strings.Contains(apiErr.Message, "There was a problem saving your configuration to the load balancer.") ||
 					strings.Contains(apiErr.Message, "The selected group could not be removed from the load balancer.") {
