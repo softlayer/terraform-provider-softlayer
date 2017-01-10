@@ -253,7 +253,8 @@ func resourceSoftLayerLbLocalServiceDelete(d *schema.ResourceData, meta interfac
 				switch {
 				case apiErr.Exception == "SoftLayer_Exception_Network_Timeout" ||
 					strings.Contains(apiErr.Message, "There was a problem saving your configuration to the load balancer.") ||
-					strings.Contains(apiErr.Message, "The selected group could not be removed from the load balancer."):
+					strings.Contains(apiErr.Message, "The selected group could not be removed from the load balancer.") ||
+					strings.Contains(apiErr.Message, "The resource '480' is already in use."):
 					// The LB is busy with another transaction. Retry
 					return false, "pending", nil
 				case apiErr.StatusCode == 404:
@@ -330,7 +331,8 @@ func updateLoadBalancerService(sess *session.Session, vipID int, vip *datatypes.
 				// The LB is busy with another transaction. Retry
 				if apiErr.Exception == "SoftLayer_Exception_Network_Timeout" ||
 					strings.Contains(apiErr.Message, "There was a problem saving your configuration to the load balancer.") ||
-					strings.Contains(apiErr.Message, "The selected group could not be removed from the load balancer.") {
+					strings.Contains(apiErr.Message, "The selected group could not be removed from the load balancer.") ||
+					strings.Contains(apiErr.Message, "The resource '480' is already in use.") {
 					return false, "pending", nil
 				}
 
