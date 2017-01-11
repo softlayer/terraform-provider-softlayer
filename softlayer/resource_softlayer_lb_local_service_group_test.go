@@ -14,13 +14,21 @@ func TestAccSoftLayerLbLocalServiceGroup_Basic(t *testing.T) {
 				Config: testAccCheckSoftLayerLbLocalServiceGroupConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
-						"softlayer_lb_local_service_group.test_service_group", "port", "82"),
+						"softlayer_lb_local_service_group.test_service_group1", "port", "82"),
 					resource.TestCheckResourceAttr(
-						"softlayer_lb_local_service_group.test_service_group", "routing_method", "CONSISTENT_HASH_IP"),
+						"softlayer_lb_local_service_group.test_service_group1", "routing_method", "CONSISTENT_HASH_IP"),
 					resource.TestCheckResourceAttr(
-						"softlayer_lb_local_service_group.test_service_group", "routing_type", "HTTP"),
+						"softlayer_lb_local_service_group.test_service_group1", "routing_type", "HTTP"),
 					resource.TestCheckResourceAttr(
-						"softlayer_lb_local_service_group.test_service_group", "allocation", "100"),
+						"softlayer_lb_local_service_group.test_service_group1", "allocation", "50"),
+					resource.TestCheckResourceAttr(
+						"softlayer_lb_local_service_group.test_service_group2", "port", "83"),
+					resource.TestCheckResourceAttr(
+						"softlayer_lb_local_service_group.test_service_group2", "routing_method", "CONSISTENT_HASH_IP"),
+					resource.TestCheckResourceAttr(
+						"softlayer_lb_local_service_group.test_service_group2", "routing_type", "TCP"),
+					resource.TestCheckResourceAttr(
+						"softlayer_lb_local_service_group.test_service_group2", "allocation", "50"),
 				),
 			},
 		},
@@ -29,16 +37,24 @@ func TestAccSoftLayerLbLocalServiceGroup_Basic(t *testing.T) {
 
 const testAccCheckSoftLayerLbLocalServiceGroupConfig_basic = `
 resource "softlayer_lb_local" "testacc_foobar_lb" {
-    connections = 15000
-    datacenter    = "tok02"
+    connections = 250
+    datacenter    = "tor01"
     ha_enabled  = false
 }
 
-resource "softlayer_lb_local_service_group" "test_service_group" {
+resource "softlayer_lb_local_service_group" "test_service_group1" {
     port = 82
     routing_method = "CONSISTENT_HASH_IP"
     routing_type = "HTTP"
     load_balancer_id = "${softlayer_lb_local.testacc_foobar_lb.id}"
-    allocation = 100
+    allocation = 50
+}
+
+resource "softlayer_lb_local_service_group" "test_service_group2" {
+    port = 83
+    routing_method = "CONSISTENT_HASH_IP"
+    routing_type = "TCP"
+    load_balancer_id = "${softlayer_lb_local.testacc_foobar_lb.id}"
+    allocation = 50
 }
 `
