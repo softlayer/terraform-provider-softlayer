@@ -982,7 +982,6 @@ func WaitForVirtualGuestAvailable(d *schema.ResourceData, meta interface{}) (int
 				return false, "retry", nil
 			}
 
-			// Check active transactions.
 			log.Println("Checking active transactions.")
 			if result.ActiveTransaction != nil {
 				return result, "provisioning", nil
@@ -990,7 +989,7 @@ func WaitForVirtualGuestAvailable(d *schema.ResourceData, meta interface{}) (int
 
 			// Check Primary IP address availability.
 			log.Println("Checking Primary IP address.")
-			if sl.Grab(result, ipAddress) == "" {
+			if sl.Get(result, ipAddress) == "" {
 				return result, "provisioning", nil
 			}
 
