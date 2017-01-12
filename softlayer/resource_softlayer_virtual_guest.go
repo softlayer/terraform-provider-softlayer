@@ -616,26 +616,12 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 	}
 
 	// wait for machine availability
-	_, err = WaitForNoActiveTransactions(d, meta)
+
+	_, err = WaitForVirtualGuestAvailable(d, meta)
 
 	if err != nil {
 		return fmt.Errorf(
 			"Error waiting for virtual machine (%s) to become ready: %s", d.Id(), err)
-	}
-
-	_, err = WaitForIPAvailable(d, meta, privateNetworkOnly)
-	if err != nil {
-		return fmt.Errorf(
-			"Error waiting for virtual machine (%s) ip to become ready: %s", d.Id(), err)
-	}
-
-	// wait for secondary IP availability
-	if secondaryIpCount > 0 {
-		_, err = WaitForSecondaryIPAvailable(d, meta)
-		if err != nil {
-			return fmt.Errorf(
-				"Error waiting for virtual machine (%s) ip to become ready: %s", d.Id(), err)
-		}
 	}
 
 	return resourceSoftLayerVirtualGuestRead(d, meta)
@@ -933,78 +919,6 @@ func WaitForUpgradeTransactionsToAppear(d *schema.ResourceData, meta interface{}
 	return stateConf.WaitForState()
 }
 
-// WaitForIPAvailable Wait for the public ip to be available
-func WaitForIPAvailable(d *schema.ResourceData, meta interface{}, private bool) (interface{}, error) {
-	field := "PrimaryIpAddress"
-	if private {
-		field = "PrimaryBackendIpAddress"
-	}
-
-	log.Printf("Waiting for server (%s) to get a %s", d.Id(), field)
-
-	id, err := strconv.Atoi(d.Id())
-	if err != nil {
-		return nil, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
-	}
-
-	stateConf := &resource.StateChangeConf{
-		Pending: []string{"retry", "unavailable"},
-		Target:  []string{"available"},
-		Refresh: func() (interface{}, string, error) {
-			fmt.Println("Refreshing server state...")
-			service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
-
-			result, err := service.Id(id).GetObject()
-			if err != nil {
-				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
-					return nil, "", fmt.Errorf("Error retrieving virtual guest: %s", err)
-				}
-
-				return false, "retry", nil
-			}
-
-			if sl.Grab(result, field) == "" {
-				return result, "unavailable", nil
-			}
-
-			return result, "available", nil
-		},
-		Timeout:    45 * time.Minute,
-		Delay:      10 * time.Second,
-		MinTimeout: 10 * time.Second,
-	}
-
-	return stateConf.WaitForState()
-}
-
-// WaitForSecondaryIpAvailable Wait for the secondary ips to be available
-func WaitForSecondaryIPAvailable(d *schema.ResourceData, meta interface{}) (interface{}, error) {
-	log.Printf("Waiting for server (%s) to get secondary IPs", d.Id())
-
-	stateConf := &resource.StateChangeConf{
-		Pending: []string{"unavailable"},
-		Target:  []string{"available"},
-		Refresh: func() (interface{}, string, error) {
-			fmt.Println("Refreshing secondary IPs state...")
-			secondarySubnetResult, err := services.GetAccountService(meta.(ProviderConfig).SoftLayerSession()).
-				Mask("ipAddresses[id,ipAddress]").
-				Filter(filter.Build(filter.Path("publicSubnets.endPointIpAddress.virtualGuest.id").Eq(d.Id()))).
-				GetPublicSubnets()
-			if err != nil {
-				return nil, "", err
-			}
-			if len(secondarySubnetResult) == 0 {
-				return secondarySubnetResult, "unavailable", nil
-			}
-			return secondarySubnetResult, "available", nil
-		},
-		Timeout:    45 * time.Minute,
-		Delay:      10 * time.Second,
-		MinTimeout: 10 * time.Second,
-	}
-	return stateConf.WaitForState()
-}
-
 // WaitForNoActiveTransactions Wait for no active transactions
 func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (interface{}, error) {
 	log.Printf("Waiting for server (%s) to have zero active transactions", d.Id())
@@ -1032,6 +946,69 @@ func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (inte
 			}
 
 			return transactions, "active", nil
+		},
+		Timeout:    45 * time.Minute,
+		Delay:      10 * time.Second,
+		MinTimeout: 10 * time.Second,
+	}
+
+	return stateConf.WaitForState()
+}
+
+// WaitForVirtualGuestAvailable Waits for virtual guest creation
+func WaitForVirtualGuestAvailable(d *schema.ResourceData, meta interface{}) (interface{}, error) {
+	log.Printf("Waiting for server (%s) to be available.", d.Id())
+	id, err := strconv.Atoi(d.Id())
+	if err != nil {
+		return nil, fmt.Errorf("The instance ID %s must be numeric", d.Id())
+	}
+
+	ipAddress := "PrimaryIpAddress"
+	if d.Get("private_network_only").(bool) {
+		ipAddress = "PrimaryBackendIpAddress"
+	}
+
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"retry", "provisioning"},
+		Target:  []string{"available"},
+		Refresh: func() (interface{}, string, error) {
+			// Check active transactions
+			service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
+			result, err := service.Id(id).Mask("activeTransaction").GetObject()
+			if err != nil {
+				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
+					return nil, "", fmt.Errorf("Error retrieving virtual guest: %s", err)
+				}
+				return false, "retry", nil
+			}
+
+			log.Println("Checking active transactions.")
+			if result.ActiveTransaction != nil {
+				return result, "provisioning", nil
+			}
+
+			// Check Primary IP address availability.
+			log.Println("Checking Primary IP address.")
+			if sl.Get(result, ipAddress) == "" {
+				return result, "provisioning", nil
+			}
+
+			// Check Secondary IP address availability.
+			if d.Get("secondary_ip_count").(int) > 0 {
+				log.Println("Refreshing secondary IPs state.")
+				secondarySubnetResult, err := services.GetAccountService(meta.(ProviderConfig).SoftLayerSession()).
+					Mask("ipAddresses[id,ipAddress]").
+					Filter(filter.Build(filter.Path("publicSubnets.endPointIpAddress.virtualGuest.id").Eq(d.Id()))).
+					GetPublicSubnets()
+				if err != nil {
+					return nil, "", fmt.Errorf("Error retrieving secondary ip address: %s", err)
+				}
+				if len(secondarySubnetResult) == 0 {
+					return result, "provisioning", nil
+				}
+			}
+
+			return result, "available", nil
 		},
 		Timeout:    45 * time.Minute,
 		Delay:      10 * time.Second,
