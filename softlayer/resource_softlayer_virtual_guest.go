@@ -987,7 +987,6 @@ func WaitForVirtualGuestAvailable(d *schema.ResourceData, meta interface{}) (int
 
 			// Check Primary IP address availability.
 			log.Println("Checking primary backend IP address.")
-
 			if result.PrimaryBackendIpAddress == nil {
 				return result, "provisioning", nil
 			}
