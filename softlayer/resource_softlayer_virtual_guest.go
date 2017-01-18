@@ -963,10 +963,7 @@ func WaitForVirtualGuestAvailable(d *schema.ResourceData, meta interface{}) (int
 		return nil, fmt.Errorf("The instance ID %s must be numeric", d.Id())
 	}
 
-	ipAddress := "PrimaryIpAddress"
-	if d.Get("private_network_only").(bool) {
-		ipAddress = "PrimaryBackendIpAddress"
-	}
+	publicNetwork := !d.Get("private_network_only").(bool)
 
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"retry", "provisioning"},
@@ -982,14 +979,20 @@ func WaitForVirtualGuestAvailable(d *schema.ResourceData, meta interface{}) (int
 				return false, "retry", nil
 			}
 
+			// Check active transactions
 			log.Println("Checking active transactions.")
 			if result.ActiveTransaction != nil {
 				return result, "provisioning", nil
 			}
 
 			// Check Primary IP address availability.
-			log.Println("Checking Primary IP address.")
-			if sl.Get(result, ipAddress) == "" {
+			log.Println("Checking primary backend IP address.")
+			if result.PrimaryBackendIpAddress == nil {
+				return result, "provisioning", nil
+			}
+
+			log.Println("Checking primary IP address.")
+			if publicNetwork && result.PrimaryIpAddress == nil {
 				return result, "provisioning", nil
 			}
 
