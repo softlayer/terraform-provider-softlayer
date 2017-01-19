@@ -76,6 +76,7 @@ func Provider() terraform.ResourceProvider {
 			"softlayer_global_ip":                   resourceSoftLayerGlobalIp(),
 			"softlayer_fw_hardware_dedicated":       resourceSoftLayerFwHardwareDedicated(),
 			"softlayer_fw_hardware_dedicated_rules": resourceSoftLayerFwHardwareDedicatedRules(),
+			"softlayer_file_storage":                resourceSoftLayerFileStorage(),
 		},
 
 		ConfigureFunc: providerConfigure,
