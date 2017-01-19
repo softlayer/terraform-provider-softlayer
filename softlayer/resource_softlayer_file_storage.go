@@ -248,7 +248,7 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 		}
 		d.SetId(fmt.Sprintf("%d", *fileStorage.Id))
 	}
-	log.Printf("[INFO] Firewall ID: %s", d.Id())
+	log.Printf("[INFO] Storage ID: %s", d.Id())
 
 	return resourceSoftLayerFwHardwareDedicatedRead(d, meta)
 }
@@ -285,7 +285,7 @@ func resourceSoftLayerFileStorageDelete(d *schema.ResourceData, meta interface{}
 
 	storageID, _ := strconv.Atoi(d.Id())
 
-	// Get billing item associated with the firewall
+	// Get billing item associated with the storage
 	billingItem, err := storageService.Id(storageID).GetBillingItem()
 
 	if err != nil {
