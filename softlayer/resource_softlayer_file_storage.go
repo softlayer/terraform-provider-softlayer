@@ -24,6 +24,14 @@ const (
 	storageMask                   = "id,networkStorage.billingItem.orderItem.order.id"
 )
 
+var (
+	enduranceIOPSMap = map[float64]string{
+		0.25: "LOW_INTENSITY_TIER",
+		2:    "READHEAVY_TIER",
+		4:    "WRITEHEAVY_TIER",
+	}
+)
+
 func resourceSoftLayerFileStorage() *schema.Resource {
 	return &schema.Resource{
 		Create:   resourceSoftLayerFileStorageCreate,
@@ -71,7 +79,8 @@ func resourceSoftLayerFileStorage() *schema.Resource {
 	}
 }
 
-func buildStorageProductOrderContainer(sess *session.Session,
+func buildStorageProductOrderContainer(
+	sess *session.Session,
 	storageType string,
 	iops float64,
 	size int,
@@ -79,24 +88,21 @@ func buildStorageProductOrderContainer(sess *session.Session,
 	datacenter string) (datatypes.Container_Product_Order, error) {
 
 	// Build product item filters for performance storage
-	fileStoragePackageType := StoragePerformancePackageType
-	iopsDescription := fmt.Sprintf("%.f IOPS", iops)
+	storagePackageType := StoragePerformancePackageType
+	iopsKeyName, _ := getIOPSKeyName(iops, storageType)
+	iopsCategoryCode := "performance_storage_iops"
+	storageProtocolCategoryCode := "performance_storage_nfs"
 	sizeKeyName := fmt.Sprintf("%d_GB_PERFORMANCE_STORAGE_SPACE", size)
-	iopsDescriptionCount := 0
-	sizeKeyNameCount := 0
-	storageProtocolCount := 0
-	storageTypeCount := 0
 
-	// Build product item filters for endurance storage
+	// Update product item filters for endurance storage
 	if storageType == "Endurance" {
-		fileStoragePackageType = StorageEndurancePackageType
-		iopsDescription = fmt.Sprintf("%.f IOPS per GB", iops)
-		if iops != float64(int(iops)) {
-			iopsDescription = fmt.Sprintf("%.2f IOPS per GB", iops)
-		}
+		storagePackageType = StorageEndurancePackageType
+		iopsCategoryCode = "storage_tier_level"
+		storageProtocolCategoryCode = "storage_file"
 	}
 
-	pkg, err := product.GetPackageByType(sess, fileStoragePackageType)
+	// Get a package type
+	pkg, err := product.GetPackageByType(sess, storagePackageType)
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
@@ -108,86 +114,36 @@ func buildStorageProductOrderContainer(sess *session.Session,
 	}
 
 	// Select only those product items with a matching keyname
+	// IOPS
 	targetItemPrices := []datatypes.Product_Item_Price{}
-	for _, item := range productItems {
-		if *item.Description == iopsDescription {
-			for _, price := range item.Prices {
-				if *price.Categories[0].CategoryCode == "storage_tier_level" ||
-					*price.Categories[0].CategoryCode == "performance_storage_iops" {
-					targetItemPrices = append(targetItemPrices, price)
-					iopsDescriptionCount++
-					break
-				}
-			}
-		}
-		if iopsDescriptionCount > 0 {
-			break
-		}
+	iopsPrice, err := getPrice(productItems, iopsKeyName, iopsCategoryCode)
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
 	}
-	if iopsDescriptionCount == 0 {
-		return datatypes.Container_Product_Order{},
-			fmt.Errorf("No product items matching %s could be found", iopsDescription)
-	}
+	targetItemPrices = append(targetItemPrices, iopsPrice)
 
-	for _, item := range productItems {
-		if *item.KeyName == sizeKeyName {
-			for _, price := range item.Prices {
-				if *price.Categories[0].CategoryCode == "performance_storage_space" {
-					targetItemPrices = append(targetItemPrices, price)
-					sizeKeyNameCount++
-					break
-				}
-			}
-		}
-		if sizeKeyNameCount > 0 {
-			break
-		}
+	// Size
+	sizePrice, err := getPrice(productItems, sizeKeyName, "performance_storage_space")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
 	}
-	if sizeKeyNameCount == 0 {
-		return datatypes.Container_Product_Order{},
-			fmt.Errorf("No product items matching %s could be found", sizeKeyName)
-	}
+	targetItemPrices = append(targetItemPrices, sizePrice)
 
+	// Endurane Storage
 	if storageType == "Endurance" {
-		for _, item := range productItems {
-			if *item.Description == (storageType + " Storage") {
-				for _, price := range item.Prices {
-					if *price.Categories[0].CategoryCode == "storage_service_enterprise" {
-						targetItemPrices = append(targetItemPrices, price)
-						storageTypeCount++
-						break
-					}
-				}
-			}
-			if storageTypeCount > 0 {
-				break
-			}
+		endurancePrice, err := getPrice(productItems, "CODENAME_PRIME_STORAGE_SERVICE", "performance_storage_space")
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
 		}
-		if storageTypeCount == 0 {
-			return datatypes.Container_Product_Order{},
-				fmt.Errorf("No product items matching %s could be found", storageType)
-		}
+		targetItemPrices = append(targetItemPrices, endurancePrice)
 	}
 
-	for _, item := range productItems {
-		if *item.Description == storageProtocol || *item.Description == (storageProtocol+" (Performance)") {
-			for _, price := range item.Prices {
-				if *price.Categories[0].CategoryCode == "storage_file" ||
-					*price.Categories[0].CategoryCode == "performance_storage_nfs" {
-					targetItemPrices = append(targetItemPrices, price)
-					storageProtocolCount++
-					break
-				}
-			}
-		}
-		if storageProtocolCount > 0 {
-			break
-		}
+	// storageProtocol
+	storageProtocolPrice, err := getPrice(productItems, storageProtocol, storageProtocolCategoryCode)
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
 	}
-	if storageProtocolCount == 0 {
-		return datatypes.Container_Product_Order{},
-			fmt.Errorf("No product items matching %s could be found", storageProtocol)
-	}
+	targetItemPrices = append(targetItemPrices, storageProtocolPrice)
 
 	// Lookup the data center ID
 	dc, err := location.GetDatacenterByName(sess, datacenter)
@@ -211,11 +167,10 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 
 	storageType := d.Get("type").(string)
 	iops := d.Get("iops").(float64)
-	storageProtocol := "File Storage"
 	datacenter := d.Get("datacenter").(string)
 	size := d.Get("size").(int)
 
-	storageOrderContainer, err := buildStorageProductOrderContainer(sess, storageType, iops, size, storageProtocol, datacenter)
+	storageOrderContainer, err := buildStorageProductOrderContainer(sess, storageType, iops, size, "FILE_STORAGE", datacenter)
 	if err != nil {
 		return fmt.Errorf("Error while creating file storage:%s", err)
 	}
@@ -227,7 +182,7 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 			&datatypes.Container_Product_Order_Network_Storage_Enterprise{
 				Container_Product_Order: storageOrderContainer,
 			}, sl.Bool(false))
-		fileStorage, err := findFileStorageByOrderId(sess, *receipt.OrderId)
+		fileStorage, err := findStorageByOrderId(sess, *receipt.OrderId)
 
 		if err != nil {
 			return fmt.Errorf("Error during creation of file storage: %s", err)
@@ -241,13 +196,22 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 					Container_Product_Order: storageOrderContainer,
 				},
 			}, sl.Bool(false))
-		fileStorage, err := findFileStorageByOrderId(sess, *receipt.OrderId)
+		fileStorage, err := findStorageByOrderId(sess, *receipt.OrderId)
 
 		if err != nil {
 			return fmt.Errorf("Error during creation of file storage: %s", err)
 		}
 		d.SetId(fmt.Sprintf("%d", *fileStorage.Id))
 	}
+
+	// wait for storage availability
+	_, err = WaitForNoActiveStorageTransactions(d, meta)
+
+	if err != nil {
+		return fmt.Errorf(
+			"Error waiting for storage (%s) to become ready: %s", d.Id(), err)
+	}
+
 	log.Printf("[INFO] Storage ID: %s", d.Id())
 
 	return resourceSoftLayerFwHardwareDedicatedRead(d, meta)
@@ -328,7 +292,7 @@ func resourceSoftLayerFileStorageExists(d *schema.ResourceData, meta interface{}
 	return true, nil
 }
 
-func findFileStorageByOrderId(sess *session.Session, orderId int) (datatypes.Network_Storage, error) {
+func findStorageByOrderId(sess *session.Session, orderId int) (datatypes.Network_Storage, error) {
 	filterPath := "networkStorage.billingItem.orderItem.order.id"
 
 	stateConf := &resource.StateChangeConf{
@@ -372,4 +336,64 @@ func findFileStorageByOrderId(sess *session.Session, orderId int) (datatypes.Net
 
 	return datatypes.Network_Storage{},
 		fmt.Errorf("Cannot find Storage with order id '%d'", orderId)
+}
+
+// Wait for no active transactions
+func WaitForNoActiveStorageTransactions(d *schema.ResourceData, meta interface{}) (interface{}, error) {
+	log.Printf("Waiting for storage (%s) to have zero active transactions", d.Id())
+	id, err := strconv.Atoi(d.Id())
+	if err != nil {
+		return nil, fmt.Errorf("The storage ID %s must be numeric", d.Id())
+	}
+
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"retry", "active"},
+		Target:  []string{"idle"},
+		Refresh: func() (interface{}, string, error) {
+			service := services.GetNetworkStorageService(meta.(ProviderConfig).SoftLayerSession())
+			transactions, err := service.Id(id).GetActiveTransactions()
+			if err != nil {
+				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
+					return nil, "", fmt.Errorf("Couldn't get active transactions: %s", err)
+				}
+
+				return false, "retry", nil
+			}
+
+			if len(transactions) == 0 {
+				return transactions, "idle", nil
+			}
+
+			return transactions, "active", nil
+		},
+		Timeout:    45 * time.Minute,
+		Delay:      10 * time.Second,
+		MinTimeout: 10 * time.Second,
+	}
+
+	return stateConf.WaitForState()
+}
+
+func getIOPSKeyName(iops float64, storageType string) (string, error) {
+	if storageType == "Endurance" {
+		return enduranceIOPSMap[iops], nil
+	}
+	if storageType == "Performance" {
+		return fmt.Sprintf("%.f_IOPS", iops), nil
+	}
+	return "", fmt.Errorf("Invalid storageType %s. StorageType should be 'Endurnace' or 'Performance'.", storageType)
+}
+
+func getPrice(productItems []datatypes.Product_Item, keyName string, categoryCode string) (datatypes.Product_Item_Price, error) {
+	for _, item := range productItems {
+		if strings.HasPrefix(*item.KeyName, keyName) {
+			for _, price := range item.Prices {
+				if *price.Categories[0].CategoryCode == categoryCode {
+					return price, nil
+				}
+			}
+		}
+	}
+	return datatypes.Product_Item_Price{},
+		fmt.Errorf("No product items matching with keyName %s and categoryCode %s could be found", keyName, categoryCode)
 }
