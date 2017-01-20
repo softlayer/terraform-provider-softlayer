@@ -14,6 +14,7 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -21,13 +22,14 @@ import (
 const (
 	StoragePerformancePackageType = "ADDITIONAL_SERVICES_PERFORMANCE_STORAGE"
 	StorageEndurancePackageType   = "ADDITIONAL_SERVICES_ENTERPRISE_STORAGE"
-	storageMask                   = "id,networkStorage.billingItem.orderItem.order.id"
+	storageMask                   = "id,billingItem.orderItem.order.id"
+	storageDetailMask             = "id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type],serviceResourceName"
 	EnduranceType                 = "Endurance"
 	Performancetype               = "Performance"
 )
 
 var (
-	enduranceIOPSMap = map[float64]string{
+	enduranceIopsMap = map[float64]string{
 		0.25: "LOW_INTENSITY_TIER",
 		2:    "READHEAVY_TIER",
 		4:    "WRITEHEAVY_TIER",
@@ -152,7 +154,7 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 
 	log.Printf("[INFO] Storage ID: %s", d.Id())
 
-	return resourceSoftLayerFwHardwareDedicatedRead(d, meta)
+	return resourceSoftLayerFileStorageRead(d, meta)
 }
 
 func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) error {
@@ -161,7 +163,7 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 
 	storage, err := services.GetNetworkStorageService(sess).
 		Id(storageId).
-		Mask("id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type]").
+		Mask(storageDetailMask).
 		GetObject()
 
 	if err != nil {
@@ -169,19 +171,24 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 	}
 
 	storageType := strings.Fields(*storage.StorageType.Description)[0]
-	iops, err := getIops(storage, storageType)
 
+	// Calculate IOPS
+	iops, err := getIops(storage, storageType)
 	if err != nil {
 		return fmt.Errorf("Error retrieving storage information: %s", err)
 	}
 
 	d.Set("type", storageType)
-	d.Set("datacenter", "")
 	d.Set("capacity", *storage.CapacityGb)
 	d.Set("snapshot", "")
 	d.Set("volumename", *storage.Username)
 	d.Set("hostname", *storage.ServiceResourceBackendIpAddress)
 	d.Set("iops", iops)
+
+	// Parse data center short name from ServiceResourceName
+	r, _ := regexp.Compile("[a-zA-Z]{3}[0-9]{2}")
+	d.Set("datacenter", r.FindString(*storage.ServiceResourceName))
+
 	return nil
 }
 
@@ -248,7 +255,7 @@ func buildStorageProductOrderContainer(
 
 	// Build product item filters for performance storage
 	storagePackageType := StoragePerformancePackageType
-	iopsKeyName, err := getIOPSKeyName(iops, storageType)
+	iopsKeyName, err := getIopsKeyName(iops, storageType)
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
@@ -298,7 +305,7 @@ func buildStorageProductOrderContainer(
 	targetItemPrices = append(targetItemPrices, storageProtocolPrice)
 
 	// Add Endurane Storage price
-	if storageType == "Endurance" {
+	if storageType == EnduranceType {
 		endurancePrice, err := getPrice(productItems, "CODENAME_PRIME_STORAGE_SERVICE", "storage_service_enterprise")
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
@@ -383,7 +390,7 @@ func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}) (interfac
 		Refresh: func() (interface{}, string, error) {
 			// Check active transactions
 			service := services.GetNetworkStorageService(meta.(ProviderConfig).SoftLayerSession())
-			result, err := service.Id(id).Mask("activeTransaction,volumeStatus").GetObject()
+			result, err := service.Id(id).Mask("activeTransactions,volumeStatus").GetObject()
 			if err != nil {
 				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
 					return nil, "", fmt.Errorf("Error retrieving storage: %s", err)
@@ -412,10 +419,10 @@ func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}) (interfac
 	return stateConf.WaitForState()
 }
 
-func getIOPSKeyName(iops float64, storageType string) (string, error) {
+func getIopsKeyName(iops float64, storageType string) (string, error) {
 	switch storageType {
 	case EnduranceType:
-		return enduranceIOPSMap[iops], nil
+		return enduranceIopsMap[iops], nil
 	case Performancetype:
 		return fmt.Sprintf("%.f_IOPS", iops), nil
 	}
