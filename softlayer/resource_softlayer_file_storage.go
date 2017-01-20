@@ -113,8 +113,7 @@ func buildStorageProductOrderContainer(
 		return datatypes.Container_Product_Order{}, err
 	}
 
-	// Select only those product items with a matching keyname
-	// IOPS
+	// Add IOPS price
 	targetItemPrices := []datatypes.Product_Item_Price{}
 	iopsPrice, err := getPrice(productItems, iopsKeyName, iopsCategoryCode)
 	if err != nil {
@@ -122,14 +121,14 @@ func buildStorageProductOrderContainer(
 	}
 	targetItemPrices = append(targetItemPrices, iopsPrice)
 
-	// Size
+	// Add size price
 	sizePrice, err := getPrice(productItems, sizeKeyName, "performance_storage_space")
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
 	targetItemPrices = append(targetItemPrices, sizePrice)
 
-	// Endurane Storage
+	// Add Endurane Storage price
 	if storageType == "Endurance" {
 		endurancePrice, err := getPrice(productItems, "CODENAME_PRIME_STORAGE_SERVICE", "performance_storage_space")
 		if err != nil {
@@ -138,7 +137,7 @@ func buildStorageProductOrderContainer(
 		targetItemPrices = append(targetItemPrices, endurancePrice)
 	}
 
-	// storageProtocol
+	// Add storageProtocol price
 	storageProtocolPrice, err := getPrice(productItems, storageProtocol, storageProtocolCategoryCode)
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
