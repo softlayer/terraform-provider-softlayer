@@ -59,7 +59,7 @@ func resourceSoftLayerFileStorage() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"size": {
+			"capacity": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: true,
@@ -75,6 +75,16 @@ func resourceSoftLayerFileStorage() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
+
+			"volumename": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+
+			"hostname": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -83,7 +93,7 @@ func buildStorageProductOrderContainer(
 	sess *session.Session,
 	storageType string,
 	iops float64,
-	size int,
+	capacity int,
 	storageProtocol string,
 	datacenter string) (datatypes.Container_Product_Order, error) {
 
@@ -92,7 +102,7 @@ func buildStorageProductOrderContainer(
 	iopsKeyName, _ := getIOPSKeyName(iops, storageType)
 	iopsCategoryCode := "performance_storage_iops"
 	storageProtocolCategoryCode := "performance_storage_nfs"
-	sizeKeyName := fmt.Sprintf("%d_GB_PERFORMANCE_STORAGE_SPACE", size)
+	capacityKeyName := fmt.Sprintf("%d_GB_PERFORMANCE_STORAGE_SPACE", capacity)
 
 	// Update product item filters for endurance storage
 	if storageType == "Endurance" {
@@ -121,12 +131,12 @@ func buildStorageProductOrderContainer(
 	}
 	targetItemPrices = append(targetItemPrices, iopsPrice)
 
-	// Add size price
-	sizePrice, err := getPrice(productItems, sizeKeyName, "performance_storage_space")
+	// Add capacity price
+	capacityPrice, err := getPrice(productItems, capacityKeyName, "performance_storage_space")
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
-	targetItemPrices = append(targetItemPrices, sizePrice)
+	targetItemPrices = append(targetItemPrices, capacityPrice)
 
 	// Add Endurane Storage price
 	if storageType == "Endurance" {
@@ -167,9 +177,9 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 	storageType := d.Get("type").(string)
 	iops := d.Get("iops").(float64)
 	datacenter := d.Get("datacenter").(string)
-	size := d.Get("size").(int)
+	capacity := d.Get("capacity").(int)
 
-	storageOrderContainer, err := buildStorageProductOrderContainer(sess, storageType, iops, size, "FILE_STORAGE", datacenter)
+	storageOrderContainer, err := buildStorageProductOrderContainer(sess, storageType, iops, capacity, "FILE_STORAGE", datacenter)
 	if err != nil {
 		return fmt.Errorf("Error while creating file storage:%s", err)
 	}
@@ -222,7 +232,7 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 
 	storage, err := services.GetNetworkStorageService(sess).
 		Id(storageId).
-		Mask("id,capacityGb,iops,storageType").
+		Mask("id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress").
 		GetObject()
 
 	if err != nil {
@@ -231,10 +241,12 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 
 	d.Set("type", strings.Fields(*storage.StorageType.Description)[0])
 	d.Set("datacenter", "")
-	d.Set("size", *storage.CapacityGb)
+	d.Set("capacity", *storage.CapacityGb)
 	iops, err := strconv.Atoi(*storage.Iops)
 	d.Set("iops", float64(iops))
 	d.Set("snapshot", "")
+	d.Set("volumename", *storage.Username)
+	d.Set("hostname", *storage.ServiceResourceBackendIpAddress)
 	return nil
 }
 
