@@ -22,6 +22,8 @@ const (
 	StoragePerformancePackageType = "ADDITIONAL_SERVICES_PERFORMANCE_STORAGE"
 	StorageEndurancePackageType   = "ADDITIONAL_SERVICES_ENTERPRISE_STORAGE"
 	storageMask                   = "id,networkStorage.billingItem.orderItem.order.id"
+	EnduranceType                 = "Endurance"
+	Performancetype               = "Performance"
 )
 
 var (
@@ -89,88 +91,6 @@ func resourceSoftLayerFileStorage() *schema.Resource {
 	}
 }
 
-func buildStorageProductOrderContainer(
-	sess *session.Session,
-	storageType string,
-	iops float64,
-	capacity int,
-	storageProtocol string,
-	datacenter string) (datatypes.Container_Product_Order, error) {
-
-	// Build product item filters for performance storage
-	storagePackageType := StoragePerformancePackageType
-	iopsKeyName, _ := getIOPSKeyName(iops, storageType)
-	iopsCategoryCode := "performance_storage_iops"
-	storageProtocolCategoryCode := "performance_storage_nfs"
-	capacityKeyName := fmt.Sprintf("%d_GB_PERFORMANCE_STORAGE_SPACE", capacity)
-
-	// Update product item filters for endurance storage
-	if storageType == "Endurance" {
-		storagePackageType = StorageEndurancePackageType
-		iopsCategoryCode = "storage_tier_level"
-		storageProtocolCategoryCode = "storage_file"
-	}
-
-	// Get a package type
-	pkg, err := product.GetPackageByType(sess, storagePackageType)
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
-	}
-
-	// Get all prices
-	productItems, err := product.GetPackageProducts(sess, *pkg.Id)
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
-	}
-
-	// Add IOPS price
-	targetItemPrices := []datatypes.Product_Item_Price{}
-	iopsPrice, err := getPrice(productItems, iopsKeyName, iopsCategoryCode)
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
-	}
-	targetItemPrices = append(targetItemPrices, iopsPrice)
-
-	// Add capacity price
-	capacityPrice, err := getPrice(productItems, capacityKeyName, "performance_storage_space")
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
-	}
-	targetItemPrices = append(targetItemPrices, capacityPrice)
-
-	// Add Endurane Storage price
-	if storageType == "Endurance" {
-		endurancePrice, err := getPrice(productItems, "CODENAME_PRIME_STORAGE_SERVICE", "performance_storage_space")
-		if err != nil {
-			return datatypes.Container_Product_Order{}, err
-		}
-		targetItemPrices = append(targetItemPrices, endurancePrice)
-	}
-
-	// Add storageProtocol price
-	storageProtocolPrice, err := getPrice(productItems, storageProtocol, storageProtocolCategoryCode)
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
-	}
-	targetItemPrices = append(targetItemPrices, storageProtocolPrice)
-
-	// Lookup the data center ID
-	dc, err := location.GetDatacenterByName(sess, datacenter)
-	if err != nil {
-		return datatypes.Container_Product_Order{},
-			fmt.Errorf("No data centers matching %s could be found", datacenter)
-	}
-
-	productOrderContainer := datatypes.Container_Product_Order{
-		PackageId: pkg.Id,
-		Location:  sl.String(strconv.Itoa(*dc.Id)),
-		Prices:    targetItemPrices,
-		Quantity:  sl.Int(1),
-	}
-
-	return productOrderContainer, nil
-}
-
 func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ProviderConfig).SoftLayerSession()
 
@@ -186,11 +106,15 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 
 	log.Println("[INFO] Creating file storage")
 
-	if storageType == "Endurance" {
+	switch storageType {
+	case EnduranceType:
 		receipt, err := services.GetProductOrderService(sess).PlaceOrder(
 			&datatypes.Container_Product_Order_Network_Storage_Enterprise{
 				Container_Product_Order: storageOrderContainer,
 			}, sl.Bool(false))
+		if err != nil {
+			return fmt.Errorf("Error during creation of file storage: %s", err)
+		}
 		fileStorage, err := findStorageByOrderId(sess, *receipt.OrderId)
 
 		if err != nil {
@@ -198,23 +122,28 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 		}
 		d.SetId(fmt.Sprintf("%d", *fileStorage.Id))
 
-	} else {
+	case Performancetype:
 		receipt, err := services.GetProductOrderService(sess).PlaceOrder(
 			&datatypes.Container_Product_Order_Network_PerformanceStorage_Nfs{
 				Container_Product_Order_Network_PerformanceStorage: datatypes.Container_Product_Order_Network_PerformanceStorage{
 					Container_Product_Order: storageOrderContainer,
 				},
 			}, sl.Bool(false))
+		if err != nil {
+			return fmt.Errorf("Error during creation of file storage: %s", err)
+		}
 		fileStorage, err := findStorageByOrderId(sess, *receipt.OrderId)
 
 		if err != nil {
 			return fmt.Errorf("Error during creation of file storage: %s", err)
 		}
 		d.SetId(fmt.Sprintf("%d", *fileStorage.Id))
+	default:
+		return fmt.Errorf("Error during creation of file storage: Invalied storageType %s", storageType)
 	}
 
 	// wait for storage availability
-	_, err = WaitForNoActiveStorageTransactions(d, meta)
+	_, err = WaitForStorageAvailable(d, meta)
 
 	if err != nil {
 		return fmt.Errorf(
@@ -232,21 +161,27 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 
 	storage, err := services.GetNetworkStorageService(sess).
 		Id(storageId).
-		Mask("id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress").
+		Mask("id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type]").
 		GetObject()
 
 	if err != nil {
 		return fmt.Errorf("Error retrieving storage information: %s", err)
 	}
 
-	d.Set("type", strings.Fields(*storage.StorageType.Description)[0])
+	storageType := strings.Fields(*storage.StorageType.Description)[0]
+	iops, err := getIops(storage, storageType)
+
+	if err != nil {
+		return fmt.Errorf("Error retrieving storage information: %s", err)
+	}
+
+	d.Set("type", storageType)
 	d.Set("datacenter", "")
 	d.Set("capacity", *storage.CapacityGb)
-	iops, err := strconv.Atoi(*storage.Iops)
-	d.Set("iops", float64(iops))
 	d.Set("snapshot", "")
 	d.Set("volumename", *storage.Username)
 	d.Set("hostname", *storage.ServiceResourceBackendIpAddress)
+	d.Set("iops", iops)
 	return nil
 }
 
@@ -303,6 +238,91 @@ func resourceSoftLayerFileStorageExists(d *schema.ResourceData, meta interface{}
 	return true, nil
 }
 
+func buildStorageProductOrderContainer(
+	sess *session.Session,
+	storageType string,
+	iops float64,
+	capacity int,
+	storageProtocol string,
+	datacenter string) (datatypes.Container_Product_Order, error) {
+
+	// Build product item filters for performance storage
+	storagePackageType := StoragePerformancePackageType
+	iopsKeyName, err := getIOPSKeyName(iops, storageType)
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	iopsCategoryCode := "performance_storage_iops"
+	storageProtocolCategoryCode := "performance_storage_nfs"
+	capacityKeyName := fmt.Sprintf("%d_GB_PERFORMANCE_STORAGE_SPACE", capacity)
+
+	// Update product item filters for endurance storage
+	if storageType == "Endurance" {
+		storagePackageType = StorageEndurancePackageType
+		iopsCategoryCode = "storage_tier_level"
+		storageProtocolCategoryCode = "storage_file"
+	}
+
+	// Get a package type
+	pkg, err := product.GetPackageByType(sess, storagePackageType)
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+
+	// Get all prices
+	productItems, err := product.GetPackageProducts(sess, *pkg.Id)
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+
+	// Add IOPS price
+	targetItemPrices := []datatypes.Product_Item_Price{}
+	iopsPrice, err := getPrice(productItems, iopsKeyName, iopsCategoryCode)
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	targetItemPrices = append(targetItemPrices, iopsPrice)
+
+	// Add capacity price
+	capacityPrice, err := getPrice(productItems, capacityKeyName, "performance_storage_space")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	targetItemPrices = append(targetItemPrices, capacityPrice)
+
+	// Add storageProtocol price
+	storageProtocolPrice, err := getPrice(productItems, storageProtocol, storageProtocolCategoryCode)
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	targetItemPrices = append(targetItemPrices, storageProtocolPrice)
+
+	// Add Endurane Storage price
+	if storageType == "Endurance" {
+		endurancePrice, err := getPrice(productItems, "CODENAME_PRIME_STORAGE_SERVICE", "storage_service_enterprise")
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+		targetItemPrices = append(targetItemPrices, endurancePrice)
+	}
+
+	// Lookup the data center ID
+	dc, err := location.GetDatacenterByName(sess, datacenter)
+	if err != nil {
+		return datatypes.Container_Product_Order{},
+			fmt.Errorf("No data centers matching %s could be found", datacenter)
+	}
+
+	productOrderContainer := datatypes.Container_Product_Order{
+		PackageId: pkg.Id,
+		Location:  sl.String(strconv.Itoa(*dc.Id)),
+		Prices:    targetItemPrices,
+		Quantity:  sl.Int(1),
+	}
+
+	return productOrderContainer, nil
+}
+
 func findStorageByOrderId(sess *session.Session, orderId int) (datatypes.Network_Storage, error) {
 	filterPath := "networkStorage.billingItem.orderItem.order.id"
 
@@ -349,33 +369,40 @@ func findStorageByOrderId(sess *session.Session, orderId int) (datatypes.Network
 		fmt.Errorf("Cannot find Storage with order id '%d'", orderId)
 }
 
-// Wait for no active transactions
-func WaitForNoActiveStorageTransactions(d *schema.ResourceData, meta interface{}) (interface{}, error) {
-	log.Printf("Waiting for storage (%s) to have zero active transactions", d.Id())
+// Waits for storage provisioning
+func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}) (interface{}, error) {
+	log.Printf("Waiting for storage (%s) to be available.", d.Id())
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return nil, fmt.Errorf("The storage ID %s must be numeric", d.Id())
 	}
 
 	stateConf := &resource.StateChangeConf{
-		Pending: []string{"retry", "active"},
-		Target:  []string{"idle"},
+		Pending: []string{"retry", "provisioning"},
+		Target:  []string{"available"},
 		Refresh: func() (interface{}, string, error) {
+			// Check active transactions
 			service := services.GetNetworkStorageService(meta.(ProviderConfig).SoftLayerSession())
-			transactions, err := service.Id(id).GetActiveTransactions()
+			result, err := service.Id(id).Mask("activeTransaction,volumeStatus").GetObject()
 			if err != nil {
 				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
-					return nil, "", fmt.Errorf("Couldn't get active transactions: %s", err)
+					return nil, "", fmt.Errorf("Error retrieving storage: %s", err)
 				}
-
 				return false, "retry", nil
 			}
 
-			if len(transactions) == 0 {
-				return transactions, "idle", nil
+			log.Println("Checking active transactions.")
+			if len(result.ActiveTransactions) > 0 {
+				return result, "provisioning", nil
 			}
 
-			return transactions, "active", nil
+			// Check volume status.
+			log.Println("Checking volume status.")
+			if *result.VolumeStatus != "PROVISION_COMPLETED" {
+				return result, "provisioning", nil
+			}
+
+			return result, "available", nil
 		},
 		Timeout:    45 * time.Minute,
 		Delay:      10 * time.Second,
@@ -386,13 +413,13 @@ func WaitForNoActiveStorageTransactions(d *schema.ResourceData, meta interface{}
 }
 
 func getIOPSKeyName(iops float64, storageType string) (string, error) {
-	if storageType == "Endurance" {
+	switch storageType {
+	case EnduranceType:
 		return enduranceIOPSMap[iops], nil
-	}
-	if storageType == "Performance" {
+	case Performancetype:
 		return fmt.Sprintf("%.f_IOPS", iops), nil
 	}
-	return "", fmt.Errorf("Invalid storageType %s. StorageType should be 'Endurnace' or 'Performance'.", storageType)
+	return "", fmt.Errorf("Invalid storageType %s.", storageType)
 }
 
 func getPrice(productItems []datatypes.Product_Item, keyName string, categoryCode string) (datatypes.Product_Item_Price, error) {
@@ -407,4 +434,29 @@ func getPrice(productItems []datatypes.Product_Item, keyName string, categoryCod
 	}
 	return datatypes.Product_Item_Price{},
 		fmt.Errorf("No product items matching with keyName %s and categoryCode %s could be found", keyName, categoryCode)
+}
+
+func getIops(storage datatypes.Network_Storage, storageType string) (float64, error) {
+	switch storageType {
+	case EnduranceType:
+		for _, property := range storage.Properties {
+			if *property.Type.Keyname == "PROVISIONED_IOPS" {
+				provisionedIops, err := strconv.Atoi(*property.Value)
+				if err != nil {
+					return 0, err
+				}
+				return float64(provisionedIops) / float64(*storage.CapacityGb), nil
+			}
+		}
+	case Performancetype:
+		if storage.Iops == nil {
+			return 0, fmt.Errorf("Failed to retrive iops information.")
+		}
+		iops, err := strconv.Atoi(*storage.Iops)
+		if err != nil {
+			return 0, err
+		}
+		return float64(iops), nil
+	}
+	return 0, fmt.Errorf("Invalied storage type %s", storageType)
 }
