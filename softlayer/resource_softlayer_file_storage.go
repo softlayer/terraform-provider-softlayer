@@ -23,9 +23,10 @@ const (
 	StoragePerformancePackageType = "ADDITIONAL_SERVICES_PERFORMANCE_STORAGE"
 	StorageEndurancePackageType   = "ADDITIONAL_SERVICES_ENTERPRISE_STORAGE"
 	storageMask                   = "id,billingItem.orderItem.order.id"
-	storageDetailMask             = "id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type],serviceResourceName"
-	EnduranceType                 = "Endurance"
-	Performancetype               = "Performance"
+	storageDetailMask             = "id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type]" +
+		",serviceResourceName,allowedIpAddresses,allowedSubnets,allowedVirtualGuests"
+	EnduranceType   = "Endurance"
+	Performancetype = "Performance"
 )
 
 var (
@@ -89,6 +90,24 @@ func resourceSoftLayerFileStorage() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+
+			"allowed_virtual_guest_ids": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeInt},
+			},
+
+			"allowed_subnets": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+
+			"allowed_ip_addresses": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
 		},
 	}
 }
@@ -108,43 +127,38 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 
 	log.Println("[INFO] Creating file storage")
 
+	var receipt datatypes.Container_Product_Order_Receipt
+
 	switch storageType {
 	case EnduranceType:
-		receipt, err := services.GetProductOrderService(sess).PlaceOrder(
+		receipt, err = services.GetProductOrderService(sess).PlaceOrder(
 			&datatypes.Container_Product_Order_Network_Storage_Enterprise{
 				Container_Product_Order: storageOrderContainer,
 			}, sl.Bool(false))
-		if err != nil {
-			return fmt.Errorf("Error during creation of file storage: %s", err)
-		}
-		fileStorage, err := findStorageByOrderId(sess, *receipt.OrderId)
-
-		if err != nil {
-			return fmt.Errorf("Error during creation of file storage: %s", err)
-		}
-		d.SetId(fmt.Sprintf("%d", *fileStorage.Id))
-
 	case Performancetype:
-		receipt, err := services.GetProductOrderService(sess).PlaceOrder(
+		receipt, err = services.GetProductOrderService(sess).PlaceOrder(
 			&datatypes.Container_Product_Order_Network_PerformanceStorage_Nfs{
 				Container_Product_Order_Network_PerformanceStorage: datatypes.Container_Product_Order_Network_PerformanceStorage{
 					Container_Product_Order: storageOrderContainer,
 				},
 			}, sl.Bool(false))
-		if err != nil {
-			return fmt.Errorf("Error during creation of file storage: %s", err)
-		}
-		fileStorage, err := findStorageByOrderId(sess, *receipt.OrderId)
-
-		if err != nil {
-			return fmt.Errorf("Error during creation of file storage: %s", err)
-		}
-		d.SetId(fmt.Sprintf("%d", *fileStorage.Id))
 	default:
 		return fmt.Errorf("Error during creation of file storage: Invalied storageType %s", storageType)
 	}
 
-	// wait for storage availability
+	if err != nil {
+		return fmt.Errorf("Error during creation of file storage: %s", err)
+	}
+
+	// Find the storage device
+	fileStorage, err := findStorageByOrderId(sess, *receipt.OrderId)
+
+	if err != nil {
+		return fmt.Errorf("Error during creation of file storage: %s", err)
+	}
+	d.SetId(fmt.Sprintf("%d", *fileStorage.Id))
+
+	// Wait for storage availability
 	_, err = WaitForStorageAvailable(d, meta)
 
 	if err != nil {
@@ -188,6 +202,36 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 	// Parse data center short name from ServiceResourceName
 	r, _ := regexp.Compile("[a-zA-Z]{3}[0-9]{2}")
 	d.Set("datacenter", r.FindString(*storage.ServiceResourceName))
+
+	allowedIpaddresses := storage.AllowedIpAddresses
+	allowedIpaddressesLen := len(allowedIpaddresses)
+	if allowedIpaddressesLen > 0 {
+		allowedIpaddressesList := make([]string, 0, allowedIpaddressesLen)
+		for _, allowedIpaddress := range allowedIpaddresses {
+			allowedIpaddressesList = append(allowedIpaddressesList, *allowedIpaddress.IpAddress)
+		}
+		d.Set("allowed_ip_addresses", allowedIpaddressesList)
+	}
+
+	allowedSubnets := storage.AllowedSubnets
+	allowedSubnetsLen := len(allowedSubnets)
+	if allowedSubnetsLen > 0 {
+		allowedSubnetsList := make([]string, 0, allowedSubnetsLen)
+		for _, allowedSubnets := range allowedSubnets {
+			allowedSubnetsList = append(allowedSubnetsList, *allowedSubnets.NetworkIdentifier+"/"+strconv.Itoa(*allowedSubnets.Cidr))
+		}
+		d.Set("allowed_subnets", allowedSubnetsList)
+	}
+
+	allowedVirtualGuests := storage.AllowedVirtualGuests
+	allowedVirtualGuestsLen := len(allowedVirtualGuests)
+	if allowedVirtualGuestsLen > 0 {
+		allowedVirtualGuestIdsList := make([]int, 0, allowedVirtualGuestsLen)
+		for _, allowedVirtualGuest := range allowedVirtualGuests {
+			allowedVirtualGuestIdsList = append(allowedVirtualGuestIdsList, *allowedVirtualGuest.Id)
+		}
+		d.Set("allowed_virtual_guest_ids", allowedVirtualGuestIdsList)
+	}
 
 	return nil
 }
