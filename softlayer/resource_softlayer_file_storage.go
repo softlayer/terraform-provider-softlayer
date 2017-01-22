@@ -97,6 +97,12 @@ func resourceSoftLayerFileStorage() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeInt},
 			},
 
+			"allowed_hardware_ids": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeInt},
+			},
+
 			"allowed_subnets": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -231,6 +237,16 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 			allowedVirtualGuestIdsList = append(allowedVirtualGuestIdsList, *allowedVirtualGuest.Id)
 		}
 		d.Set("allowed_virtual_guest_ids", allowedVirtualGuestIdsList)
+	}
+
+	allowedHardware := storage.AllowedHardware
+	allowedHardwareLen := len(allowedHardware)
+	if allowedHardwareLen > 0 {
+		allowedHardwareIdsList := make([]int, 0, allowedHardwareLen)
+		for _, allowedHW := range allowedHardware {
+			allowedHardwareIdsList = append(allowedHardwareIdsList, *allowedHW.Id)
+		}
+		d.Set("allowed_hardware_ids", allowedHardwareIdsList)
 	}
 
 	return nil
@@ -510,4 +526,50 @@ func getIops(storage datatypes.Network_Storage, storageType string) (float64, er
 		return float64(iops), nil
 	}
 	return 0, fmt.Errorf("Invalied storage type %s", storageType)
+}
+
+func getIpAddressByName(sess *session.Session, name string, args ...interface{}) (datatypes.Network_Subnet_IpAddress, error) {
+	var mask string
+	if len(args) > 0 {
+		mask = args[0].(string)
+	}
+
+	ips, err := services.GetAccountService(sess).
+		Mask(mask).
+		Filter(filter.New(filter.Path("name").Eq(name)).Build()).
+		GetIpAddresses()
+
+	if err != nil {
+		return datatypes.Network_Subnet_IpAddress{}, err
+	}
+
+	// An empty filtered result set does not raise an error
+	if len(ips) == 0 {
+		return datatypes.Network_Subnet_IpAddress{}, fmt.Errorf("No IpAddress found with name of %s", name)
+	}
+
+	return ips[0], nil
+}
+
+func getSubnetByName(sess *session.Session, name string, args ...interface{}) (datatypes.Network_Subnet, error) {
+	var mask string
+	if len(args) > 0 {
+		mask = args[0].(string)
+	}
+
+	subnets, err := services.GetAccountService(sess).
+		Mask(mask).
+		Filter(filter.New(filter.Path("name").Eq(name)).Build()).
+		GetSubnets()
+
+	if err != nil {
+		return datatypes.Network_Subnet{}, err
+	}
+
+	// An empty filtered result set does not raise an error
+	if len(subnets) == 0 {
+		return datatypes.Network_Subnet{}, fmt.Errorf("No subnet found with name of %s", name)
+	}
+
+	return subnets[0], nil
 }
