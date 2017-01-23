@@ -92,27 +92,41 @@ func resourceSoftLayerFileStorage() *schema.Resource {
 			},
 
 			"allowed_virtual_guest_ids": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeInt},
+				Set: func(v interface{}) int {
+					return v.(int)
+				},
 			},
 
 			"allowed_hardware_ids": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeInt},
+				Set: func(v interface{}) int {
+					return v.(int)
+				},
 			},
 
 			"allowed_subnets": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
+				Set: func(v interface{}) int {
+					hash, _ := strconv.Atoi(strings.Replace(strings.Replace(v.(string), ".", "", -1), "/", "", -1))
+					return hash
+				},
 			},
 
 			"allowed_ip_addresses": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
+				Set: func(v interface{}) int {
+					hash, _ := strconv.Atoi(strings.Replace(v.(string), ".", "", -1))
+					return hash
+				},
 			},
 		},
 	}
@@ -253,6 +267,72 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 }
 
 func resourceSoftLayerFileStorageUpdate(d *schema.ResourceData, meta interface{}) error {
+	sess := meta.(ProviderConfig).SoftLayerSession()
+	id, err := strconv.Atoi(d.Id())
+	if err != nil {
+		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
+	}
+
+	storage, err := services.GetNetworkStorageService(sess).
+		Id(id).
+		Mask(storageDetailMask).
+		GetObject()
+
+	if err != nil {
+		return fmt.Errorf("Error updating storage information: %s", err)
+	}
+
+	if d.HasChange("allowed_virtual_guest_ids") {
+		// Add new allowed_virtual_guest_ids
+		newIds := d.Get("allowed_virtual_guest_ids").(*schema.Set).List()
+		for _, newId := range newIds {
+			isNewId := true
+			for _, oldAllowedVirtualGuest := range storage.AllowedVirtualGuests {
+				if newId.(int) == *oldAllowedVirtualGuest.Id {
+					isNewId = false
+					break
+				}
+			}
+			if isNewId {
+				_, err := services.GetNetworkStorageService(sess).
+					Id(id).
+					AllowAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+						{
+							Id:         sl.Int(newId.(int)),
+							ObjectType: sl.String("SoftLayer_Virtual_Guest"),
+						},
+					})
+				if err != nil {
+					return fmt.Errorf("Error updating storage information: %s", err)
+				}
+			}
+		}
+
+		// Remove deleted allowed_virtual_guest_ids
+		for _, oldAllowedVirtualGuest := range storage.AllowedVirtualGuests {
+			isDeletedId := true
+			for _, newId := range newIds {
+				if newId.(int) == *oldAllowedVirtualGuest.Id {
+					isDeletedId = false
+					break
+				}
+			}
+			if isDeletedId {
+				_, err := services.GetNetworkStorageService(sess).
+					Id(id).
+					RemoveAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+						{
+							Id:         sl.Int(*oldAllowedVirtualGuest.Id),
+							ObjectType: sl.String("SoftLayer_Virtual_Guest"),
+						},
+					})
+				if err != nil {
+					return fmt.Errorf("Error updating storage information: %s", err)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
