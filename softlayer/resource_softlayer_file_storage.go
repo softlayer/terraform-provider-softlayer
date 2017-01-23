@@ -223,45 +223,33 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 	r, _ := regexp.Compile("[a-zA-Z]{3}[0-9]{2}")
 	d.Set("datacenter", r.FindString(*storage.ServiceResourceName))
 
-	allowedIpaddresses := storage.AllowedIpAddresses
-	allowedIpaddressesLen := len(allowedIpaddresses)
-	if allowedIpaddressesLen > 0 {
-		allowedIpaddressesList := make([]string, 0, allowedIpaddressesLen)
-		for _, allowedIpaddress := range allowedIpaddresses {
-			allowedIpaddressesList = append(allowedIpaddressesList, *allowedIpaddress.IpAddress)
-		}
-		d.Set("allowed_ip_addresses", allowedIpaddressesList)
+	// Read allowed_ip_addresses
+	allowedIpaddressesList := make([]string, 0, len(storage.AllowedIpAddresses))
+	for _, allowedIpaddress := range storage.AllowedIpAddresses {
+		allowedIpaddressesList = append(allowedIpaddressesList, *allowedIpaddress.IpAddress)
 	}
+	d.Set("allowed_ip_addresses", allowedIpaddressesList)
 
-	allowedSubnets := storage.AllowedSubnets
-	allowedSubnetsLen := len(allowedSubnets)
-	if allowedSubnetsLen > 0 {
-		allowedSubnetsList := make([]string, 0, allowedSubnetsLen)
-		for _, allowedSubnets := range allowedSubnets {
-			allowedSubnetsList = append(allowedSubnetsList, *allowedSubnets.NetworkIdentifier+"/"+strconv.Itoa(*allowedSubnets.Cidr))
-		}
-		d.Set("allowed_subnets", allowedSubnetsList)
+	// Read allowed_subnets
+	allowedSubnetsList := make([]string, 0, len(storage.AllowedSubnets))
+	for _, allowedSubnets := range storage.AllowedSubnets {
+		allowedSubnetsList = append(allowedSubnetsList, *allowedSubnets.NetworkIdentifier+"/"+strconv.Itoa(*allowedSubnets.Cidr))
 	}
+	d.Set("allowed_subnets", allowedSubnetsList)
 
-	allowedVirtualGuests := storage.AllowedVirtualGuests
-	allowedVirtualGuestsLen := len(allowedVirtualGuests)
-	if allowedVirtualGuestsLen > 0 {
-		allowedVirtualGuestIdsList := make([]int, 0, allowedVirtualGuestsLen)
-		for _, allowedVirtualGuest := range allowedVirtualGuests {
-			allowedVirtualGuestIdsList = append(allowedVirtualGuestIdsList, *allowedVirtualGuest.Id)
-		}
-		d.Set("allowed_virtual_guest_ids", allowedVirtualGuestIdsList)
+	// Read allowed_virtual_guest_ids
+	allowedVirtualGuestIdsList := make([]int, 0, len(storage.AllowedVirtualGuests))
+	for _, allowedVirtualGuest := range storage.AllowedVirtualGuests {
+		allowedVirtualGuestIdsList = append(allowedVirtualGuestIdsList, *allowedVirtualGuest.Id)
 	}
+	d.Set("allowed_virtual_guest_ids", allowedVirtualGuestIdsList)
 
-	allowedHardware := storage.AllowedHardware
-	allowedHardwareLen := len(allowedHardware)
-	if allowedHardwareLen > 0 {
-		allowedHardwareIdsList := make([]int, 0, allowedHardwareLen)
-		for _, allowedHW := range allowedHardware {
-			allowedHardwareIdsList = append(allowedHardwareIdsList, *allowedHW.Id)
-		}
-		d.Set("allowed_hardware_ids", allowedHardwareIdsList)
+	// Read allowed_hardware_ids
+	allowedHardwareIdsList := make([]int, 0, len(storage.AllowedHardware))
+	for _, allowedHW := range storage.AllowedHardware {
+		allowedHardwareIdsList = append(allowedHardwareIdsList, *allowedHW.Id)
 	}
+	d.Set("allowed_hardware_ids", allowedHardwareIdsList)
 
 	return nil
 }
@@ -282,54 +270,35 @@ func resourceSoftLayerFileStorageUpdate(d *schema.ResourceData, meta interface{}
 		return fmt.Errorf("Error updating storage information: %s", err)
 	}
 
-	if d.HasChange("allowed_virtual_guest_ids") {
-		// Add new allowed_virtual_guest_ids
-		newIds := d.Get("allowed_virtual_guest_ids").(*schema.Set).List()
-		for _, newId := range newIds {
-			isNewId := true
-			for _, oldAllowedVirtualGuest := range storage.AllowedVirtualGuests {
-				if newId.(int) == *oldAllowedVirtualGuest.Id {
-					isNewId = false
-					break
-				}
-			}
-			if isNewId {
-				_, err := services.GetNetworkStorageService(sess).
-					Id(id).
-					AllowAccessFromHostList([]datatypes.Container_Network_Storage_Host{
-						{
-							Id:         sl.Int(newId.(int)),
-							ObjectType: sl.String("SoftLayer_Virtual_Guest"),
-						},
-					})
-				if err != nil {
-					return fmt.Errorf("Error updating storage information: %s", err)
-				}
-			}
+	// Update allowed_ip_addresses
+	if d.HasChange("allowed_ip_addresses") {
+		err := updateAllowedIpAddresses(d, sess, storage)
+		if err != nil {
+			return fmt.Errorf("Error updating storage information: %s", err)
 		}
+	}
 
-		// Remove deleted allowed_virtual_guest_ids
-		for _, oldAllowedVirtualGuest := range storage.AllowedVirtualGuests {
-			isDeletedId := true
-			for _, newId := range newIds {
-				if newId.(int) == *oldAllowedVirtualGuest.Id {
-					isDeletedId = false
-					break
-				}
-			}
-			if isDeletedId {
-				_, err := services.GetNetworkStorageService(sess).
-					Id(id).
-					RemoveAccessFromHostList([]datatypes.Container_Network_Storage_Host{
-						{
-							Id:         sl.Int(*oldAllowedVirtualGuest.Id),
-							ObjectType: sl.String("SoftLayer_Virtual_Guest"),
-						},
-					})
-				if err != nil {
-					return fmt.Errorf("Error updating storage information: %s", err)
-				}
-			}
+	// Update allowed_subnets
+	if d.HasChange("allowed_subnets") {
+		err := updateAllowedSubnets(d, sess, storage)
+		if err != nil {
+			return fmt.Errorf("Error updating storage information: %s", err)
+		}
+	}
+
+	// Update allowed_virtual_guest_ids
+	if d.HasChange("allowed_virtual_guest_ids") {
+		err := updateAllowedVirtualGuestIds(d, sess, storage)
+		if err != nil {
+			return fmt.Errorf("Error updating storage information: %s", err)
+		}
+	}
+
+	// Update allowed_hardware_ids
+	if d.HasChange("allowed_hardware_ids") {
+		err := updateAllowedHardwareIds(d, sess, storage)
+		if err != nil {
+			return fmt.Errorf("Error updating storage information: %s", err)
 		}
 	}
 
@@ -652,4 +621,252 @@ func getSubnetByName(sess *session.Session, name string, args ...interface{}) (d
 	}
 
 	return subnets[0], nil
+}
+
+func updateAllowedIpAddresses(d *schema.ResourceData, sess *session.Session, storage datatypes.Network_Storage) error {
+	id := *storage.Id
+	newIps := d.Get("allowed_ip_addresses").(*schema.Set).List()
+
+	// Add new allowed_ip_addresses
+	for _, newIp := range newIps {
+		isNewIp := true
+		for _, oldAllowedIpAddresses := range storage.AllowedIpAddresses {
+			if newIp.(string) == *oldAllowedIpAddresses.IpAddress {
+				isNewIp = false
+				break
+			}
+		}
+		if isNewIp {
+			ipObject, err := services.GetAccountService(sess).
+				Filter(filter.Build(
+					filter.Path("ipAddresses.ipAddress").
+						Eq(newIp.(string)))).GetIpAddresses()
+			if err != nil {
+				return err
+			}
+			if len(ipObject) != 1 {
+				return fmt.Errorf("Number of IP address is %d", len(ipObject))
+			}
+			_, err = services.GetNetworkStorageService(sess).
+				Id(id).
+				AllowAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+					{
+						Id:         ipObject[0].Id,
+						ObjectType: sl.String("SoftLayer_Network_Subnet_IpAddress"),
+					},
+				})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Remove deleted allowed_hardware_ids
+	for _, oldAllowedIpAddresses := range storage.AllowedIpAddresses {
+		isDeletedId := true
+		for _, newIp := range newIps {
+			if newIp.(string) == *oldAllowedIpAddresses.IpAddress {
+				isDeletedId = false
+				break
+			}
+		}
+		if isDeletedId {
+			_, err := services.GetNetworkStorageService(sess).
+				Id(id).
+				RemoveAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+					{
+						Id:         oldAllowedIpAddresses.Id,
+						ObjectType: sl.String("SoftLayer_Network_Subnet_IpAddress"),
+					},
+				})
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func updateAllowedSubnets(d *schema.ResourceData, sess *session.Session, storage datatypes.Network_Storage) error {
+	id := *storage.Id
+	newSubnets := d.Get("allowed_subnets").(*schema.Set).List()
+
+	// Add new allowed_subnets
+	for _, newSubnet := range newSubnets {
+		isNewSubnet := true
+		newSubnetArr := strings.Split(newSubnet.(string), "/")
+		newNetworkIdentifier := newSubnetArr[0]
+		newCidr, err := strconv.Atoi(newSubnetArr[1])
+		if err != nil {
+			return err
+		}
+		for _, oldAllowedSubnets := range storage.AllowedSubnets {
+			if newNetworkIdentifier == *oldAllowedSubnets.NetworkIdentifier && newCidr == *oldAllowedSubnets.Cidr {
+				isNewSubnet = false
+				break
+			}
+		}
+		if isNewSubnet {
+			filterStr := fmt.Sprintf("{\"subnets\":{\"networkIdentifier\":{\"operation\":\"%s\"},\"cidr\":{\"operation\":\"%d\"}}}", newNetworkIdentifier, newCidr)
+			subnetObject, err := services.GetAccountService(sess).
+				Filter(filterStr).GetSubnets()
+			if err != nil {
+				return err
+			}
+			if len(subnetObject) != 1 {
+				return fmt.Errorf("Number of subnet is %d", len(subnetObject))
+			}
+			_, err = services.GetNetworkStorageService(sess).
+				Id(id).
+				AllowAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+					{
+						Id:         subnetObject[0].Id,
+						ObjectType: sl.String("SoftLayer_Network_Subnet"),
+					},
+				})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Remove deleted allowed_subnets
+	for _, oldAllowedSubnets := range storage.AllowedSubnets {
+		isDeletedSubnet := true
+		for _, newSubnet := range newSubnets {
+			newSubnetArr := strings.Split(newSubnet.(string), "/")
+			newNetworkIdentifier := newSubnetArr[0]
+			newCidr, err := strconv.Atoi(newSubnetArr[1])
+			if err != nil {
+				return err
+			}
+
+			if newNetworkIdentifier == *oldAllowedSubnets.NetworkIdentifier && newCidr == *oldAllowedSubnets.Cidr {
+				isDeletedSubnet = false
+				break
+			}
+		}
+		if isDeletedSubnet {
+			_, err := services.GetNetworkStorageService(sess).
+				Id(id).
+				RemoveAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+					{
+						Id:         sl.Int(*oldAllowedSubnets.Id),
+						ObjectType: sl.String("SoftLayer_Network_Subnet"),
+					},
+				})
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func updateAllowedVirtualGuestIds(d *schema.ResourceData, sess *session.Session, storage datatypes.Network_Storage) error {
+	id := *storage.Id
+	newIds := d.Get("allowed_virtual_guest_ids").(*schema.Set).List()
+
+	// Add new allowed_virtual_guest_ids
+	for _, newId := range newIds {
+		isNewId := true
+		for _, oldAllowedVirtualGuest := range storage.AllowedVirtualGuests {
+			if newId.(int) == *oldAllowedVirtualGuest.Id {
+				isNewId = false
+				break
+			}
+		}
+		if isNewId {
+			_, err := services.GetNetworkStorageService(sess).
+				Id(id).
+				AllowAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+					{
+						Id:         sl.Int(newId.(int)),
+						ObjectType: sl.String("SoftLayer_Virtual_Guest"),
+					},
+				})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Remove deleted allowed_virtual_guest_ids
+	for _, oldAllowedVirtualGuest := range storage.AllowedVirtualGuests {
+		isDeletedId := true
+		for _, newId := range newIds {
+			if newId.(int) == *oldAllowedVirtualGuest.Id {
+				isDeletedId = false
+				break
+			}
+		}
+		if isDeletedId {
+			_, err := services.GetNetworkStorageService(sess).
+				Id(id).
+				RemoveAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+					{
+						Id:         sl.Int(*oldAllowedVirtualGuest.Id),
+						ObjectType: sl.String("SoftLayer_Virtual_Guest"),
+					},
+				})
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func updateAllowedHardwareIds(d *schema.ResourceData, sess *session.Session, storage datatypes.Network_Storage) error {
+	id := *storage.Id
+	newIds := d.Get("allowed_hardware_ids").(*schema.Set).List()
+
+	// Add new allowed_hardware_ids
+	for _, newId := range newIds {
+		isNewId := true
+		for _, oldAllowedHardware := range storage.AllowedHardware {
+			if newId.(int) == *oldAllowedHardware.Id {
+				isNewId = false
+				break
+			}
+		}
+		if isNewId {
+			_, err := services.GetNetworkStorageService(sess).
+				Id(id).
+				AllowAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+					{
+						Id:         sl.Int(newId.(int)),
+						ObjectType: sl.String("SoftLayer_Hardware"),
+					},
+				})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Remove deleted allowed_hardware_ids
+	for _, oldAllowedHardware := range storage.AllowedHardware {
+		isDeletedId := true
+		for _, newId := range newIds {
+			if newId.(int) == *oldAllowedHardware.Id {
+				isDeletedId = false
+				break
+			}
+		}
+		if isDeletedId {
+			_, err := services.GetNetworkStorageService(sess).
+				Id(id).
+				RemoveAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+					{
+						Id:         sl.Int(*oldAllowedHardware.Id),
+						ObjectType: sl.String("SoftLayer_Hardware"),
+					},
+				})
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
