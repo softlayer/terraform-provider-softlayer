@@ -24,7 +24,7 @@ const (
 	StorageEndurancePackageType   = "ADDITIONAL_SERVICES_ENTERPRISE_STORAGE"
 	storageMask                   = "id,billingItem.orderItem.order.id"
 	storageDetailMask             = "id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type]" +
-		",serviceResourceName,allowedIpAddresses,allowedSubnets,allowedVirtualGuests"
+		",serviceResourceName,allowedIpAddresses,allowedSubnets,allowedVirtualGuests,snapshotCapacityGb"
 	EnduranceType   = "Endurance"
 	Performancetype = "Performance"
 )
@@ -76,11 +76,6 @@ func resourceSoftLayerFileStorage() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"snapshot": {
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
-
 			"volumename": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -89,6 +84,11 @@ func resourceSoftLayerFileStorage() *schema.Resource {
 			"hostname": {
 				Type:     schema.TypeString,
 				Computed: true,
+			},
+
+			"snapshot_capacity": {
+				Type:     schema.TypeInt,
+				Optional: true,
 			},
 
 			"allowed_virtual_guest_ids": {
@@ -139,8 +139,9 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 	iops := d.Get("iops").(float64)
 	datacenter := d.Get("datacenter").(string)
 	capacity := d.Get("capacity").(int)
+	snapshotCapacity := d.Get("snapshot_capacity").(int)
 
-	storageOrderContainer, err := buildStorageProductOrderContainer(sess, storageType, iops, capacity, "FILE_STORAGE", datacenter)
+	storageOrderContainer, err := buildStorageProductOrderContainer(sess, storageType, iops, capacity, snapshotCapacity, "FILE_STORAGE", datacenter)
 	if err != nil {
 		return fmt.Errorf("Error while creating file storage:%s", err)
 	}
@@ -188,7 +189,7 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 
 	log.Printf("[INFO] Storage ID: %s", d.Id())
 
-	return resourceSoftLayerFileStorageRead(d, meta)
+	return resourceSoftLayerFileStorageUpdate(d, meta)
 }
 
 func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) error {
@@ -214,10 +215,13 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 
 	d.Set("type", storageType)
 	d.Set("capacity", *storage.CapacityGb)
-	d.Set("snapshot", "")
 	d.Set("volumename", *storage.Username)
 	d.Set("hostname", *storage.ServiceResourceBackendIpAddress)
 	d.Set("iops", iops)
+	if storage.SnapshotCapacityGb != nil {
+		snapshotCapacity, _ := strconv.Atoi(*storage.SnapshotCapacityGb)
+		d.Set("snapshot_capacity", snapshotCapacity)
+	}
 
 	// Parse data center short name from ServiceResourceName
 	r, _ := regexp.Compile("[a-zA-Z]{3}[0-9]{2}")
@@ -302,7 +306,7 @@ func resourceSoftLayerFileStorageUpdate(d *schema.ResourceData, meta interface{}
 		}
 	}
 
-	return nil
+	return resourceSoftLayerFileStorageRead(d, meta)
 }
 
 func resourceSoftLayerFileStorageDelete(d *schema.ResourceData, meta interface{}) error {
@@ -359,6 +363,7 @@ func buildStorageProductOrderContainer(
 	storageType string,
 	iops float64,
 	capacity int,
+	snapshotCapacity int,
 	storageProtocol string,
 	datacenter string) (datatypes.Container_Product_Order, error) {
 
@@ -370,7 +375,8 @@ func buildStorageProductOrderContainer(
 	}
 	iopsCategoryCode := "performance_storage_iops"
 	storageProtocolCategoryCode := "performance_storage_nfs"
-	capacityKeyName := fmt.Sprintf("%d_GB_PERFORMANCE_STORAGE_SPACE", capacity)
+	capacityKeyName := fmt.Sprintf("%d_GB_", capacity)
+	snapshotCapacityKeyName := fmt.Sprintf("%d_GB_", snapshotCapacity)
 
 	// Update product item filters for endurance storage
 	if storageType == "Endurance" {
@@ -420,6 +426,15 @@ func buildStorageProductOrderContainer(
 			return datatypes.Container_Product_Order{}, err
 		}
 		targetItemPrices = append(targetItemPrices, endurancePrice)
+	}
+
+	// Add snapshot capacity price
+	if snapshotCapacity > 0 {
+		snapshotCapacityPrice, err := getPrice(productItems, snapshotCapacityKeyName, "storage_snapshot_space")
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+		targetItemPrices = append(targetItemPrices, snapshotCapacityPrice)
 	}
 
 	// Lookup the data center ID
