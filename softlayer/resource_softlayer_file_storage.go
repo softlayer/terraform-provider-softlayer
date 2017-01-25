@@ -24,9 +24,11 @@ const (
 	StorageEndurancePackageType   = "ADDITIONAL_SERVICES_ENTERPRISE_STORAGE"
 	storageMask                   = "id,billingItem.orderItem.order.id"
 	storageDetailMask             = "id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type]" +
-		",serviceResourceName,allowedIpAddresses,allowedSubnets,allowedVirtualGuests,snapshotCapacityGb"
+		",serviceResourceName,allowedIpAddresses,allowedSubnets,allowedVirtualGuests,snapshotCapacityGb,osType"
 	EnduranceType   = "Endurance"
 	Performancetype = "Performance"
+	FileStorage     = "FILE_STORAGE"
+	BlockStorage    = "BLOCK_STORAGE"
 )
 
 var (
@@ -89,6 +91,7 @@ func resourceSoftLayerFileStorage() *schema.Resource {
 			"snapshot_capacity": {
 				Type:     schema.TypeInt,
 				Optional: true,
+				ForceNew: true,
 			},
 
 			"allowed_virtual_guest_ids": {
@@ -113,20 +116,12 @@ func resourceSoftLayerFileStorage() *schema.Resource {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
-				Set: func(v interface{}) int {
-					hash, _ := strconv.Atoi(strings.Replace(strings.Replace(v.(string), ".", "", -1), "/", "", -1))
-					return hash
-				},
 			},
 
 			"allowed_ip_addresses": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
-				Set: func(v interface{}) int {
-					hash, _ := strconv.Atoi(strings.Replace(v.(string), ".", "", -1))
-					return hash
-				},
 			},
 		},
 	}
@@ -141,12 +136,12 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 	capacity := d.Get("capacity").(int)
 	snapshotCapacity := d.Get("snapshot_capacity").(int)
 
-	storageOrderContainer, err := buildStorageProductOrderContainer(sess, storageType, iops, capacity, snapshotCapacity, "FILE_STORAGE", datacenter)
+	storageOrderContainer, err := buildStorageProductOrderContainer(sess, storageType, iops, capacity, snapshotCapacity, FileStorage, datacenter)
 	if err != nil {
-		return fmt.Errorf("Error while creating file storage:%s", err)
+		return fmt.Errorf("Error while creating storage:%s", err)
 	}
 
-	log.Println("[INFO] Creating file storage")
+	log.Println("[INFO] Creating storage")
 
 	var receipt datatypes.Container_Product_Order_Receipt
 
@@ -164,18 +159,18 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 				},
 			}, sl.Bool(false))
 	default:
-		return fmt.Errorf("Error during creation of file storage: Invalied storageType %s", storageType)
+		return fmt.Errorf("Error during creation of storage: Invalied storageType %s", storageType)
 	}
 
 	if err != nil {
-		return fmt.Errorf("Error during creation of file storage: %s", err)
+		return fmt.Errorf("Error during creation of storage: %s", err)
 	}
 
 	// Find the storage device
 	fileStorage, err := findStorageByOrderId(sess, *receipt.OrderId)
 
 	if err != nil {
-		return fmt.Errorf("Error during creation of file storage: %s", err)
+		return fmt.Errorf("Error during creation of storage: %s", err)
 	}
 	d.SetId(fmt.Sprintf("%d", *fileStorage.Id))
 
@@ -254,6 +249,10 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 		allowedHardwareIdsList = append(allowedHardwareIdsList, *allowedHW.Id)
 	}
 	d.Set("allowed_hardware_ids", allowedHardwareIdsList)
+
+	if storage.OsType != nil {
+		d.Set("os_type", *storage.OsType.Name)
+	}
 
 	return nil
 }
@@ -375,6 +374,9 @@ func buildStorageProductOrderContainer(
 	}
 	iopsCategoryCode := "performance_storage_iops"
 	storageProtocolCategoryCode := "performance_storage_nfs"
+	if storageProtocol == BlockStorage {
+		storageProtocolCategoryCode = "performance_storage_iscsi"
+	}
 	capacityKeyName := fmt.Sprintf("%d_GB_", capacity)
 	snapshotCapacityKeyName := fmt.Sprintf("%d_GB_", snapshotCapacity)
 
@@ -383,6 +385,9 @@ func buildStorageProductOrderContainer(
 		storagePackageType = StorageEndurancePackageType
 		iopsCategoryCode = "storage_tier_level"
 		storageProtocolCategoryCode = "storage_file"
+		if storageProtocol == BlockStorage {
+			storageProtocolCategoryCode = "performance_storage_iscsi"
+		}
 	}
 
 	// Get a package type
