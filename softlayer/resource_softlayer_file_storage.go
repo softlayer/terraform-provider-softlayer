@@ -386,7 +386,7 @@ func buildStorageProductOrderContainer(
 		iopsCategoryCode = "storage_tier_level"
 		storageProtocolCategoryCode = "storage_file"
 		if storageProtocol == BlockStorage {
-			storageProtocolCategoryCode = "performance_storage_iscsi"
+			storageProtocolCategoryCode = "storage_block"
 		}
 	}
 
