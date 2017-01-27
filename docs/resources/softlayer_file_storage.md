@@ -1,7 +1,10 @@
 # `softlayer_file_storage`
 
-Provides a `softlayer_file_storage` resource. This allows NFS-based endurance and performance file storage to be created, updated and deleted.
-For additional details please refer to [File Storage](https://knowledgelayer.softlayer.com/topic/file-storage).
+Provides a `softlayer_file_storage` resource. This allows NFS-based [Endurance](https://knowledgelayer.softlayer.com/topic/endurance-storage)
+ and [Performance](https://knowledgelayer.softlayer.com/topic/performance-storage) file storage to be created, updated and deleted.
+File storage is mounted using the NFS protocol. For example, if the `hostname` of the file storage resource is `nfsdal0501a.service.softlayer.com`
+ and the `volumename` is` IBM01SV278685_7`, `nfsdal0501a.service.softlayer.com:\IBM01SV278685_7` will be a mount point. [Links](https://knowledgelayer.softlayer.com/procedure/accessing-file-storage-linux) describes nfs 
+ configuration of Linux systems. For additional details please refer to [Knowledgelayer](https://knowledgelayer.softlayer.com/topic/file-storage) and [Introduction](http://www.softlayer.com/file-storage).
 
 ## Example Usage
 
@@ -48,7 +51,7 @@ The following arguments are supported:
     * The amount of storage capacity to allocate in gigabytes.
     * **Required**
 * `iops` | *float*
-    * Specifies IOPS value for the storage.
+    * Specifies IOPS value for the storage. Please find available values for endurnace storage in the [link](https://knowledgelayer.softlayer.com/learning/introduction-endurance-storage).
     * **Required**
 * `snapshot_capacity` | *int*
     * The amount of snapshot capacity to allocate in gigabytes. Only `Endurance` storage supports snapshot.
