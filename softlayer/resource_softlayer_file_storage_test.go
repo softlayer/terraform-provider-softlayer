@@ -34,7 +34,7 @@ func TestAccSoftLayerFileStorage_Basic(t *testing.T) {
 					// Performance Storage
 					testAccCheckSoftLayerFileStorageExists("softlayer_file_storage.fs_performance"),
 					resource.TestCheckResourceAttr(
-						"softlayer_file_storage.fs_performance", "type", "Endurance"),
+						"softlayer_file_storage.fs_performance", "type", "Performance"),
 					resource.TestCheckResourceAttr(
 						"softlayer_file_storage.fs_performance", "capacity", "20"),
 					resource.TestCheckResourceAttr(
@@ -48,19 +48,13 @@ func TestAccSoftLayerFileStorage_Basic(t *testing.T) {
 				Config: testAccCheckSoftLayerFileStorageConfig_update,
 				Check: resource.ComposeTestCheckFunc(
 					// Endurance Storage
-					testAccCheckSoftLayerResources("softlayer_file_storage.fs_endurance", "allowed_virtual_guest_ids.0",
-						"softlayer_virtual_guest.storagevm1", "id"),
-					testAccCheckSoftLayerResources("softlayer_file_storage.fs_endurance", "allowed_subnets.0",
-						"softlayer_virtual_guest.storagevm1", "private_subnet"),
-					testAccCheckSoftLayerResources("softlayer_file_storage.fs_endurance", "allowed_ip_addresses.0",
-						"softlayer_virtual_guest.storagevm1", "ipv4_address_private"),
+					resource.TestCheckResourceAttr("softlayer_file_storage.fs_endurance", "allowed_virtual_guest_ids.#", "1"),
+					resource.TestCheckResourceAttr("softlayer_file_storage.fs_endurance", "allowed_subnets.#", "1"),
+					resource.TestCheckResourceAttr("softlayer_file_storage.fs_endurance", "allowed_ip_addresses.#", "1"),
 					// Performance Storage
-					testAccCheckSoftLayerResources("softlayer_file_storage.fs_performance", "allowed_virtual_guest_ids.0",
-						"softlayer_virtual_guest.storagevm1", "id"),
-					testAccCheckSoftLayerResources("softlayer_file_storage.fs_performance", "allowed_subnets.0",
-						"softlayer_virtual_guest.storagevm1", "private_subnet"),
-					testAccCheckSoftLayerResources("softlayer_file_storage.fs_performance", "allowed_ip_addresses.0",
-						"softlayer_virtual_guest.storagevm1", "ipv4_address_private"),
+					resource.TestCheckResourceAttr("softlayer_file_storage.fs_performance", "allowed_virtual_guest_ids.#", "1"),
+					resource.TestCheckResourceAttr("softlayer_file_storage.fs_performance", "allowed_subnets.#", "1"),
+					resource.TestCheckResourceAttr("softlayer_file_storage.fs_performance", "allowed_ip_addresses.#", "1"),
 				),
 			},
 		},
@@ -79,16 +73,16 @@ func testAccCheckSoftLayerFileStorageExists(n string) resource.TestCheckFunc {
 			return fmt.Errorf("No Record ID is set")
 		}
 
-		globalIpId, _ := strconv.Atoi(rs.Primary.ID)
+		storageId, _ := strconv.Atoi(rs.Primary.ID)
 
-		service := services.GetNetworkSubnetIpAddressGlobalService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
-		foundGlobalIp, err := service.Id(globalIpId).GetObject()
+		service := services.GetNetworkStorageService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
+		foundStorage, err := service.Id(storageId).GetObject()
 
 		if err != nil {
 			return err
 		}
 
-		if strconv.Itoa(int(*foundGlobalIp.Id)) != rs.Primary.ID {
+		if strconv.Itoa(int(*foundStorage.Id)) != rs.Primary.ID {
 			return fmt.Errorf("Record not found")
 		}
 
