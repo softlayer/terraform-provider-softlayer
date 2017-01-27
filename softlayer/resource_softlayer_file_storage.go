@@ -484,9 +484,10 @@ func findStorageByOrderId(sess *session.Session, orderId int) (datatypes.Network
 				return nil, "", fmt.Errorf("Expected one Storage: %s", err)
 			}
 		},
-		Timeout:    45 * time.Minute,
-		Delay:      10 * time.Second,
-		MinTimeout: 10 * time.Second,
+		Timeout:        45 * time.Minute,
+		Delay:          10 * time.Second,
+		MinTimeout:     10 * time.Second,
+		NotFoundChecks: 300,
 	}
 
 	pendingResult, err := stateConf.WaitForState()
