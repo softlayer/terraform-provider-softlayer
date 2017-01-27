@@ -4,13 +4,13 @@ Provides a `softlayer_file_storage` resource. This allows NFS-based [Endurance](
  and [Performance](https://knowledgelayer.softlayer.com/topic/performance-storage) file storage to be created, updated and deleted.
 File storage is mounted using the NFS protocol. For example, if the `hostname` of the file storage resource is `nfsdal0501a.service.softlayer.com`
  and the `volumename` is` IBM01SV278685_7`, `nfsdal0501a.service.softlayer.com:\IBM01SV278685_7` will be a mount point. [Links](https://knowledgelayer.softlayer.com/procedure/accessing-file-storage-linux) describes nfs 
- configuration of Linux systems. For additional details please refer to [Knowledgelayer](https://knowledgelayer.softlayer.com/topic/file-storage) and [Introduction](http://www.softlayer.com/file-storage).
+ configuration of Linux systems. For additional details, please refer to [Knowledgelayer](https://knowledgelayer.softlayer.com/topic/file-storage) and [Introduction](http://www.softlayer.com/file-storage).
 
 ## Example Usage
 
 ```hcl
 # Create 20G endurance file storage with 10G snapshot capacity and 0.25 IOPS/GB option.
-resource "softlayer_file_storage" "test" {
+resource "softlayer_file_storage" "test1" {
         type = "Endurance"
         datacenter = "dal05"
         capacity = 20
@@ -24,7 +24,7 @@ resource "softlayer_file_storage" "test" {
 }
 
 # Create 20G performance file storage and 100 IOPS option.
-resource "softlayer_file_storage" "test" {
+resource "softlayer_file_storage" "test2" {
         type = "Endurance"
         datacenter = "dal05"
         capacity = 20
