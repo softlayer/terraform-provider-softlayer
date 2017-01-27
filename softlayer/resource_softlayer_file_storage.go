@@ -26,7 +26,7 @@ const (
 	storageDetailMask             = "id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type]" +
 		",serviceResourceName,allowedIpAddresses,allowedSubnets,allowedVirtualGuests,snapshotCapacityGb,osType"
 	EnduranceType   = "Endurance"
-	Performancetype = "Performance"
+	PerformanceType = "Performance"
 	FileStorage     = "FILE_STORAGE"
 	BlockStorage    = "BLOCK_STORAGE"
 )
@@ -36,6 +36,33 @@ var (
 		0.25: "LOW_INTENSITY_TIER",
 		2:    "READHEAVY_TIER",
 		4:    "WRITEHEAVY_TIER",
+	}
+
+	storagePackageMap = map[string](map[string](map[string]string)){
+		FileStorage: {
+			PerformanceType: {
+				"storagePackageType":          StoragePerformancePackageType,
+				"iopsCategoryCode":            "performance_storage_iops",
+				"storageProtocolCategoryCode": "performance_storage_nfs",
+			},
+			EnduranceType: {
+				"storagePackageType":          StorageEndurancePackageType,
+				"iopsCategoryCode":            "storage_tier_level",
+				"storageProtocolCategoryCode": "storage_file",
+			},
+		},
+		BlockStorage: {
+			PerformanceType: {
+				"storagePackageType":          StoragePerformancePackageType,
+				"iopsCategoryCode":            "performance_storage_iops",
+				"storageProtocolCategoryCode": "performance_storage_iscsi",
+			},
+			EnduranceType: {
+				"storagePackageType":          StorageEndurancePackageType,
+				"iopsCategoryCode":            "storage_tier_level",
+				"storageProtocolCategoryCode": "storage_block",
+			},
+		},
 	}
 )
 
@@ -151,7 +178,7 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 			&datatypes.Container_Product_Order_Network_Storage_Enterprise{
 				Container_Product_Order: storageOrderContainer,
 			}, sl.Bool(false))
-	case Performancetype:
+	case PerformanceType:
 		receipt, err = services.GetProductOrderService(sess).PlaceOrder(
 			&datatypes.Container_Product_Order_Network_PerformanceStorage_Nfs{
 				Container_Product_Order_Network_PerformanceStorage: datatypes.Container_Product_Order_Network_PerformanceStorage{
@@ -367,28 +394,16 @@ func buildStorageProductOrderContainer(
 	datacenter string) (datatypes.Container_Product_Order, error) {
 
 	// Build product item filters for performance storage
-	storagePackageType := StoragePerformancePackageType
 	iopsKeyName, err := getIopsKeyName(iops, storageType)
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
-	iopsCategoryCode := "performance_storage_iops"
-	storageProtocolCategoryCode := "performance_storage_nfs"
-	if storageProtocol == BlockStorage {
-		storageProtocolCategoryCode = "performance_storage_iscsi"
-	}
 	capacityKeyName := fmt.Sprintf("%d_GB_", capacity)
 	snapshotCapacityKeyName := fmt.Sprintf("%d_GB_", snapshotCapacity)
 
-	// Update product item filters for endurance storage
-	if storageType == "Endurance" {
-		storagePackageType = StorageEndurancePackageType
-		iopsCategoryCode = "storage_tier_level"
-		storageProtocolCategoryCode = "storage_file"
-		if storageProtocol == BlockStorage {
-			storageProtocolCategoryCode = "storage_block"
-		}
-	}
+	storagePackageType := storagePackageMap[storageProtocol][storageType]["storagePackageType"]
+	iopsCategoryCode := storagePackageMap[storageProtocol][storageType]["iopsCategoryCode"]
+	storageProtocolCategoryCode := storagePackageMap[storageProtocol][storageType]["storageProtocolCategoryCode"]
 
 	// Get a package type
 	pkg, err := product.GetPackageByType(sess, storagePackageType)
@@ -553,7 +568,7 @@ func getIopsKeyName(iops float64, storageType string) (string, error) {
 	switch storageType {
 	case EnduranceType:
 		return enduranceIopsMap[iops], nil
-	case Performancetype:
+	case PerformanceType:
 		return fmt.Sprintf("%.f_IOPS", iops), nil
 	}
 	return "", fmt.Errorf("Invalid storageType %s.", storageType)
@@ -585,7 +600,7 @@ func getIops(storage datatypes.Network_Storage, storageType string) (float64, er
 				return float64(provisionedIops) / float64(*storage.CapacityGb), nil
 			}
 		}
-	case Performancetype:
+	case PerformanceType:
 		if storage.Iops == nil {
 			return 0, fmt.Errorf("Failed to retrive iops information.")
 		}
