@@ -1,39 +1,39 @@
 package softlayer
 
 import (
-	"errors"
 	"fmt"
+	"strconv"
+	"testing"
+
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
-	"strconv"
-	"testing"
 )
 
-func TestAccSoftLayerNetworkStorage_Read(t *testing.T) {
+func TestAccSoftLayerBlockStorage_Endurance_Basic(t *testing.T) {
 	var netStore datatypes.Network_Storage
 
-	t.Log("Running Resource Test")
+	t.Log("Running Basic Endurance Storage Test")
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckSoftLayerNetworkStorageDestroy,
+		CheckDestroy: testAccCheckSoftLayerBlockStorageDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: configNetworkStorageBasic,
+				Config: configEnduranceBlockStorageBasic,
 				Check: resource.ComposeTestCheckFunc(
-					testCheckSoftlayerNetworkStorageExists("softlayer_network_storage.test-iscsi", &netStore),
+					testCheckSoftlayerBlockStorageExists("softlayer_block_storage.test-basic-endurance", &netStore),
 				),
 			},
 		},
 	})
 }
 
-func testCheckSoftlayerNetworkStorageExists(name string, netStore *datatypes.Network_Storage) resource.TestCheckFunc {
+func testCheckSoftlayerBlockStorageExists(name string, netStore *datatypes.Network_Storage) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		//Checking the Terraform created state for the resource.
 		rsrc, ok := s.RootModule().Resources[name]
@@ -44,7 +44,7 @@ func testCheckSoftlayerNetworkStorageExists(name string, netStore *datatypes.Net
 
 		//Did Terraform create a resource ID for the store?
 		if rsrc.Primary.ID == "" {
-			return errors.New("No NetworkStorage ID is set")
+			return fmt.Errorf("No BlockStorage ID is set")
 		}
 
 		//Convert the id into an Integer.
@@ -54,7 +54,7 @@ func testCheckSoftlayerNetworkStorageExists(name string, netStore *datatypes.Net
 			return err
 		}
 
-		//Manually check Softlayer for the NetworkStorage
+		//Manually check Softlayer for the BlockStorage
 		service := services.GetNetworkStorageService(testAccProvider.Meta().(*session.Session))
 		storage, err := service.Id(id).GetObject()
 
@@ -63,7 +63,7 @@ func testCheckSoftlayerNetworkStorageExists(name string, netStore *datatypes.Net
 		}
 
 		if *storage.Id != id {
-			return errors.New("NetworkStorage not found")
+			return fmt.Errorf("BlockStorage not found")
 		}
 
 		*netStore = storage
@@ -73,7 +73,7 @@ func testCheckSoftlayerNetworkStorageExists(name string, netStore *datatypes.Net
 	}
 }
 
-func testAccCheckSoftLayerNetworkStorageDestroy(s *terraform.State) error {
+func testAccCheckSoftLayerBlockStorageDestroy(s *terraform.State) error {
 	service := services.GetNetworkStorageService(testAccProvider.Meta().(*session.Session))
 	for _, rsrc := range s.RootModule().Resources {
 		if rsrc.Type != "softlayer_network_storage" {
@@ -97,14 +97,12 @@ func testAccCheckSoftLayerNetworkStorageDestroy(s *terraform.State) error {
 	return nil
 }
 
-const configNetworkStorageBasic = `
-resource "softlayer_network_storage" "test-iscsi" {
+const configEnduranceBlockStorageBasic = `
+resource "softlayer_block_storage" "test-basic-endurance" {
 	capacity_gb = 20
 	datacenter = "dal09"
 	iops = 0.25
 	tier = "endurance"
-	nas_type = "block"
-	notes = "terraform_test"
 	os_type = "LINUX"
 }
 `

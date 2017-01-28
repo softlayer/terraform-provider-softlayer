@@ -1,9 +1,14 @@
 package softlayer
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -11,24 +16,22 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
-	//"log"
-	"strconv"
-	"strings"
-	"time"
 )
 
+const nasType string = "block"
+
 var (
-	PACKAGE_IDS = map[string]int{
+	packageIds = map[string]int{
 		"endurance": 240,
 	}
-	CONTAINERS = map[string]string{
+	containers = map[string]string{
 		"endurance": "Softlayer_Container_Product_Order_Network_Storage_Enterprise",
 	}
-	CATEGORY_CODES = map[string]string{
+	categoryCodes = map[string]string{
 		"endurance": "storage_service_enterprise",
 		"block":     "storage_block",
 	}
-	ENDURANCE_TIERS = map[float64]int{
+	enduranceTiers = map[float64]int{
 		0.25: 100,
 		2:    200,
 		4:    300,
@@ -36,14 +39,12 @@ var (
 	}
 )
 
-func resourceSoftLayerNetworkStorage() *schema.Resource {
+func resourceSoftLayerBlockStorage() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSoftLayerNetworkStorageCreate,
-		Read:   resourceSoftLayerNetworkStorageRead,
-		//		Update: resourceSoftLayerEnduranceStorageUpdate,
-		Delete: resourceSoftLayerNetworkStorageDelete,
-		Exists: resourceSoftLayerNetworkStorageExists,
-		//		Importer: &schema.ResourceImporter{},
+		Create: resourceSoftLayerBlockStorageCreate,
+		Read:   resourceSoftLayerBlockStorageRead,
+		Delete: resourceSoftLayerBlockStorageDelete,
+		Exists: resourceSoftLayerBlockStorageExists,
 		//FORCENEW is here until an Update method is created.
 		Schema: map[string]*schema.Schema{
 			//endurance or performance
@@ -71,16 +72,6 @@ func resourceSoftLayerNetworkStorage() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
-			"nas_type": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-			},
-			"notes": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-			},
 			"os_type": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -96,10 +87,14 @@ func resourceSoftLayerNetworkStorage() *schema.Resource {
 }
 
 func waitForDriveProvision(sess *session.Session, order *datatypes.Container_Product_Order_Receipt) (interface{}, error) {
-
+	var (
+		retry       = "retry"
+		pending     = "pending"
+		provisioned = "provisioned"
+	)
 	stateConf := &resource.StateChangeConf{
-		Pending: []string{"retry", "pending"},
-		Target:  []string{"provisioned"},
+		Pending: []string{retry, pending},
+		Target:  []string{provisioned},
 		Refresh: func() (interface{}, string, error) {
 			service := services.GetAccountService(sess)
 			path := strings.Join([]string{
@@ -115,14 +110,15 @@ func waitForDriveProvision(sess *session.Session, order *datatypes.Container_Pro
 				GetIscsiNetworkStorage()
 
 			if err != nil {
-				return false, "retry", err
+				return false, retry, err
 			}
 
 			if len(stores) == 0 || stores[0].CreateDate == nil {
-				return nil, "pending", nil
-			} else {
-				return stores[0], "provisioned", nil
+				return nil, pending, nil
 			}
+
+			return stores[0], provisioned, nil
+
 		},
 		Timeout:    10 * time.Minute,
 		Delay:      30 * time.Second,
@@ -132,7 +128,7 @@ func waitForDriveProvision(sess *session.Session, order *datatypes.Container_Pro
 	return stateConf.WaitForState()
 }
 
-func resourceSoftLayerNetworkStorageRead(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerBlockStorageRead(d *schema.ResourceData, meta interface{}) error {
 	service := services.GetNetworkStorageService(meta.(*session.Session))
 
 	id, err := strconv.Atoi(d.Id())
@@ -145,11 +141,7 @@ func resourceSoftLayerNetworkStorageRead(d *schema.ResourceData, meta interface{
 	if err != nil {
 		return err
 	}
-	resJSON, err := json.Marshal(result)
 
-	if err != nil {
-		return err
-	}
 	d.Set("capacity_gb", *result.CapacityGb)
 	d.Set("create_date", *result.CreateDate)
 
@@ -175,6 +167,8 @@ func findBlockOSId(sess *session.Session, osName string) (*datatypes.Network_Sto
 }
 
 func getLocationID(sess *session.Session, location string) (*string, error) {
+	var datacenters []datatypes.Location
+
 	locationServ := services.GetLocationService(sess)
 	datacenters, err := locationServ.Mask("longName,id,name").GetDatacenters()
 
@@ -205,7 +199,7 @@ func hasCategory(categoryCode string, categories []datatypes.Product_Item_Catego
 	return result
 }
 
-func findPrice(items []datatypes.Product_Item, category string) (*datatypes.Product_Item_Price, error) {
+func findPrice(category string, items []datatypes.Product_Item) (*datatypes.Product_Item_Price, error) {
 	for _, item := range items { //Product_Item
 		for _, price := range item.Prices { //Product_Item_Price
 			if price.LocationGroupId != nil { //could maybe also match datacenter id.
@@ -305,55 +299,119 @@ func findSpacePrice(iopsCat int, desiredSize int, items []datatypes.Product_Item
 	return nil, fmt.Errorf("No Product_Item with matching space size for tier.")
 }
 
-func resourceSoftLayerNetworkStorageCreate(schem *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerBlockStorageCreate(schem *schema.ResourceData, meta interface{}) error {
+	/*Variables are declared here in concordance with their dependencies.
+	The root dependency is the Product_Package, followed by the prices
+	that are gathered from that Product_Package.
+	*/
+	var wg sync.WaitGroup
+	var pack *datatypes.Product_Package
+	var loc *string
+	var tierPrice, nasTypePrice, iopsPrice, spacePrice *datatypes.Product_Item_Price
 	var prices []datatypes.Product_Item_Price
+
+	errors := make(chan error, 1)  //catches errors.
+	finished := make(chan bool, 1) //signifies doneness.
+	iopsCategory := enduranceTiers[schem.Get("iops").(float64)]
 	sess := meta.(*session.Session)
 	tier := schem.Get("tier").(string)
-	nasType := schem.Get("nas_type").(string)
 	capacity := schem.Get("capacity_gb").(int)
 
-	//Get Location ID
-	loc, err := getLocationID(sess, schem.Get("datacenter").(string))
-
-	if err != nil {
-		return err
+	//closure function needs to be higher order.
+	waitGroup1 := []func(){
+		func() {
+			var err error
+			defer wg.Done()
+			loc, err = getLocationID(sess, schem.Get("datacenter").(string))
+			if err != nil {
+				errors <- err
+			}
+		},
+		func() {
+			var err error
+			defer wg.Done()
+			pack, err = getPackagePrices(sess, tier)
+			if err != nil {
+				errors <- err
+			}
+		},
 	}
 
-	schem.Set("datacenter", loc)
-
-	//Get the Product_Package for storage in question.
-	pack, err := getPackagePrices(sess, tier)
-
-	if err != nil {
-		return err
-	}
-	//TIER prices
-	tierPrice, err := findPrice(pack.Items, CATEGORY_CODES[tier])
-
-	if err != nil {
-		return err
+	//https://golang.org/pkg/sync/#WaitGroup
+	for _, call := range waitGroup1 {
+		wg.Add(1)
+		go call() //can do a better job of parameterizing functions.
 	}
 
-	prices = append(prices, *tierPrice)
+	go func() {
+		wg.Wait()
+		close(finished)
+	}()
 
-	nasTypePrice, err := findPrice(pack.Items, CATEGORY_CODES[nasType])
-
-	if err != nil {
-		return err
+	// either continues or returns the error.
+	select {
+	case <-finished:
+	case err := <-errors:
+		if err != nil {
+			return err
+		}
 	}
 
-	prices = append(prices, *nasTypePrice)
+	finished = make(chan bool, 1) //signifies doneness.
 
-	//IOPS prices.
-	iopsCategory := ENDURANCE_TIERS[schem.Get("iops").(float64)]
+	waitGroup2 := []func(){
+		//TIER prices
+		func() {
+			var err error
+			defer wg.Done()
+			tierPrice, err = findPrice(categoryCodes[tier], pack.Items)
+			if err != nil {
+				errors <- err
+			}
+			prices = append(prices, *tierPrice)
+		},
+		func() {
+			var err error
+			defer wg.Done()
+			nasTypePrice, err = findPrice(categoryCodes[nasType], pack.Items)
 
-	iopsPrice, err := findIOPSPrice(iopsCategory, pack.Items)
+			if err != nil {
+				errors <- err
+			}
 
-	if err != nil {
-		return err
+			prices = append(prices, *nasTypePrice)
+		},
+		func() {
+			//IOPS prices.
+			var err error
+			defer wg.Done()
+
+			iopsPrice, err = findIOPSPrice(iopsCategory, pack.Items)
+
+			if err != nil {
+				errors <- err
+			}
+			prices = append(prices, *iopsPrice)
+		},
 	}
 
-	prices = append(prices, *iopsPrice)
+	for _, priceSearch := range waitGroup2 {
+		wg.Add(1)
+		go priceSearch()
+	}
+
+	go func() {
+		wg.Wait()
+		close(finished)
+	}()
+
+	select {
+	case <-finished:
+	case err := <-errors:
+		if err != nil {
+			return err
+		}
+	}
 
 	//SPACE prices
 	spacePrice, err := findSpacePrice(iopsCategory, capacity, pack.Items)
@@ -367,7 +425,7 @@ func resourceSoftLayerNetworkStorageCreate(schem *schema.ResourceData, meta inte
 	//SNAPSHOT SPACE prices.
 
 	//Build Order
-	order, err := buildOrder(sess, prices, schem)
+	order, err := buildOrder(sess, prices, schem, loc)
 
 	if err != nil {
 		return err
@@ -390,16 +448,20 @@ func resourceSoftLayerNetworkStorageCreate(schem *schema.ResourceData, meta inte
 
 	store, err := waitForDriveProvision(sess, &bill)
 
+	if err != nil {
+		return err
+	}
+
 	id := strconv.Itoa(*store.(datatypes.Network_Storage).
 		Id)
 
 	schem.SetId(id)
 
-	return resourceSoftLayerNetworkStorageRead(schem, sess)
+	return resourceSoftLayerBlockStorageRead(schem, sess)
 }
 
-func buildOrder(sess *session.Session, prices []datatypes.Product_Item_Price, schem *schema.ResourceData) (order *datatypes.Container_Product_Order_Network_Storage_Enterprise, err error) {
-	tier := "endurance"
+func buildOrder(sess *session.Session, prices []datatypes.Product_Item_Price, schem *schema.ResourceData, loc *string) (order *datatypes.Container_Product_Order_Network_Storage_Enterprise, err error) {
+	tier := schem.Get("tier").(string)
 	osName := schem.Get("os_type").(string)
 	os, err := findBlockOSId(sess, osName)
 
@@ -408,30 +470,31 @@ func buildOrder(sess *session.Session, prices []datatypes.Product_Item_Price, sc
 	}
 
 	//This limits one to only ordering Iscsi, need to figure out how to do File type as well.
-	performStorContainer := datatypes.Container_Product_Order_Network_Storage_Enterprise{
+	orderContainer := datatypes.Container_Product_Order_Network_Storage_Enterprise{
 		Container_Product_Order: datatypes.Container_Product_Order{
-			ComplexType: sl.String(CONTAINERS[tier]),
-			Location:    sl.String(schem.Get("datacenter").(string)),
-			PackageId:   sl.Int(PACKAGE_IDS[tier]),
+			ComplexType: sl.String(containers[tier]),
+			Location:    loc,
+			PackageId:   sl.Int(packageIds[tier]),
 			Prices:      prices,
 			Quantity:    sl.Int(1),
 		},
 		OsFormatType: os,
 	}
-	return &performStorContainer, nil
+	return &orderContainer, nil
 }
 
 /*
-To extend this to support other NetworkStorages:
-1. Find the categoryCodes for other NetworkStorages.
+To extend this to support other BlockStorages:
+1. Find the categoryCodes for other BlockStorages.
 
 storeType is one of:
 1. endurance
 */
 func getPackagePrices(sess *session.Session, storeType string) (pack *datatypes.Product_Package, err error) {
+	var packages []datatypes.Product_Package
 
 	nasFilters := filter.New(
-		filter.Path("categories.categoryCode").Eq(CATEGORY_CODES[storeType]),
+		filter.Path("categories.categoryCode").Eq(categoryCodes[storeType]),
 	).Build()
 
 	mask := "id,name,items[prices[categories],attributes]"
@@ -441,7 +504,7 @@ func getPackagePrices(sess *session.Session, storeType string) (pack *datatypes.
 	}
 
 	packServ := services.GetProductPackageService(sess)
-	prices, err := packServ.Id(PACKAGE_IDS[storeType]).
+	packages, err = packServ.Id(packageIds[storeType]).
 		Mask(mask).
 		Filter(nasFilters).
 		GetAllObjects()
@@ -450,14 +513,14 @@ func getPackagePrices(sess *session.Session, storeType string) (pack *datatypes.
 		return nil, err
 	}
 
-	if len(prices) > 0 {
-		return &prices[0], nil
-	} else {
-		return nil, errors.New("No Package Prices were returned from SoftLayer.")
+	if len(packages) > 0 {
+		return &packages[0], nil
 	}
+	return nil, errors.New("No Package Prices were returned from SoftLayer.")
+
 }
 
-func resourceSoftLayerNetworkStorageExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceSoftLayerBlockStorageExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	service := services.GetNetworkStorageService(meta.(*session.Session))
 
 	id, err := strconv.Atoi(d.Id())
@@ -475,7 +538,7 @@ func resourceSoftLayerNetworkStorageExists(d *schema.ResourceData, meta interfac
 	return err == nil && result.Id != nil && *result.Id == id, nil
 }
 
-func resourceSoftLayerNetworkStorageDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerBlockStorageDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(*session.Session)
 	service := services.GetNetworkStorageService(sess)
 
