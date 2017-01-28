@@ -25,6 +25,7 @@ const (
 	storageMask                   = "id,billingItem.orderItem.order.id"
 	storageDetailMask             = "id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type]" +
 		",serviceResourceName,allowedIpAddresses,allowedSubnets,allowedVirtualGuests,snapshotCapacityGb,osType"
+	itemMask        = "id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode],capacityRestrictionMinimum,capacityRestrictionMaximum]"
 	EnduranceType   = "Endurance"
 	PerformanceType = "Performance"
 	FileStorage     = "FILE_STORAGE"
@@ -412,17 +413,27 @@ func buildStorageProductOrderContainer(
 	}
 
 	// Get all prices
-	productItems, err := product.GetPackageProducts(sess, *pkg.Id)
+	productItems, err := product.GetPackageProducts(sess, *pkg.Id, itemMask)
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
 
 	// Add IOPS price
 	targetItemPrices := []datatypes.Product_Item_Price{}
-	iopsPrice, err := getPrice(productItems, iopsKeyName, iopsCategoryCode)
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
+	var iopsPrice datatypes.Product_Item_Price
+
+	if storageType == EnduranceType {
+		iopsPrice, err = getPrice(productItems, iopsKeyName, iopsCategoryCode)
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+	} else {
+		iopsPrice, err = getPrice(productItems, iopsKeyName, iopsCategoryCode, capacity)
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
 	}
+
 	targetItemPrices = append(targetItemPrices, iopsPrice)
 
 	// Add capacity price
@@ -574,12 +585,26 @@ func getIopsKeyName(iops float64, storageType string) (string, error) {
 	return "", fmt.Errorf("Invalid storageType %s.", storageType)
 }
 
-func getPrice(productItems []datatypes.Product_Item, keyName string, categoryCode string) (datatypes.Product_Item_Price, error) {
+func getPrice(productItems []datatypes.Product_Item, keyName string, categoryCode string, capacityRestriction ...int) (datatypes.Product_Item_Price, error) {
 	for _, item := range productItems {
 		if strings.HasPrefix(*item.KeyName, keyName) {
 			for _, price := range item.Prices {
 				if *price.Categories[0].CategoryCode == categoryCode {
-					return price, nil
+					if len(capacityRestriction) > 0 {
+						if price.CapacityRestrictionMinimum == nil ||
+							price.CapacityRestrictionMaximum == nil {
+							continue
+						}
+						capacityRestrictionMinimum, _ := strconv.Atoi(*price.CapacityRestrictionMinimum)
+						capacityRestrictionMaximum, _ := strconv.Atoi(*price.CapacityRestrictionMaximum)
+						if capacityRestrictionMinimum > 0 &&
+							capacityRestriction[0] >= capacityRestrictionMinimum &&
+							capacityRestriction[0] <= capacityRestrictionMaximum {
+							return price, nil
+						}
+					} else {
+						return price, nil
+					}
 				}
 			}
 		}
