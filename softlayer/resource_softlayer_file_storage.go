@@ -210,6 +210,14 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 			"Error waiting for storage (%s) to become ready: %s", d.Id(), err)
 	}
 
+	// SoftLayer changes the device ID after completion of provisioning. It is necessary to refresh device ID.
+	fileStorage, err = findStorageByOrderId(sess, *receipt.OrderId)
+
+	if err != nil {
+		return fmt.Errorf("Error during creation of storage: %s", err)
+	}
+	d.SetId(fmt.Sprintf("%d", *fileStorage.Id))
+
 	log.Printf("[INFO] Storage ID: %s", d.Id())
 
 	return resourceSoftLayerFileStorageUpdate(d, meta)
@@ -539,14 +547,15 @@ func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}) (interfac
 	if err != nil {
 		return nil, fmt.Errorf("The storage ID %s must be numeric", d.Id())
 	}
+	sess := meta.(ProviderConfig).SoftLayerSession()
 
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"retry", "provisioning"},
 		Target:  []string{"available"},
 		Refresh: func() (interface{}, string, error) {
 			// Check active transactions
-			service := services.GetNetworkStorageService(meta.(ProviderConfig).SoftLayerSession())
-			result, err := service.Id(id).Mask("activeTransactions,volumeStatus").GetObject()
+			service := services.GetNetworkStorageService(sess)
+			result, err := service.Id(id).Mask("activeTransactions").GetObject()
 			if err != nil {
 				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
 					return nil, "", fmt.Errorf("Error retrieving storage: %s", err)
@@ -561,7 +570,20 @@ func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}) (interfac
 
 			// Check volume status.
 			log.Println("Checking volume status.")
-			if *result.VolumeStatus != "PROVISION_COMPLETED" {
+			resultStr := ""
+			err = sess.DoRequest(
+				"SoftLayer_Network_Storage",
+				"getObject",
+				nil,
+				&sl.Options{Id: &id, Mask: "volumeStatus"},
+				&resultStr,
+			)
+			if err != nil {
+				return false, "retry", nil
+			}
+
+			if !strings.Contains(resultStr, "PROVISION_COMPLETED") &&
+				!strings.Contains(resultStr, "Volume Provisioning has completed") {
 				return result, "provisioning", nil
 			}
 
