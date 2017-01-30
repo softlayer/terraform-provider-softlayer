@@ -25,7 +25,7 @@ const (
 	storageMask                   = "id,billingItem.orderItem.order.id"
 	storageDetailMask             = "id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type]" +
 		",serviceResourceName,allowedIpAddresses,allowedSubnets,allowedVirtualGuests,snapshotCapacityGb,osType"
-	itemMask        = "id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode],capacityRestrictionMinimum,capacityRestrictionMaximum]"
+	itemMask        = "id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode],capacityRestrictionMinimum,capacityRestrictionMaximum,locationGroupId]"
 	EnduranceType   = "Endurance"
 	PerformanceType = "Performance"
 	FileStorage     = "FILE_STORAGE"
@@ -37,6 +37,14 @@ var (
 		0.25: "LOW_INTENSITY_TIER",
 		2:    "READHEAVY_TIER",
 		4:    "WRITEHEAVY_TIER",
+		10:   "10_IOPS_PER_GB",
+	}
+
+	enduranceCapacityRestrictionMap = map[float64]int{
+		0.25: 100,
+		2:    200,
+		4:    300,
+		10:   1000,
 	}
 
 	storagePackageMap = map[string](map[string](map[string]string)){
@@ -431,12 +439,12 @@ func buildStorageProductOrderContainer(
 	var iopsPrice datatypes.Product_Item_Price
 
 	if storageType == EnduranceType {
-		iopsPrice, err = getPrice(productItems, iopsKeyName, iopsCategoryCode)
+		iopsPrice, err = getPrice(productItems, iopsKeyName, iopsCategoryCode, "", 0)
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
 		}
 	} else {
-		iopsPrice, err = getPrice(productItems, iopsKeyName, iopsCategoryCode, capacity)
+		iopsPrice, err = getPrice(productItems, iopsKeyName, iopsCategoryCode, "STORAGE_SPACE", capacity)
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
 		}
@@ -444,15 +452,23 @@ func buildStorageProductOrderContainer(
 
 	targetItemPrices = append(targetItemPrices, iopsPrice)
 
+	var capacityPrice datatypes.Product_Item_Price
 	// Add capacity price
-	capacityPrice, err := getPrice(productItems, capacityKeyName, "performance_storage_space")
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
+	if storageType == EnduranceType {
+		capacityPrice, err = getPrice(productItems, capacityKeyName, "performance_storage_space", "STORAGE_TIER_LEVEL", enduranceCapacityRestrictionMap[iops])
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+	} else {
+		capacityPrice, err = getPrice(productItems, capacityKeyName, "performance_storage_space", "", 0)
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
 	}
 	targetItemPrices = append(targetItemPrices, capacityPrice)
 
 	// Add storageProtocol price
-	storageProtocolPrice, err := getPrice(productItems, storageProtocol, storageProtocolCategoryCode)
+	storageProtocolPrice, err := getPrice(productItems, storageProtocol, storageProtocolCategoryCode, "", 0)
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
@@ -460,7 +476,7 @@ func buildStorageProductOrderContainer(
 
 	// Add Endurane Storage price
 	if storageType == EnduranceType {
-		endurancePrice, err := getPrice(productItems, "CODENAME_PRIME_STORAGE_SERVICE", "storage_service_enterprise")
+		endurancePrice, err := getPrice(productItems, "CODENAME_PRIME_STORAGE_SERVICE", "storage_service_enterprise", "", 0)
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
 		}
@@ -469,7 +485,7 @@ func buildStorageProductOrderContainer(
 
 	// Add snapshot capacity price
 	if snapshotCapacity > 0 {
-		snapshotCapacityPrice, err := getPrice(productItems, snapshotCapacityKeyName, "storage_snapshot_space")
+		snapshotCapacityPrice, err := getPrice(productItems, snapshotCapacityKeyName, "storage_snapshot_space", "", 0)
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
 		}
@@ -607,12 +623,12 @@ func getIopsKeyName(iops float64, storageType string) (string, error) {
 	return "", fmt.Errorf("Invalid storageType %s.", storageType)
 }
 
-func getPrice(productItems []datatypes.Product_Item, keyName string, categoryCode string, capacityRestriction ...int) (datatypes.Product_Item_Price, error) {
+func getPrice(productItems []datatypes.Product_Item, keyName string, categoryCode string, capacityRestrictionType string, capacityRestriction int) (datatypes.Product_Item_Price, error) {
 	for _, item := range productItems {
 		if strings.HasPrefix(*item.KeyName, keyName) {
 			for _, price := range item.Prices {
-				if *price.Categories[0].CategoryCode == categoryCode {
-					if len(capacityRestriction) > 0 {
+				if *price.Categories[0].CategoryCode == categoryCode && price.LocationGroupId == nil {
+					if capacityRestrictionType == "STORAGE_SPACE" {
 						if price.CapacityRestrictionMinimum == nil ||
 							price.CapacityRestrictionMaximum == nil {
 							continue
@@ -620,11 +636,27 @@ func getPrice(productItems []datatypes.Product_Item, keyName string, categoryCod
 						capacityRestrictionMinimum, _ := strconv.Atoi(*price.CapacityRestrictionMinimum)
 						capacityRestrictionMaximum, _ := strconv.Atoi(*price.CapacityRestrictionMaximum)
 						if capacityRestrictionMinimum > 0 &&
-							capacityRestriction[0] >= capacityRestrictionMinimum &&
-							capacityRestriction[0] <= capacityRestrictionMaximum {
+							capacityRestriction >= capacityRestrictionMinimum &&
+							capacityRestriction <= capacityRestrictionMaximum {
 							return price, nil
 						}
-					} else {
+					}
+
+					if capacityRestrictionType == "STORAGE_TIER_LEVEL" {
+						if price.CapacityRestrictionMinimum == nil ||
+							price.CapacityRestrictionMaximum == nil {
+							continue
+						}
+						capacityRestrictionMinimum, _ := strconv.Atoi(*price.CapacityRestrictionMinimum)
+						capacityRestrictionMaximum, _ := strconv.Atoi(*price.CapacityRestrictionMaximum)
+						if capacityRestrictionMinimum > 0 &&
+							capacityRestriction == capacityRestrictionMinimum &&
+							capacityRestriction == capacityRestrictionMaximum {
+							return price, nil
+						}
+					}
+
+					if capacityRestrictionType == "" && capacityRestriction == 0 {
 						return price, nil
 					}
 				}
