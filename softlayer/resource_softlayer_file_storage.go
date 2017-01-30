@@ -484,8 +484,8 @@ func buildStorageProductOrderContainer(
 	}
 
 	// Add snapshot capacity price
-	if snapshotCapacity > 0 {
-		snapshotCapacityPrice, err := getPrice(productItems, snapshotCapacityKeyName, "storage_snapshot_space", "", 0)
+	if storageType == EnduranceType && snapshotCapacity > 0 {
+		snapshotCapacityPrice, err := getPrice(productItems, snapshotCapacityKeyName, "storage_snapshot_space", "STORAGE_TIER_LEVEL", enduranceCapacityRestrictionMap[iops])
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
 		}
