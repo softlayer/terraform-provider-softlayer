@@ -263,6 +263,10 @@ func resourceSoftLayerLbLocalDelete(d *schema.ResourceData, meta interface{}) er
 		return fmt.Errorf("Error while looking up billing item associated with the load balancer: %s", err)
 	}
 
+	if billingItem.Id == nil {
+		return fmt.Errorf("Error while looking up billing item associated with the storage: No billing item for ID:%d", vipID)
+	}
+
 	success, err := services.GetBillingItemService(sess).Id(*billingItem.Id).CancelService()
 	if err != nil {
 		return err
