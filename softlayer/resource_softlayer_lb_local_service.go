@@ -34,6 +34,7 @@ func resourceSoftLayerLbLocalService() *schema.Resource {
 			"ip_address_id": {
 				Type:     schema.TypeInt,
 				Required: true,
+				ForceNew: true,
 			},
 			"port": {
 				Type:     schema.TypeInt,
@@ -257,8 +258,8 @@ func resourceSoftLayerLbLocalServiceDelete(d *schema.ResourceData, meta interfac
 					strings.Contains(apiErr.Message, "The resource '480' is already in use."):
 					// The LB is busy with another transaction. Retry
 					return false, "pending", nil
-				case apiErr.StatusCode == 404:
-					// 404 - service was deleted on the previous attempt
+				case apiErr.StatusCode == 404 || // 404 - service was deleted on the previous attempt
+					strings.Contains(apiErr.Message, "Unable to find object with id"): // xmlrpc returns 200 instead of 404
 					return true, "complete", nil
 				default:
 					// Any other error is unexpected. Abort
