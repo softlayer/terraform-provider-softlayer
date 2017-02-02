@@ -17,7 +17,7 @@ resource "softlayer_vlan" "test_vlan" {
    name = "test_vlan"
    datacenter = "lon02"
    type = "PUBLIC"
-   primary_subnet_size = 8
+   subnet_size = 8
    router_hostname = "fcr01a.lon02"
 }
 ```
