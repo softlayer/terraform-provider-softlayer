@@ -20,19 +20,20 @@ import (
 )
 
 const (
-	StoragePerformancePackageType = "ADDITIONAL_SERVICES_PERFORMANCE_STORAGE"
-	StorageEndurancePackageType   = "ADDITIONAL_SERVICES_ENTERPRISE_STORAGE"
+	storagePerformancePackageType = "ADDITIONAL_SERVICES_PERFORMANCE_STORAGE"
+	storageEndurancePackageType   = "ADDITIONAL_SERVICES_ENTERPRISE_STORAGE"
 	storageMask                   = "id,billingItem.orderItem.order.id"
 	storageDetailMask             = "id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type]" +
-		",serviceResourceName,allowedIpAddresses,allowedSubnets,allowedVirtualGuests,snapshotCapacityGb,osType"
+		",serviceResourceName,allowedIpAddresses,allowedSubnets,allowedVirtualGuests[id,allowedHost[name,credential[username,password]]],snapshotCapacityGb,osType"
 	itemMask        = "id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode],capacityRestrictionMinimum,capacityRestrictionMaximum,locationGroupId]"
-	EnduranceType   = "Endurance"
-	PerformanceType = "Performance"
-	FileStorage     = "FILE_STORAGE"
-	BlockStorage    = "BLOCK_STORAGE"
+	enduranceType   = "Endurance"
+	performanceType = "Performance"
+	fileStorage     = "FILE_STORAGE"
+	blockStorage    = "BLOCK_STORAGE"
 )
 
 var (
+	// Map IOPS value to endurance storage tier keyName in SoftLayer_Product_Item
 	enduranceIopsMap = map[float64]string{
 		0.25: "LOW_INTENSITY_TIER",
 		2:    "READHEAVY_TIER",
@@ -40,6 +41,7 @@ var (
 		10:   "10_IOPS_PER_GB",
 	}
 
+	// Map IOPS value to endurance storage tier capacityRestrictionMaximum/capacityRestrictionMinimum in SoftLayer_Product_Item
 	enduranceCapacityRestrictionMap = map[float64]int{
 		0.25: 100,
 		2:    200,
@@ -47,27 +49,30 @@ var (
 		10:   1000,
 	}
 
+	// storagePackageType is a storage package keyName for SoftLayer_Product_Package. It is used to filter storage package.
+	// iopsCategoryCode is a storage IOPS categoryCode for SoftLayer_Product_Item. It is used to filter storage IOPS price.
+	// storageProtocolCategoryCode is a storage protocol categoryCode for SoftLayer_Product_Item. It is used to filter storage protocol price.
 	storagePackageMap = map[string](map[string](map[string]string)){
-		FileStorage: {
-			PerformanceType: {
-				"storagePackageType":          StoragePerformancePackageType,
+		fileStorage: {
+			performanceType: {
+				"storagePackageType":          storagePerformancePackageType,
 				"iopsCategoryCode":            "performance_storage_iops",
 				"storageProtocolCategoryCode": "performance_storage_nfs",
 			},
-			EnduranceType: {
-				"storagePackageType":          StorageEndurancePackageType,
+			enduranceType: {
+				"storagePackageType":          storageEndurancePackageType,
 				"iopsCategoryCode":            "storage_tier_level",
 				"storageProtocolCategoryCode": "storage_file",
 			},
 		},
-		BlockStorage: {
-			PerformanceType: {
-				"storagePackageType":          StoragePerformancePackageType,
+		blockStorage: {
+			performanceType: {
+				"storagePackageType":          storagePerformancePackageType,
 				"iopsCategoryCode":            "performance_storage_iops",
 				"storageProtocolCategoryCode": "performance_storage_iscsi",
 			},
-			EnduranceType: {
-				"storagePackageType":          StorageEndurancePackageType,
+			enduranceType: {
+				"storagePackageType":          storageEndurancePackageType,
 				"iopsCategoryCode":            "storage_tier_level",
 				"storageProtocolCategoryCode": "storage_block",
 			},
@@ -172,7 +177,7 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 	capacity := d.Get("capacity").(int)
 	snapshotCapacity := d.Get("snapshot_capacity").(int)
 
-	storageOrderContainer, err := buildStorageProductOrderContainer(sess, storageType, iops, capacity, snapshotCapacity, FileStorage, datacenter)
+	storageOrderContainer, err := buildStorageProductOrderContainer(sess, storageType, iops, capacity, snapshotCapacity, fileStorage, datacenter)
 	if err != nil {
 		return fmt.Errorf("Error while creating storage:%s", err)
 	}
@@ -182,12 +187,12 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 	var receipt datatypes.Container_Product_Order_Receipt
 
 	switch storageType {
-	case EnduranceType:
+	case enduranceType:
 		receipt, err = services.GetProductOrderService(sess).PlaceOrder(
 			&datatypes.Container_Product_Order_Network_Storage_Enterprise{
 				Container_Product_Order: storageOrderContainer,
 			}, sl.Bool(false))
-	case PerformanceType:
+	case performanceType:
 		receipt, err = services.GetProductOrderService(sess).PlaceOrder(
 			&datatypes.Container_Product_Order_Network_PerformanceStorage_Nfs{
 				Container_Product_Order_Network_PerformanceStorage: datatypes.Container_Product_Order_Network_PerformanceStorage{
@@ -195,7 +200,7 @@ func resourceSoftLayerFileStorageCreate(d *schema.ResourceData, meta interface{}
 				},
 			}, sl.Bool(false))
 	default:
-		return fmt.Errorf("Error during creation of storage: Invalied storageType %s", storageType)
+		return fmt.Errorf("Error during creation of storage: Invalid storageType %s", storageType)
 	}
 
 	if err != nil {
@@ -438,7 +443,7 @@ func buildStorageProductOrderContainer(
 	targetItemPrices := []datatypes.Product_Item_Price{}
 	var iopsPrice datatypes.Product_Item_Price
 
-	if storageType == EnduranceType {
+	if storageType == enduranceType {
 		iopsPrice, err = getPrice(productItems, iopsKeyName, iopsCategoryCode, "", 0)
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
@@ -454,7 +459,7 @@ func buildStorageProductOrderContainer(
 
 	var capacityPrice datatypes.Product_Item_Price
 	// Add capacity price
-	if storageType == EnduranceType {
+	if storageType == enduranceType {
 		capacityPrice, err = getPrice(productItems, capacityKeyName, "performance_storage_space", "STORAGE_TIER_LEVEL", enduranceCapacityRestrictionMap[iops])
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
@@ -475,7 +480,7 @@ func buildStorageProductOrderContainer(
 	targetItemPrices = append(targetItemPrices, storageProtocolPrice)
 
 	// Add Endurane Storage price
-	if storageType == EnduranceType {
+	if storageType == enduranceType {
 		endurancePrice, err := getPrice(productItems, "CODENAME_PRIME_STORAGE_SERVICE", "storage_service_enterprise", "", 0)
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
@@ -484,7 +489,7 @@ func buildStorageProductOrderContainer(
 	}
 
 	// Add snapshot capacity price
-	if storageType == EnduranceType && snapshotCapacity > 0 {
+	if storageType == enduranceType && snapshotCapacity > 0 {
 		snapshotCapacityPrice, err := getPrice(productItems, snapshotCapacityKeyName, "storage_snapshot_space", "STORAGE_TIER_LEVEL", enduranceCapacityRestrictionMap[iops])
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
@@ -615,9 +620,9 @@ func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}) (interfac
 
 func getIopsKeyName(iops float64, storageType string) (string, error) {
 	switch storageType {
-	case EnduranceType:
+	case enduranceType:
 		return enduranceIopsMap[iops], nil
-	case PerformanceType:
+	case performanceType:
 		return fmt.Sprintf("%.f_IOPS", iops), nil
 	}
 	return "", fmt.Errorf("Invalid storageType %s.", storageType)
@@ -669,7 +674,7 @@ func getPrice(productItems []datatypes.Product_Item, keyName string, categoryCod
 
 func getIops(storage datatypes.Network_Storage, storageType string) (float64, error) {
 	switch storageType {
-	case EnduranceType:
+	case enduranceType:
 		for _, property := range storage.Properties {
 			if *property.Type.Keyname == "PROVISIONED_IOPS" {
 				provisionedIops, err := strconv.Atoi(*property.Value)
@@ -679,9 +684,9 @@ func getIops(storage datatypes.Network_Storage, storageType string) (float64, er
 				return float64(provisionedIops) / float64(*storage.CapacityGb), nil
 			}
 		}
-	case PerformanceType:
+	case performanceType:
 		if storage.Iops == nil {
-			return 0, fmt.Errorf("Failed to retrive iops information.")
+			return 0, fmt.Errorf("Failed to retrieve iops information.")
 		}
 		iops, err := strconv.Atoi(*storage.Iops)
 		if err != nil {
@@ -689,7 +694,7 @@ func getIops(storage datatypes.Network_Storage, storageType string) (float64, er
 		}
 		return float64(iops), nil
 	}
-	return 0, fmt.Errorf("Invalied storage type %s", storageType)
+	return 0, fmt.Errorf("Invalid storage type %s", storageType)
 }
 
 func updateAllowedIpAddresses(d *schema.ResourceData, sess *session.Session, storage datatypes.Network_Storage) error {
