@@ -267,7 +267,9 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 		d.Set("snapshot_capacity", snapshotCapacity)
 	}
 
-	// Parse data center short name from ServiceResourceName
+	// Parse data center short name from ServiceResourceName. For example,
+	// if SoftLayer API returns "'serviceResourceName': 'PerfStor Aggr aggr_staasdal0601_p01'",
+	// the data center short name is "dal06".
 	r, _ := regexp.Compile("[a-zA-Z]{3}[0-9]{2}")
 	d.Set("datacenter", r.FindString(*storage.ServiceResourceName))
 
