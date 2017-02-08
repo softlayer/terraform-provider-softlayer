@@ -77,6 +77,7 @@ func Provider() terraform.ResourceProvider {
 			"softlayer_fw_hardware_dedicated":       resourceSoftLayerFwHardwareDedicated(),
 			"softlayer_fw_hardware_dedicated_rules": resourceSoftLayerFwHardwareDedicatedRules(),
 			"softlayer_file_storage":                resourceSoftLayerFileStorage(),
+			"softlayer_block_storage":               resourceSoftLayerBlockStorage(),
 		},
 
 		ConfigureFunc: providerConfigure,
