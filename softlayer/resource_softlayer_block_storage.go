@@ -122,12 +122,6 @@ func resourceSoftLayerBlockStorage() *schema.Resource {
 				},
 			},
 
-			"allowed_subnets": {
-				Type:     schema.TypeSet,
-				Computed: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-			},
-
 			"allowed_ip_addresses": {
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -262,13 +256,6 @@ func resourceSoftLayerBlockStorageRead(d *schema.ResourceData, meta interface{})
 		allowedIpaddressesList = append(allowedIpaddressesList, *allowedIpaddress.IpAddress)
 	}
 	d.Set("allowed_ip_addresses", allowedIpaddressesList)
-
-	// Read allowed_subnets
-	allowedSubnetsList := make([]string, 0, len(storage.AllowedSubnets))
-	for _, allowedSubnets := range storage.AllowedSubnets {
-		allowedSubnetsList = append(allowedSubnetsList, *allowedSubnets.NetworkIdentifier+"/"+strconv.Itoa(*allowedSubnets.Cidr))
-	}
-	d.Set("allowed_subnets", allowedSubnetsList)
 
 	// Read allowed_virtual_guest_ids and allowed_virtual_guest_info
 	allowedVirtualGuestInfoList := make([]map[string]interface{}, 0)
