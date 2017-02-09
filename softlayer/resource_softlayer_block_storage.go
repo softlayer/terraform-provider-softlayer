@@ -7,9 +7,8 @@ import (
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
-	"github.com/softlayer/softlayer-go/filter"
+	"github.com/softlayer/softlayer-go/helpers/network"
 	"github.com/softlayer/softlayer-go/services"
-	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 	"regexp"
 	"strings"
@@ -147,7 +146,7 @@ func resourceSoftLayerBlockStorageCreate(d *schema.ResourceData, meta interface{
 	capacity := d.Get("capacity").(int)
 	snapshotCapacity := d.Get("snapshot_capacity").(int)
 	osFormatType := d.Get("os_format_type").(string)
-	osType, err := getOsTypeByName(sess, osFormatType)
+	osType, err := network.GetOsTypeByName(sess, osFormatType)
 
 	if err != nil {
 		return err
@@ -311,27 +310,4 @@ func resourceSoftLayerBlockStorageDelete(d *schema.ResourceData, meta interface{
 
 func resourceSoftLayerBlockStorageExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	return resourceSoftLayerFileStorageExists(d, meta)
-}
-
-func getOsTypeByName(sess *session.Session, name string, args ...interface{}) (datatypes.Network_Storage_Iscsi_OS_Type, error) {
-	var mask string
-	if len(args) > 0 {
-		mask = args[0].(string)
-	}
-
-	osTypes, err := services.GetNetworkStorageIscsiOSTypeService(sess).
-		Mask(mask).
-		Filter(filter.New(filter.Path("name").Eq(name)).Build()).
-		GetAllObjects()
-
-	if err != nil {
-		return datatypes.Network_Storage_Iscsi_OS_Type{}, err
-	}
-
-	// An empty filtered result set does not raise an error
-	if len(osTypes) == 0 {
-		return datatypes.Network_Storage_Iscsi_OS_Type{}, fmt.Errorf("No OS type found with name of %s", name)
-	}
-
-	return osTypes[0], nil
 }
