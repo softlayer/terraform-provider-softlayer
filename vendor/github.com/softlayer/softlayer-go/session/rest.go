@@ -59,7 +59,7 @@ func (r *RestTransport) DoRequest(sess *Session, service string, method string, 
 		options)
 
 	if err != nil {
-		return fmt.Errorf("Error during HTTP request: %s", err)
+		return sl.Error{Wrapped: err}
 	}
 
 	if code < 200 || code > 299 {
@@ -178,7 +178,7 @@ func makeHTTPRequest(session *Session, path string, requestType string, requestB
 	req.URL.RawQuery = encodeQuery(options)
 
 	if session.Debug {
-		log.Println("[DEBUG] Path: ", req.URL)
+		log.Println("[DEBUG] Request URL: ", requestType, req.URL)
 		log.Println("[DEBUG] Parameters: ", requestBody.String())
 	}
 
