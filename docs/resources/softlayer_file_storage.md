@@ -25,7 +25,7 @@ resource "softlayer_file_storage" "test1" {
 
 # Create 20G performance file storage and 100 IOPS option.
 resource "softlayer_file_storage" "test2" {
-        type = "Endurance"
+        type = "Performance"
         datacenter = "dal05"
         capacity = 20
         iops = 100
@@ -51,7 +51,7 @@ The following arguments are supported:
     * The amount of storage capacity to allocate in gigabytes.
     * **Required**
 * `iops` | *float*
-    * Specifies IOPS value for the storage. Please find available values for endurnace storage in the [link](https://knowledgelayer.softlayer.com/learning/introduction-endurance-storage).
+    * Specifies IOPS value for the storage. Please find available values for endurance storage in the [link](https://knowledgelayer.softlayer.com/learning/introduction-endurance-storage).
     * **Required**
 * `snapshot_capacity` | *int*
     * The amount of snapshot capacity to allocate in gigabytes. Only `Endurance` storage supports snapshot.
