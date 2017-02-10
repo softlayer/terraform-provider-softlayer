@@ -122,6 +122,35 @@ func resourceSoftLayerBlockStorage() *schema.Resource {
 				},
 			},
 
+			"allowed_hardware_info": {
+				Type:     schema.TypeSet,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"username": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"password": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"hostIQN": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
+				Set: func(v interface{}) int {
+					baremetal := v.(map[string]interface{})
+					return baremetal["id"].(int)
+				},
+			},
+
 			"allowed_ip_addresses": {
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -273,12 +302,20 @@ func resourceSoftLayerBlockStorageRead(d *schema.ResourceData, meta interface{})
 	d.Set("allowed_virtual_guest_ids", allowedVirtualGuestIdsList)
 	d.Set("allowed_virtual_guest_info", allowedVirtualGuestInfoList)
 
-	// Read allowed_hardware_ids
+	// Read allowed_hardware_ids and allowed_hardware_info
+	allowedHardwareInfoList := make([]map[string]interface{}, 0)
 	allowedHardwareIdsList := make([]int, 0, len(storage.AllowedHardware))
 	for _, allowedHW := range storage.AllowedHardware {
+		singleHardware := make(map[string]interface{})
+		singleHardware["id"] = *allowedHW.Id
+		singleHardware["username"] = *allowedHW.AllowedHost.Credential.Username
+		singleHardware["password"] = *allowedHW.AllowedHost.Credential.Password
+		singleHardware["hostIQN"] = *allowedHW.AllowedHost.Name
+		allowedHardwareInfoList = append(allowedHardwareInfoList, singleHardware)
 		allowedHardwareIdsList = append(allowedHardwareIdsList, *allowedHW.Id)
 	}
 	d.Set("allowed_hardware_ids", allowedHardwareIdsList)
+	d.Set("allowed_hardware_info", allowedHardwareInfoList)
 
 	if storage.OsType != nil {
 		d.Set("os_type", *storage.OsType.Name)
