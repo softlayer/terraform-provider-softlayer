@@ -301,6 +301,11 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Removed:  "Renamed as 'user_metadata'",
 			},
 
+			"notes": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"local_disk": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -615,6 +620,12 @@ func resourceSoftLayerVirtualGuestCreate(d *schema.ResourceData, meta interface{
 		return err
 	}
 
+	// Set notes
+	err = setNotes(id, d, meta)
+	if err != nil {
+		return err
+	}
+
 	// wait for machine availability
 
 	_, err = WaitForVirtualGuestAvailable(d, meta)
@@ -639,7 +650,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		"hostname,domain,startCpus,maxMemory,dedicatedAccountHostOnlyFlag," +
 			"primaryIpAddress,primaryBackendIpAddress,privateNetworkOnlyFlag," +
 			"hourlyBillingFlag,localDiskFlag," +
-			"userData[value],tagReferences[id,tag[name]]," +
+			"notes,userData[value],tagReferences[id,tag[name]]," +
 			"datacenter[id,name,longName]," +
 			"primaryNetworkComponent[networkVlan[id]," +
 			"primaryVersion6IpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]," +
@@ -727,6 +738,8 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		}
 	}
 
+	d.Set("notes", sl.Get(result.Notes, nil))
+
 	tagReferences := result.TagReferences
 	tagReferencesLen := len(tagReferences)
 	if tagReferencesLen > 0 {
@@ -786,14 +799,26 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 		return fmt.Errorf("Error retrieving virtual guest: %s", err)
 	}
 
-	// Update "hostname" and "domain" fields if present and changed
+	// Update "hostname", "domain" and "notes" fields if present and changed
 	// Those are the only fields, which could be updated
-	if d.HasChange("hostname") || d.HasChange("domain") {
+	isChanged := false
+	if d.HasChange("hostname") {
 		result.Hostname = sl.String(d.Get("hostname").(string))
+		isChanged = true
+	}
+
+	if d.HasChange("domain") {
 		result.Domain = sl.String(d.Get("domain").(string))
+		isChanged = true
+	}
 
+	if d.HasChange("notes") {
+		result.Notes = sl.String(d.Get("notes").(string))
+		isChanged = true
+	}
+
+	if isChanged {
 		_, err = service.Id(id).EditObject(&result)
-
 		if err != nil {
 			return fmt.Errorf("Couldn't update virtual guest: %s", err)
 		}
@@ -1064,6 +1089,26 @@ func setGuestTags(id int, d *schema.ResourceData, meta interface{}) error {
 		_, err := service.Id(id).SetTags(sl.String(tags))
 		if err != nil {
 			return fmt.Errorf("Could not set tags on virtual guest %d", id)
+		}
+	}
+
+	return nil
+}
+
+func setNotes(id int, d *schema.ResourceData, meta interface{}) error {
+	service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
+
+	if notes := d.Get("notes").(string); notes != "" {
+		result, err := service.Id(id).GetObject()
+		if err != nil {
+			return fmt.Errorf("Error retrieving virtual guest: %s", err)
+		}
+
+		result.Notes = sl.String(notes)
+
+		_, err = service.Id(id).EditObject(&result)
+		if err != nil {
+			return fmt.Errorf("Could not set note on virtual guest %d", id)
 		}
 	}
 
