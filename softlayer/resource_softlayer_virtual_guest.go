@@ -738,10 +738,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 		}
 	}
 
-	d.Set("notes", nil)
-	if notes := result.Notes; notes != nil {
-		d.Set("notes", *notes)
-	}
+	d.Set("notes", sl.Get(result.Notes, nil))
 
 	tagReferences := result.TagReferences
 	tagReferencesLen := len(tagReferences)
@@ -802,15 +799,26 @@ func resourceSoftLayerVirtualGuestUpdate(d *schema.ResourceData, meta interface{
 		return fmt.Errorf("Error retrieving virtual guest: %s", err)
 	}
 
-	// Update "hostname" and "domain" fields if present and changed
+	// Update "hostname", "domain" and "notes" fields if present and changed
 	// Those are the only fields, which could be updated
-	if d.HasChange("hostname") || d.HasChange("domain") || d.HasChange("notes") {
+	isChanged := false
+	if d.HasChange("hostname") {
 		result.Hostname = sl.String(d.Get("hostname").(string))
+		isChanged = true
+	}
+
+	if d.HasChange("domain") {
 		result.Domain = sl.String(d.Get("domain").(string))
+		isChanged = true
+	}
+
+	if d.HasChange("notes") {
 		result.Notes = sl.String(d.Get("notes").(string))
+		isChanged = true
+	}
 
+	if isChanged {
 		_, err = service.Id(id).EditObject(&result)
-
 		if err != nil {
 			return fmt.Errorf("Couldn't update virtual guest: %s", err)
 		}
