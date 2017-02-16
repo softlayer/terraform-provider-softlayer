@@ -28,7 +28,7 @@ resource "softlayer_virtual_guest" "manager" {
 
 resource "softlayer_virtual_guest" "worker" {
     count             = "${var.worker_count}"
-    hostname           = "docker-swarm-worker${count.index}"
+    hostname          = "docker-swarm-worker${count.index}"
     domain            = "demo.com"
     os_reference_code = "UBUNTU_LATEST"
     datacenter        = "${var.datacenter}"
@@ -44,7 +44,7 @@ resource "softlayer_virtual_guest" "worker" {
         inline = [
             "apt-get update -y > /dev/null",
             "apt-get install docker.io curl -y",
-            "curl -L http://bit.ly/2ejTiG7 | bash -s",
+            "curl -L http://bit.ly/2kuCjmp | bash -s",
             "ufw allow 2377/tcp",
             "ufw allow 4789/tcp",
             "ufw allow 7946/tcp",
