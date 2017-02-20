@@ -131,6 +131,10 @@ The following arguments are supported:
 *   `secondary_ip_count` | *int*
     * Provides secondary public IPv4 addresses. Acceptable values are 4 and 8. 
     * *Optional*
+*   `wait_time_minutes` | *int*
+    * Wait this many minutes for the virtual guest to become available before declaring it as created. It is also the same amount of time waited for no active transactions before proceeding with an update or deletion.
+    * *Default*: 90
+    * *Optional*
 
 ## Attributes Reference
 

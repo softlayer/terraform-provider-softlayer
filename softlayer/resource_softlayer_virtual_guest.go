@@ -333,6 +333,12 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Set:      schema.HashString,
 			},
+
+			"wait_time_minutes": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  90,
+			},
 		},
 	}
 }
@@ -936,7 +942,7 @@ func WaitForUpgradeTransactionsToAppear(d *schema.ResourceData, meta interface{}
 
 			return transactions, "pending_upgrade", nil
 		},
-		Timeout:    5 * time.Minute,
+		Timeout:    10 * time.Minute,
 		Delay:      5 * time.Second,
 		MinTimeout: 5 * time.Second,
 	}
@@ -972,7 +978,7 @@ func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (inte
 
 			return transactions, "active", nil
 		},
-		Timeout:    45 * time.Minute,
+		Timeout:    d.Get("wait_time_minutes").(time.Duration) * time.Minute,
 		Delay:      10 * time.Second,
 		MinTimeout: 10 * time.Second,
 	}
@@ -1038,7 +1044,7 @@ func WaitForVirtualGuestAvailable(d *schema.ResourceData, meta interface{}) (int
 
 			return result, "available", nil
 		},
-		Timeout:    45 * time.Minute,
+		Timeout:    d.Get("wait_time_minutes").(time.Duration) * time.Minute,
 		Delay:      10 * time.Second,
 		MinTimeout: 10 * time.Second,
 	}
