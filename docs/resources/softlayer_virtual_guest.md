@@ -112,6 +112,9 @@ The following arguments are supported:
 *   `user_metadata` | *string*
     * Arbitrary data to be made available to the computing instance.
     * *Optional*
+*   `notes` | *string*
+    * A note of up to 1000 characters about the virtual server.
+    * *Optional*
 *   `ssh_key_ids` | *array* of numbers
     * SSH key _IDs_ to install on the computing instance upon provisioning.
     * *Optional*
