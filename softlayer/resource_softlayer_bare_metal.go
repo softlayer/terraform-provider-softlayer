@@ -140,6 +140,11 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew: true,
 			},
 
+			"notes": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"post_install_script_uri": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -299,6 +304,14 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 		return err
 	}
 
+	// Set notes
+	if d.Get("notes").(string) != "" {
+		err = setHardwareNotes(id, d, meta)
+		if err != nil {
+			return err
+		}
+	}
+
 	return resourceSoftLayerBareMetalRead(d, meta)
 }
 
@@ -313,7 +326,7 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 	result, err := service.Id(id).Mask(
 		"hostname,domain," +
 			"primaryIpAddress,primaryBackendIpAddress,privateNetworkOnlyFlag," +
-			"userData[value],tagReferences[id,tag[name]]," +
+			"notes,userData[value],tagReferences[id,tag[name]]," +
 			"hourlyBillingFlag," +
 			"datacenter[id,name,longName]," +
 			"primaryNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],maxSpeed]," +
@@ -353,6 +366,8 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 		d.Set("user_metadata", *userData[0].Value)
 	}
 
+	d.Set("notes", sl.Get(result.Notes, nil))
+
 	tagReferences := result.TagReferences
 	tagReferencesLen := len(tagReferences)
 	if tagReferencesLen > 0 {
@@ -379,6 +394,13 @@ func resourceSoftLayerBareMetalUpdate(d *schema.ResourceData, meta interface{}) 
 
 	if d.HasChange("tags") {
 		err := setHardwareTags(id, d, meta)
+		if err != nil {
+			return err
+		}
+	}
+
+	if d.HasChange("notes") {
+		err := setHardwareNotes(id, d, meta)
 		if err != nil {
 			return err
 		}
@@ -509,6 +531,24 @@ func setHardwareTags(id int, d *schema.ResourceData, meta interface{}) error {
 		if err != nil {
 			return fmt.Errorf("Could not set tags on bare metal server %d", id)
 		}
+	}
+
+	return nil
+}
+
+func setHardwareNotes(id int, d *schema.ResourceData, meta interface{}) error {
+	service := services.GetHardwareServerService(meta.(ProviderConfig).SoftLayerSession())
+
+	result, err := service.Id(id).GetObject()
+	if err != nil {
+		return err
+	}
+
+	result.Notes = sl.String(d.Get("notes").(string))
+
+	_, err = service.Id(id).EditObject(&result)
+	if err != nil {
+		return err
 	}
 
 	return nil
