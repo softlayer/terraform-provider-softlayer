@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform/helper/resource"
@@ -45,6 +46,16 @@ func resourceSoftLayerGlobalIp() *schema.Resource {
 			"routes_to": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
+				ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+					address := v.(string)
+					if strings.Contains(address, ":") {
+						if len(address) != 39 {
+							errors = append(errors, fmt.Errorf("IPv6 address should be in the format: xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx"))
+						}
+					}
+
+					return
+				},
 			},
 		},
 	}
@@ -247,8 +258,10 @@ func buildGlobalIpProductOrderContainer(d *schema.ResourceData, sess *session.Se
 	}
 
 	// 3. Find global ip prices
-	// the following looks for only IPV4 Global Ips only
 	globalIpKeyname := "GLOBAL_IPV4"
+	if strings.Contains(d.Get("routes_to").(string), ":") {
+		globalIpKeyname = "GLOBAL_IPV6"
+	}
 
 	// 4. Select items with a matching keyname
 	globalIpItems := []datatypes.Product_Item{}
