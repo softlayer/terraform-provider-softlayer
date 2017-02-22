@@ -978,7 +978,7 @@ func WaitForNoActiveTransactions(d *schema.ResourceData, meta interface{}) (inte
 
 			return transactions, "active", nil
 		},
-		Timeout:    d.Get("wait_time_minutes").(time.Duration) * time.Minute,
+		Timeout:    time.Duration(d.Get("wait_time_minutes").(int)) * time.Minute,
 		Delay:      10 * time.Second,
 		MinTimeout: 10 * time.Second,
 	}
@@ -1044,7 +1044,7 @@ func WaitForVirtualGuestAvailable(d *schema.ResourceData, meta interface{}) (int
 
 			return result, "available", nil
 		},
-		Timeout:    d.Get("wait_time_minutes").(time.Duration) * time.Minute,
+		Timeout:    time.Duration(d.Get("wait_time_minutes").(int)) * time.Minute,
 		Delay:      10 * time.Second,
 		MinTimeout: 10 * time.Second,
 	}
