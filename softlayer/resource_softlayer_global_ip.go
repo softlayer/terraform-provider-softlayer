@@ -3,6 +3,7 @@ package softlayer
 import (
 	"fmt"
 	"log"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -48,13 +49,13 @@ func resourceSoftLayerGlobalIp() *schema.Resource {
 				Required: true,
 				ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
 					address := v.(string)
-					if strings.Contains(address, ":") {
-						if len(address) != 39 {
-							errors = append(errors, fmt.Errorf("IPv6 address should be in the format: xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx"))
-						}
+					if net.ParseIP(address) == nil {
+						errors = append(errors, fmt.Errorf("Invalid IP"))
 					}
-
 					return
+				},
+				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+					return net.ParseIP(o).String() == net.ParseIP(n).String()
 				},
 			},
 		},
@@ -124,7 +125,22 @@ func resourceSoftLayerGlobalIpUpdate(d *schema.ResourceData, meta interface{}) e
 		return fmt.Errorf("Not a valid global ip ID, must be an integer: %s", err)
 	}
 
-	_, err = service.Id(globalIpId).Route(sl.String(d.Get("routes_to").(string)))
+	routes_to := d.Get("routes_to").(string)
+	if strings.Contains(routes_to, ":") && len(routes_to) != 39 {
+		if colonCount := strings.Count(routes_to, ":"); colonCount != 7 {
+			routes_to = strings.Replace(routes_to, "::", "::"+strings.Repeat(":", 7-colonCount), 1)
+		}
+
+		parts := strings.Split(routes_to, ":")
+		for x, s := range parts {
+			parts[x] = fmt.Sprintf("%04s", s)
+		}
+
+		routes_to = strings.Join(parts, ":")
+		d.Set("routes_to", routes_to)
+	}
+
+	_, err = service.Id(globalIpId).Route(sl.String(routes_to))
 	if err != nil {
 		return fmt.Errorf("Error editing Global Ip: %s", err)
 	}
