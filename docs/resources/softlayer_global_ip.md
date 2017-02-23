@@ -6,8 +6,16 @@ For additional details please refer to [API documentation](http://sldn.softlayer
 ## Example Usage
 
 ```hcl
+# Create a global IPv4 address
 resource "softlayer_global_ip" "test_global_ip " {
     routes_to = "119.81.82.163"
+}
+```
+
+```hcl
+# Create a global IPv6 address
+resource "softlayer_global_ip" "test_global_ip " {
+    routes_to = "2401:c900:1501:0032:0000:0000:0000:0003"
 }
 ```
 

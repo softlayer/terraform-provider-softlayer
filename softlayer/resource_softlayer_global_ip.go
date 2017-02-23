@@ -3,7 +3,9 @@ package softlayer
 import (
 	"fmt"
 	"log"
+	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform/helper/resource"
@@ -45,6 +47,16 @@ func resourceSoftLayerGlobalIp() *schema.Resource {
 			"routes_to": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
+				ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+					address := v.(string)
+					if net.ParseIP(address) == nil {
+						errors = append(errors, fmt.Errorf("Invalid IP format: %s", address))
+					}
+					return
+				},
+				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+					return net.ParseIP(o).String() == net.ParseIP(n).String()
+				},
 			},
 		},
 	}
@@ -113,7 +125,23 @@ func resourceSoftLayerGlobalIpUpdate(d *schema.ResourceData, meta interface{}) e
 		return fmt.Errorf("Not a valid global ip ID, must be an integer: %s", err)
 	}
 
-	_, err = service.Id(globalIpId).Route(sl.String(d.Get("routes_to").(string)))
+	routes_to := d.Get("routes_to").(string)
+	if strings.Contains(routes_to, ":") && len(routes_to) != 39 {
+		parts := strings.Split(routes_to, ":")
+		for x, s := range parts {
+			if s == "" {
+				zeroes := 9 - len(parts)
+				parts[x] = strings.Repeat("0000:", zeroes)[:(zeroes*4)+(zeroes-1)]
+			} else {
+				parts[x] = fmt.Sprintf("%04s", s)
+			}
+		}
+
+		routes_to = strings.Join(parts, ":")
+		d.Set("routes_to", routes_to)
+	}
+
+	_, err = service.Id(globalIpId).Route(sl.String(routes_to))
 	if err != nil {
 		return fmt.Errorf("Error editing Global Ip: %s", err)
 	}
@@ -247,8 +275,10 @@ func buildGlobalIpProductOrderContainer(d *schema.ResourceData, sess *session.Se
 	}
 
 	// 3. Find global ip prices
-	// the following looks for only IPV4 Global Ips only
 	globalIpKeyname := "GLOBAL_IPV4"
+	if strings.Contains(d.Get("routes_to").(string), ":") {
+		globalIpKeyname = "GLOBAL_IPV6"
+	}
 
 	// 4. Select items with a matching keyname
 	globalIpItems := []datatypes.Product_Item{}
