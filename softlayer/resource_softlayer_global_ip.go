@@ -50,7 +50,7 @@ func resourceSoftLayerGlobalIp() *schema.Resource {
 				ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
 					address := v.(string)
 					if net.ParseIP(address) == nil {
-						errors = append(errors, fmt.Errorf("Invalid IP"))
+						errors = append(errors, fmt.Errorf("Invalid IP format: %s", address))
 					}
 					return
 				},
