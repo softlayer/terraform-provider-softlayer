@@ -272,6 +272,9 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				ForceNew: true,
 				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
 					// secondary_ip_count is only used when a virtual_guest resource is created.
+					if d.State() == nil {
+						return false
+					}
 					return true
 				},
 			},
