@@ -52,10 +52,13 @@ func resourceSoftLayerBasicMonitor() *schema.Resource {
 				Optional: true,
 			},
 			"notified_users": {
-				Type:     schema.TypeList,
-				Computed: true,
+				Type:     schema.TypeSet,
 				Optional: true,
+				Computed: true,
 				Elem:     &schema.Schema{Type: schema.TypeInt},
+				Set: func(v interface{}) int {
+					return v.(int)
+				},
 			},
 		},
 	}
@@ -125,8 +128,8 @@ func createNotifications(d *schema.ResourceData, meta interface{}, guestId int) 
 	userNotificationOpts := datatypes.User_Customer_Notification_Virtual_Guest{
 		GuestId: &guestId,
 	}
-	notifiedUsers := d.Get("notified_users").([]interface{})
-	for _, userId := range notifiedUsers {
+	notifiedUsers := d.Get("notified_users").(*schema.Set)
+	for _, userId := range notifiedUsers.List() {
 		userNotificationOpts.UserId = sl.Int(userId.(int))
 
 		// Don't create the notification object if one already exists for the same user and vm
@@ -145,15 +148,6 @@ func notificationExists(notificationLinks []datatypes.User_Customer_Notification
 		}
 	}
 
-	return false
-}
-
-func contains(s []int, e int) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
 	return false
 }
 
@@ -190,13 +184,30 @@ func resourceSoftLayerBasicMonitorRead(d *schema.ResourceData, meta interface{})
 		return fmt.Errorf("Error looking up user notifications for virtual guest %d", guestId)
 	}
 
-	notificationUserIds := []int{}
+	notificationUserIds := schema.NewSet(func(v interface{}) int { return v.(int) }, make([]interface{}, 0, len(notificationLinks)))
 	for _, notificationLink := range notificationLinks {
-		if !contains(notificationUserIds, *notificationLink.UserId) {
-			notificationUserIds = append(notificationUserIds, *notificationLink.UserId)
+		notificationUserIds.Add(*notificationLink.UserId)
+	}
+
+	// Only check that the notified user ids we know about are in SoftLayer. If not, set the incoming list
+	knownNotifiedUserIds := d.Get("notified_users").(*schema.Set)
+	if knownNotifiedUserIds != nil && knownNotifiedUserIds.Len() > 0 {
+		notifiedUserIds := notificationUserIds.List()
+		for _, knownNotifiedUserId := range knownNotifiedUserIds.List() {
+			match := false
+			for _, notifiedUserId := range notifiedUserIds {
+				if knownNotifiedUserId.(int) == notifiedUserId.(int) {
+					match = true
+					break
+				}
+			}
+
+			if match == false {
+				d.Set("notified_users", notificationUserIds.List())
+				break
+			}
 		}
 	}
-	d.Set("notified_users", notificationUserIds)
 
 	return nil
 }

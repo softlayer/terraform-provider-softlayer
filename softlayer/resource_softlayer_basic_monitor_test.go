@@ -24,17 +24,17 @@ func TestAccSoftLayerBasicMonitor_Basic(t *testing.T) {
 				Config: testAccCheckSoftLayerBasicMonitorConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerBasicMonitorExists("softlayer_basic_monitor.testacc_foobar", &basicMonitor),
-					resource.TestCheckResourceAttr(
-						"softlayer_basic_monitor.testacc_foobar", "guest_id", "22274327"),
-					resource.TestCheckResourceAttr(
-						"softlayer_basic_monitor.testacc_foobar", "ip_address", "169.54.168.102"),
+					resource.TestCheckResourceAttrSet(
+						"softlayer_basic_monitor.testacc_foobar", "guest_id"),
+					resource.TestCheckResourceAttrSet(
+						"softlayer_basic_monitor.testacc_foobar", "ip_address"),
 					resource.TestCheckResourceAttr(
 						"softlayer_basic_monitor.testacc_foobar", "query_type_id", "1"),
 					resource.TestCheckResourceAttr(
 						"softlayer_basic_monitor.testacc_foobar", "response_action_id", "1"),
 					resource.TestCheckResourceAttr(
 						"softlayer_basic_monitor.testacc_foobar", "wait_cycles", "5"),
-					testAccCheckSoftLayerBasicMonitorContainsUsers("softlayer_basic_monitor.testacc_foobar", 460547),
+					resource.TestCheckFunc(testAccCheckBasicMonitorNotifiedUsers),
 				),
 			},
 
@@ -42,16 +42,17 @@ func TestAccSoftLayerBasicMonitor_Basic(t *testing.T) {
 				Config: testAccCheckSoftLayerBasicMonitorConfig_updated,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerBasicMonitorExists("softlayer_basic_monitor.testacc_foobar", &basicMonitor),
-					resource.TestCheckResourceAttr(
-						"softlayer_basic_monitor.testacc_foobar", "guest_id", "22274327"),
-					resource.TestCheckResourceAttr(
-						"softlayer_basic_monitor.testacc_foobar", "ip_address", "169.54.168.102"),
+					resource.TestCheckResourceAttrSet(
+						"softlayer_basic_monitor.testacc_foobar", "guest_id"),
+					resource.TestCheckResourceAttrSet(
+						"softlayer_basic_monitor.testacc_foobar", "ip_address"),
 					resource.TestCheckResourceAttr(
 						"softlayer_basic_monitor.testacc_foobar", "query_type_id", "17"),
 					resource.TestCheckResourceAttr(
 						"softlayer_basic_monitor.testacc_foobar", "response_action_id", "2"),
 					resource.TestCheckResourceAttr(
 						"softlayer_basic_monitor.testacc_foobar", "wait_cycles", "10"),
+					resource.TestCheckFunc(testAccCheckBasicMonitorNotifiedUsers),
 				),
 			},
 		},
@@ -110,73 +111,52 @@ func testAccCheckSoftLayerBasicMonitorExists(n string, basicMonitor *datatypes.N
 	}
 }
 
-func testAccCheckSoftLayerBasicMonitorContainsUsers(n string, userId int) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-
-		rs, ok := s.RootModule().Resources[n]
-
-		if !ok {
-			return fmt.Errorf("Not found: %s", n)
+func testAccCheckBasicMonitorNotifiedUsers(s *terraform.State) error {
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "softlayer_basic_monitor" {
+			continue
 		}
 
-		if rs.Primary.ID == "" {
-			return errors.New("No Record ID is set")
+		if n, ok := rs.Primary.Attributes["notified_users.#"]; ok && n != "" && n != "0" {
+			return nil
 		}
 
-		basicMonitorId, _ := strconv.Atoi(rs.Primary.ID)
-
-		service := services.GetNetworkMonitorVersion1QueryHostService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
-		basicMonitor, err := service.Id(basicMonitorId).GetObject()
-
-		if err != nil {
-			return err
-		}
-
-		if strconv.Itoa(int(*basicMonitor.Id)) != rs.Primary.ID {
-			return errors.New("Record not found")
-		}
-
-		notificationLinks, err := services.GetVirtualGuestService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession()).Mask("userId").Id(*basicMonitor.GuestId).GetMonitoringUserNotification()
-
-		if notificationLinks == nil {
-			return errors.New("Cannot get a ust list")
-		}
-
-		found := false
-
-		for _, notifiedUser := range notificationLinks {
-			if *notifiedUser.UserId == userId {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			return fmt.Errorf("UserId %d is not found in notifiedUsers", userId)
-
-		}
-
-		return nil
+		break
 	}
+
+	return errors.New("Basic monitor has no notified users")
 }
 
-const testAccCheckSoftLayerBasicMonitorConfig_basic = `
+var testAccCheckSoftLayerBasicMonitorVirtualGuest = `
+resource "softlayer_virtual_guest" "terraform-basic-monitor-test" {
+    hostname = "terraform-monitor-test"
+    domain = "bar.example.com"
+    os_reference_code = "DEBIAN_7_64"
+    datacenter = "wdc04"
+    hourly_billing = true
+	private_network_only = false
+    cores = 1
+    memory = 1024
+    local_disk = true
+}
+`
 
+var testAccCheckSoftLayerBasicMonitorConfig_basic = testAccCheckSoftLayerUserConfig_basic + testAccCheckSoftLayerBasicMonitorVirtualGuest + `
 resource "softlayer_basic_monitor" "testacc_foobar" {
-    guest_id = 22274327
-    ip_address = "169.54.168.102"
+    guest_id = "${softlayer_virtual_guest.terraform-basic-monitor-test.id}"
+    ip_address = "${softlayer_virtual_guest.terraform-basic-monitor-test.ipv4_address}"
     query_type_id = 1
     response_action_id = 1
     wait_cycles = 5      
-    notified_users = [460547]
+    notified_users = ["${softlayer_user.testuser.id}"]
 }`
 
-const testAccCheckSoftLayerBasicMonitorConfig_updated = `
+var testAccCheckSoftLayerBasicMonitorConfig_updated = testAccCheckSoftLayerUserConfig_basic + testAccCheckSoftLayerBasicMonitorVirtualGuest + `
 resource "softlayer_basic_monitor" "testacc_foobar" {
-    guest_id = 22274327
-    ip_address = "169.54.168.102"
+    guest_id = "${softlayer_virtual_guest.terraform-basic-monitor-test.id}"
+    ip_address = "${softlayer_virtual_guest.terraform-basic-monitor-test.ipv4_address}"
     query_type_id = 17
     response_action_id = 2
     wait_cycles = 10
-    notified_users = [460547]
+    notified_users = ["${softlayer_user.testuser.id}"]
 }`
