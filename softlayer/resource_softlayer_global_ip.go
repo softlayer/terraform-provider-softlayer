@@ -127,13 +127,14 @@ func resourceSoftLayerGlobalIpUpdate(d *schema.ResourceData, meta interface{}) e
 
 	routes_to := d.Get("routes_to").(string)
 	if strings.Contains(routes_to, ":") && len(routes_to) != 39 {
-		if colonCount := strings.Count(routes_to, ":"); colonCount != 7 {
-			routes_to = strings.Replace(routes_to, "::", "::"+strings.Repeat(":", 7-colonCount), 1)
-		}
-
 		parts := strings.Split(routes_to, ":")
 		for x, s := range parts {
-			parts[x] = fmt.Sprintf("%04s", s)
+			if s == "" {
+				zeroes := 9 - len(parts)
+				parts[x] = strings.Repeat("0000:", zeroes)[:(zeroes*4)+(zeroes-1)]
+			} else {
+				parts[x] = fmt.Sprintf("%04s", s)
+			}
 		}
 
 		routes_to = strings.Join(parts, ":")
