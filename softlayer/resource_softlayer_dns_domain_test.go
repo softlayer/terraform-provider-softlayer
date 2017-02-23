@@ -39,8 +39,6 @@ func TestAccSoftLayerDnsDomain_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerDnsDomainExists("softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
 					testAccCheckSoftLayerDnsDomainAttributes(&dns_domain),
-					testAccCheckSoftLayerDnsDomainRecordDomainId(
-						"softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
 					resource.TestCheckResourceAttr(
 						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", domainName2),
 					resource.TestCheckResourceAttr(
@@ -54,8 +52,6 @@ func TestAccSoftLayerDnsDomain_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckSoftLayerDnsDomainExists("softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
 					testAccCheckSoftLayerDnsDomainAttributes(&dns_domain),
-					testAccCheckSoftLayerDnsDomainRecordDomainId(
-						"softlayer_dns_domain.acceptance_test_dns_domain-1", &dns_domain),
 					resource.TestCheckResourceAttr(
 						"softlayer_dns_domain.acceptance_test_dns_domain-1", "name", domainName2),
 					resource.TestCheckResourceAttr(
@@ -86,30 +82,6 @@ func testAccCheckSoftLayerDnsDomainDestroy(s *terraform.State) error {
 	}
 
 	return nil
-}
-
-func testAccCheckSoftLayerDnsDomainRecordDomainId(n string, dns_domain *datatypes.Dns_Domain) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		rs, ok := s.RootModule().Resources[n]
-
-		if !ok {
-			return fmt.Errorf("Not found: %s", n)
-		}
-
-		attrs := rs.Primary.Attributes
-		recordsTotal, _ := strconv.Atoi(attrs["records.#"])
-		for i := 0; i < recordsTotal; i++ {
-			recordDomainId, _ := strconv.Atoi(attrs[fmt.Sprintf("records.%d.domain_id", i)])
-			if *dns_domain.Id != recordDomainId {
-				return fmt.Errorf(
-					"Dns domain id (%d) and Dns domain record domain id (%d) should be equal",
-					*dns_domain.Id, recordDomainId,
-				)
-			}
-		}
-
-		return nil
-	}
 }
 
 func testAccCheckSoftLayerDnsDomainAttributes(dns *datatypes.Dns_Domain) resource.TestCheckFunc {
