@@ -270,6 +270,10 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				ForceNew: true,
+				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+					// secondary_ip_count is only used when a virtual_guest resource is created.
+					return true
+				},
 			},
 
 			"secondary_ip_addresses": {
@@ -768,9 +772,13 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	// Read secondary IP addresses
 	d.Set("secondary_ip_addresses", nil)
 	if result.PrimaryIpAddress != nil {
+		// Filter static secondary ip addresses.
+		staticSubnetFilterStr := fmt.Sprintf("{\"publicSubnets\":{\"endPointIpAddress\":{\"ipAddress\":{\"operation\":\"%s\"}}},"+
+			"\"publicSubnets\":{\"subnetType\":{\"operation\":\"STATIC_IP_ROUTED\"}}}", *result.PrimaryIpAddress)
+
 		secondarySubnetResult, err := services.GetAccountService(meta.(ProviderConfig).SoftLayerSession()).
 			Mask("ipAddresses[id,ipAddress]").
-			Filter(filter.Build(filter.Path("publicSubnets.endPointIpAddress.ipAddress").Eq(*result.PrimaryIpAddress))).
+			Filter(staticSubnetFilterStr).
 			GetPublicSubnets()
 		if err != nil {
 			log.Printf("Error getting secondary Ip addresses: %s", err)
