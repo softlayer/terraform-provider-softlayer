@@ -775,13 +775,10 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	// Read secondary IP addresses
 	d.Set("secondary_ip_addresses", nil)
 	if result.PrimaryIpAddress != nil {
-		// Filter static secondary ip addresses.
-		staticSubnetFilterStr := fmt.Sprintf("{\"publicSubnets\":{\"endPointIpAddress\":{\"ipAddress\":{\"operation\":\"%s\"}}},"+
-			"\"publicSubnets\":{\"subnetType\":{\"operation\":\"STATIC_IP_ROUTED\"}}}", *result.PrimaryIpAddress)
 
 		secondarySubnetResult, err := services.GetAccountService(meta.(ProviderConfig).SoftLayerSession()).
-			Mask("ipAddresses[id,ipAddress]").
-			Filter(staticSubnetFilterStr).
+			Mask("ipAddresses[id,ipAddress],subnetType").
+			Filter(filter.Build(filter.Path("publicSubnets.endPointIpAddress.ipAddress").Eq(*result.PrimaryIpAddress))).
 			GetPublicSubnets()
 		if err != nil {
 			log.Printf("Error getting secondary Ip addresses: %s", err)
@@ -789,8 +786,11 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 
 		secondaryIps := make([]string, 0)
 		for _, subnet := range secondarySubnetResult {
-			for _, ipAddressObj := range subnet.IpAddresses {
-				secondaryIps = append(secondaryIps, *ipAddressObj.IpAddress)
+			// Count static secondary ip addresses.
+			if *subnet.SubnetType == "STATIC_IP_ROUTED" {
+				for _, ipAddressObj := range subnet.IpAddresses {
+					secondaryIps = append(secondaryIps, *ipAddressObj.IpAddress)
+				}
 			}
 		}
 		if len(secondaryIps) > 0 {
