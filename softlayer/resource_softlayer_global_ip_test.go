@@ -35,6 +35,25 @@ func TestAccSoftLayerGlobalIp_Basic(t *testing.T) {
 						"softlayer_virtual_guest.vm2", "ipv4_address"),
 				),
 			},
+
+			resource.TestStep{
+				Config: testAccCheckSoftLayerGlobalIpConfig_Ipv6Basic,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSoftLayerGlobalIpExists("softlayer_global_ip.test-global-ip-3"),
+					resource.TestMatchResourceAttr("softlayer_global_ip.test-global-ip-3", "ip_address",
+						regexp.MustCompile(`^(([[:xdigit:]]{4}:){7})([[:xdigit:]]{4})$`)),
+					testAccCheckSoftLayerResources("softlayer_global_ip.test-global-ip-3", "routes_to",
+						"softlayer_virtual_guest.vm3", "ipv6_address"),
+				),
+			},
+
+			resource.TestStep{
+				Config: testAccCheckSoftLayerGlobalIpConfig_Ipv6Updated,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSoftLayerResources("softlayer_global_ip.test-global-ip-3", "routes_to",
+						"softlayer_virtual_guest.vm4", "ipv6_address"),
+				),
+			},
 		},
 	})
 }
@@ -154,4 +173,74 @@ resource "softlayer_virtual_guest" "vm2" {
 
 resource "softlayer_global_ip" "test-global-ip" {
     routes_to = "${softlayer_virtual_guest.vm2.ipv4_address}"
+}`
+
+const testAccCheckSoftLayerGlobalIpConfig_Ipv6Basic = `
+resource "softlayer_virtual_guest" "vm3" {
+    hostname = "vm3"
+    domain = "example.com"
+    os_reference_code = "DEBIAN_7_64"
+    datacenter = "che01"
+    network_speed = 100
+    hourly_billing = true
+    private_network_only = false
+    cores = 1
+    memory = 1024
+    disks = [25]
+    local_disk = false
+    ipv6_enabled = true
+}
+
+resource "softlayer_virtual_guest" "vm4" {
+    hostname = "vm4"
+    domain = "example.com"
+    os_reference_code = "DEBIAN_7_64"
+    datacenter = "che01"
+    network_speed = 100
+    hourly_billing = true
+    private_network_only = false
+    cores = 1
+    memory = 1024
+    disks = [25]
+    local_disk = false
+    ipv6_enabled = true
+}
+
+resource "softlayer_global_ip" "test-global-ip-3" {
+    routes_to = "${softlayer_virtual_guest.vm3.ipv6_address}"
+}`
+
+const testAccCheckSoftLayerGlobalIpConfig_Ipv6Updated = `
+resource "softlayer_virtual_guest" "vm3" {
+    hostname = "vm3"
+    domain = "example.com"
+    os_reference_code = "DEBIAN_7_64"
+    datacenter = "che01"
+    network_speed = 100
+    hourly_billing = true
+    private_network_only = false
+    cores = 1
+    memory = 1024
+    disks = [25]
+    local_disk = false
+    ipv6_enabled = true
+}
+
+resource "softlayer_virtual_guest" "vm4" {
+    hostname = "vm4"
+    domain = "example.com"
+    os_reference_code = "DEBIAN_7_64"
+    datacenter = "che01"
+    network_speed = 100
+    hourly_billing = true
+    private_network_only = false
+    cores = 1
+    memory = 1024
+    disks = [25]
+    local_disk = false
+    ipv6_enabled = true
+}
+
+resource "softlayer_global_ip" "test-global-ip-3" {
+    routes_to = "${softlayer_virtual_guest.vm4.ipv6_address}"
 }`
