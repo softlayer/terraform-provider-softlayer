@@ -55,7 +55,10 @@ func resourceSoftLayerGlobalIp() *schema.Resource {
 					return
 				},
 				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
-					return net.ParseIP(o).String() == net.ParseIP(n).String()
+					newRoutesTo := net.ParseIP(n)
+					// Return true when n has the appropriate IPv6 format and
+					// the compressed value of n equals the compressed value of o.
+					return newRoutesTo != nil && (newRoutesTo.String() == net.ParseIP(o).String())
 				},
 			},
 		},
