@@ -68,7 +68,6 @@ func TestAccSoftLayerScaleGroup_Basic(t *testing.T) {
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.post_install_script_uri", ""),
 					resource.TestCheckResourceAttr(
 						"softlayer_scale_group.sample-http-cluster", "virtual_guest_member_template.0.user_metadata", "#!/bin/bash"),
-					testAccCheckSoftLayerScaleGroupContainsNetworkVlan(&scalegroup, 1928, "bcr02a.sng01"),
 				),
 			},
 
@@ -192,7 +191,7 @@ func testAccCheckSoftLayerScaleGroupExists(n string, scalegroup *datatypes.Scale
 
 const testAccCheckSoftLayerScaleGroupConfig_basic = `
 resource "softlayer_lb_local" "local_lb_01" {
-    connections = 15000
+    connections = 250
     datacenter = "sng01"
     ha_enabled = false
 }
@@ -235,7 +234,7 @@ resource "softlayer_scale_group" "sample-http-cluster" {
 
 const testAccCheckSoftLayerScaleGroupConfig_updated = `
 resource "softlayer_lb_local" "local_lb_01" {
-    connections = 15000
+    connections = 250
     datacenter = "sng01"
     ha_enabled = false
 }
