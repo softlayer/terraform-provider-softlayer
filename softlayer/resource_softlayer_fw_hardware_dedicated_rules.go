@@ -2,7 +2,9 @@ package softlayer
 
 import (
 	"fmt"
+	"net"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -45,6 +47,10 @@ func resourceSoftLayerFwHardwareDedicatedRules() *schema.Resource {
 						"src_ip_address": {
 							Type:     schema.TypeString,
 							Required: true,
+							DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+								newSrcIpAddress := net.ParseIP(n)
+								return newSrcIpAddress != nil && (newSrcIpAddress.String() == net.ParseIP(o).String())
+							},
 						},
 						"src_ip_cidr": {
 							Type:     schema.TypeInt,
@@ -53,6 +59,10 @@ func resourceSoftLayerFwHardwareDedicatedRules() *schema.Resource {
 						"dst_ip_address": {
 							Type:     schema.TypeString,
 							Required: true,
+							DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+								newDstIpAddress := net.ParseIP(n)
+								return newDstIpAddress != nil && (newDstIpAddress.String() == net.ParseIP(o).String())
+							},
 						},
 						"dst_ip_cidr": {
 							Type:     schema.TypeInt,
@@ -105,6 +115,10 @@ func prepareRules(d *schema.ResourceData) []datatypes.Network_Firewall_Update_Re
 		rule.Protocol = sl.String(ruleMap["protocol"].(string))
 		if len(ruleMap["notes"].(string)) > 0 {
 			rule.Notes = sl.String(ruleMap["notes"].(string))
+		}
+
+		if strings.Contains(*rule.SourceIpAddress, ":") || strings.Contains(*rule.DestinationIpAddress, ":") {
+			rule.Version = sl.Int(6)
 		}
 		rules = append(rules, rule)
 	}
