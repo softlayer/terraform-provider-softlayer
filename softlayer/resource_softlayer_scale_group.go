@@ -307,13 +307,16 @@ func resourceSoftLayerScaleGroupCreate(d *schema.ResourceData, meta interface{})
 	return resourceSoftLayerScaleGroupRead(d, meta)
 }
 
-func buildLoadBalancers(d *schema.ResourceData) ([]datatypes.Scale_LoadBalancer, error) {
+func buildLoadBalancers(d *schema.ResourceData, ids ...int) ([]datatypes.Scale_LoadBalancer, error) {
 	isLoadBalancerEmpty := true
 	loadBalancers := []datatypes.Scale_LoadBalancer{{}}
 
 	if virtualServerId, ok := d.GetOk("virtual_server_id"); ok {
 		isLoadBalancerEmpty = false
 		loadBalancers[0].VirtualServerId = sl.Int(virtualServerId.(int))
+		if len(ids) > 0 {
+			loadBalancers[0].Id = sl.Int(ids[0])
+		}
 	}
 
 	if healthCheck, ok := d.GetOk("health_check"); ok {
@@ -477,7 +480,11 @@ func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{})
 	groupObj.TerminationPolicy.KeyName = sl.String(d.Get("termination_policy").(string))
 
 	currentLoadBalancers := groupObj.LoadBalancers
-	groupObj.LoadBalancers, err = buildLoadBalancers(d)
+	if len(currentLoadBalancers) > 0 {
+		groupObj.LoadBalancers, err = buildLoadBalancers(d, *currentLoadBalancers[0].Id)
+	} else {
+		groupObj.LoadBalancers, err = buildLoadBalancers(d)
+	}
 	if err != nil {
 		return fmt.Errorf("Error creating Scale Group: %s", err)
 	}
