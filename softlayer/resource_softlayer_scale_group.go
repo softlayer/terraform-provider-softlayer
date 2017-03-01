@@ -145,6 +145,9 @@ func getModifiedVirtualGuestResource() *schema.Resource {
 
 	r := resourceSoftLayerVirtualGuest()
 
+	// wait_time_minutes is only used in virtual_guest resource.
+	delete(r.Schema, "wait_time_minutes")
+
 	for _, elem := range r.Schema {
 		elem.ForceNew = false
 	}
@@ -304,13 +307,16 @@ func resourceSoftLayerScaleGroupCreate(d *schema.ResourceData, meta interface{})
 	return resourceSoftLayerScaleGroupRead(d, meta)
 }
 
-func buildLoadBalancers(d *schema.ResourceData) ([]datatypes.Scale_LoadBalancer, error) {
+func buildLoadBalancers(d *schema.ResourceData, ids ...int) ([]datatypes.Scale_LoadBalancer, error) {
 	isLoadBalancerEmpty := true
 	loadBalancers := []datatypes.Scale_LoadBalancer{{}}
 
 	if virtualServerId, ok := d.GetOk("virtual_server_id"); ok {
 		isLoadBalancerEmpty = false
 		loadBalancers[0].VirtualServerId = sl.Int(virtualServerId.(int))
+		if len(ids) > 0 {
+			loadBalancers[0].Id = sl.Int(ids[0])
+		}
 	}
 
 	if healthCheck, ok := d.GetOk("health_check"); ok {
@@ -474,7 +480,11 @@ func resourceSoftLayerScaleGroupUpdate(d *schema.ResourceData, meta interface{})
 	groupObj.TerminationPolicy.KeyName = sl.String(d.Get("termination_policy").(string))
 
 	currentLoadBalancers := groupObj.LoadBalancers
-	groupObj.LoadBalancers, err = buildLoadBalancers(d)
+	if len(currentLoadBalancers) > 0 {
+		groupObj.LoadBalancers, err = buildLoadBalancers(d, *currentLoadBalancers[0].Id)
+	} else {
+		groupObj.LoadBalancers, err = buildLoadBalancers(d)
+	}
 	if err != nil {
 		return fmt.Errorf("Error creating Scale Group: %s", err)
 	}
@@ -582,7 +592,9 @@ func waitForActiveStatus(d *schema.ResourceData, meta interface{}) (interface{},
 		Target:  []string{"ACTIVE"},
 		Refresh: func() (interface{}, string, error) {
 			// get the status of the scale group
-			result, err := scaleGroupService.Id(id).Mask("status.keyName").GetObject()
+			result, err := scaleGroupService.Id(id).Mask("status.keyName,minimumMemberCount," +
+				"virtualGuestMembers[virtualGuest[primaryBackendIpAddress,primaryIpAddress,privateNetworkOnlyFlag,fullyQualifiedDomainName]]").
+				GetObject()
 			if err != nil {
 				if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
 					return nil, "", fmt.Errorf("The scale group %d does not exist anymore: %s", id, err)
@@ -590,8 +602,26 @@ func waitForActiveStatus(d *schema.ResourceData, meta interface{}) (interface{},
 
 				return result, "BUSY", nil // Retry
 			}
-
 			status := "BUSY"
+
+			// Return "BUSY" if member VMs don't have ip addresses.
+			for _, scaleMemberVirtualGuest := range result.VirtualGuestMembers {
+				// Checking primary backend IP address.
+				if scaleMemberVirtualGuest.VirtualGuest.PrimaryBackendIpAddress == nil {
+					log.Printf("The member vm of scale group does not have private IP yet. Hostname : %s",
+						*scaleMemberVirtualGuest.VirtualGuest.FullyQualifiedDomainName)
+					return result, status, nil
+				}
+
+				// Checking primary IP address.
+				if !(*scaleMemberVirtualGuest.VirtualGuest.PrivateNetworkOnlyFlag) &&
+					scaleMemberVirtualGuest.VirtualGuest.PrimaryIpAddress == nil {
+					log.Printf("The member vm of scale group does not have IP yet. Hostname : %s",
+						*scaleMemberVirtualGuest.VirtualGuest.FullyQualifiedDomainName)
+					return result, status, nil
+				}
+			}
+
 			if result.Status.KeyName != nil {
 				status = *result.Status.KeyName
 				log.Printf("The status of scale group with id (%d) is (%s)", id, *result.Status.KeyName)
@@ -601,9 +631,9 @@ func waitForActiveStatus(d *schema.ResourceData, meta interface{}) (interface{},
 
 			return result, status, nil
 		},
-		Timeout:    10 * time.Minute,
-		Delay:      2 * time.Second,
-		MinTimeout: 5 * time.Second,
+		Timeout:    120 * time.Minute,
+		Delay:      10 * time.Second,
+		MinTimeout: 10 * time.Second,
 	}
 
 	return stateConf.WaitForState()
