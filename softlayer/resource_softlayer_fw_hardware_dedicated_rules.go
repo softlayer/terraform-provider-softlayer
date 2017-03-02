@@ -227,7 +227,20 @@ func appendAnyOpenRule(rules []datatypes.Network_Firewall_Update_Request_Rule, p
 		Protocol:                  sl.String(protocol),
 		Notes:                     sl.String("terraform-default-anyopen-" + protocol),
 	}
-	return append(rules, ruleAnyOpen)
+
+	ruleAnyOpenIpv6 := datatypes.Network_Firewall_Update_Request_Rule{
+		OrderValue:                sl.Int(len(rules) + 1),
+		Action:                    sl.String("permit"),
+		SourceIpAddress:           sl.String("any"),
+		DestinationIpAddress:      sl.String("any"),
+		DestinationPortRangeStart: sl.Int(1),
+		DestinationPortRangeEnd:   sl.Int(65535),
+		Protocol:                  sl.String(protocol),
+		Notes:                     sl.String("terraform-default-anyopen-" + protocol + "-ipv6"),
+		Version:                   sl.Int(6),
+	}
+
+	return append(rules, ruleAnyOpen, ruleAnyOpenIpv6)
 }
 
 func resourceSoftLayerFwHardwareDedicatedRulesUpdate(d *schema.ResourceData, meta interface{}) error {
