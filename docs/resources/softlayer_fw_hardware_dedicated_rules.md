@@ -8,9 +8,9 @@ rules. For additional details please refer to
 
 _Please Note_: Target VLAN should have at least one subnet for rule 
 configuration. To express _ANY IP addresses_ in external side, configure 
-`src_ip_address` as `0.0.0.0` and `src_ip_cidr` as `0`. To express _API 
+`src_ip_address` as `0.0.0.0`(`0::` for IPv6) and `src_ip_cidr` as `0`. To express _API 
 IP addresses_ in internal side, configure `dst_ip_address` as `any` and 
-`src_ip_cidr` as `32`. Once `softlayer_fw_hardware_dedicated_rules` resource 
+`src_ip_cidr` as `32`(`128` for IPv6). Once `softlayer_fw_hardware_dedicated_rules` resource 
 is created, it cannot be deleted. SoftLayer doesnot allow entire rule deleting. 
 Firewalls should have at least one rule. If terraform destroys 
 `softlayer_fw_hardware_dedicated_rules` resources, _permit from any to any
@@ -24,6 +24,8 @@ resource "softlayer_fw_hardware_dedicated" "demofw" {
 
 resource "softlayer_fw_hardware_dedicated_rules" "rules" {
  firewall_id = "${softlayer_fw_hardware_dedicated.demofw.id}"
+
+ # Rules for IPv4
  rules = {
       "action" = "permit"
       "src_ip_address"= "10.1.1.0"
@@ -46,6 +48,19 @@ resource "softlayer_fw_hardware_dedicated_rules" "rules" {
        "notes"= "Permit from 10.1.1.0"
        "protocol"= "udp"
   }
+
+ # Rules for IPv6
+ rules = {
+      "action" = "permit"
+      "src_ip_address"= "2401:c900:1501:0032:0000:0000:0000:0003"
+      "src_ip_cidr"= 128
+      "dst_ip_address"= "any"
+      "dst_ip_cidr"= 128
+      "dst_port_range_start"= 80
+      "dst_port_range_end"= 80
+      "notes"= "Permit for IPv6"
+      "protocol"= "tcp"
+ }
 }
 ```
 
