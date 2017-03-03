@@ -42,6 +42,22 @@ func TestAccSoftLayerFwHardwareDedicatedRules_Basic(t *testing.T) {
 						"softlayer_fw_hardware_dedicated_rules.rules", "rules.1.notes", "Allow SSH"),
 					resource.TestCheckResourceAttr(
 						"softlayer_fw_hardware_dedicated_rules.rules", "rules.1.protocol", "tcp"),
+
+					resource.TestCheckResourceAttr(
+						"softlayer_fw_hardware_dedicated_rules.rules", "rules.2.action", "permit"),
+					resource.TestCheckResourceAttr(
+						"softlayer_fw_hardware_dedicated_rules.rules", "rules.2.src_ip_address",
+						"0000:0000:0000:0000:0000:0000:0000:0000"),
+					resource.TestCheckResourceAttr(
+						"softlayer_fw_hardware_dedicated_rules.rules", "rules.2.dst_ip_address", "any"),
+					resource.TestCheckResourceAttr(
+						"softlayer_fw_hardware_dedicated_rules.rules", "rules.2.dst_port_range_start", "22"),
+					resource.TestCheckResourceAttr(
+						"softlayer_fw_hardware_dedicated_rules.rules", "rules.2.dst_port_range_end", "22"),
+					resource.TestCheckResourceAttr(
+						"softlayer_fw_hardware_dedicated_rules.rules", "rules.2.notes", "Allow SSH"),
+					resource.TestCheckResourceAttr(
+						"softlayer_fw_hardware_dedicated_rules.rules", "rules.2.protocol", "tcp"),
 				),
 			},
 			resource.TestStep{
@@ -59,6 +75,19 @@ func TestAccSoftLayerFwHardwareDedicatedRules_Basic(t *testing.T) {
 						"softlayer_fw_hardware_dedicated_rules.rules", "rules.0.notes", "Permit from 10.1.1.0"),
 					resource.TestCheckResourceAttr(
 						"softlayer_fw_hardware_dedicated_rules.rules", "rules.0.protocol", "udp"),
+
+					resource.TestCheckResourceAttr(
+						"softlayer_fw_hardware_dedicated_rules.rules", "rules.1.action", "deny"),
+					resource.TestCheckResourceAttr(
+						"softlayer_fw_hardware_dedicated_rules.rules", "rules.1.src_ip_address", "2401:c900:1501:0032:0000:0000:0000:0000"),
+					resource.TestCheckResourceAttr(
+						"softlayer_fw_hardware_dedicated_rules.rules", "rules.1.dst_port_range_start", "80"),
+					resource.TestCheckResourceAttr(
+						"softlayer_fw_hardware_dedicated_rules.rules", "rules.1.dst_port_range_end", "80"),
+					resource.TestCheckResourceAttr(
+						"softlayer_fw_hardware_dedicated_rules.rules", "rules.1.notes", "Deny for IPv6"),
+					resource.TestCheckResourceAttr(
+						"softlayer_fw_hardware_dedicated_rules.rules", "rules.1.protocol", "udp"),
 				),
 			},
 		},
@@ -109,6 +138,17 @@ resource "softlayer_fw_hardware_dedicated_rules" "rules" {
       "notes"= "Allow SSH"
       "protocol"= "tcp"
  }
+ rules = {
+      "action" = "permit"
+      "src_ip_address"= "0::"
+      "src_ip_cidr"= 0
+      "dst_ip_address"= "any"
+      "dst_ip_cidr"= 128
+      "dst_port_range_start"= 22
+      "dst_port_range_end"= 22
+      "notes"= "Allow SSH"
+      "protocol"= "tcp"
+ }
 }
 
 `
@@ -146,6 +186,16 @@ resource "softlayer_fw_hardware_dedicated_rules" "rules" {
       "notes"= "Permit from 10.1.1.0"
       "protocol"= "udp"
  }
+ rules = {
+      "action" = "deny"
+      "src_ip_address"= "2401:c900:1501:0032:0000:0000:0000:0000"
+      "src_ip_cidr"= 64
+      "dst_ip_address"= "any"
+      "dst_ip_cidr"= 128
+      "dst_port_range_start"= 80
+      "dst_port_range_end"= 80
+      "notes"= "Deny for IPv6"
+      "protocol"= "udp"
+ }
 }
-
 `
