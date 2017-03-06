@@ -2,7 +2,9 @@ package softlayer
 
 import (
 	"fmt"
+	"net"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -45,6 +47,10 @@ func resourceSoftLayerFwHardwareDedicatedRules() *schema.Resource {
 						"src_ip_address": {
 							Type:     schema.TypeString,
 							Required: true,
+							DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+								newSrcIpAddress := net.ParseIP(n)
+								return newSrcIpAddress != nil && (newSrcIpAddress.String() == net.ParseIP(o).String())
+							},
 						},
 						"src_ip_cidr": {
 							Type:     schema.TypeInt,
@@ -53,6 +59,10 @@ func resourceSoftLayerFwHardwareDedicatedRules() *schema.Resource {
 						"dst_ip_address": {
 							Type:     schema.TypeString,
 							Required: true,
+							DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+								newDstIpAddress := net.ParseIP(n)
+								return newDstIpAddress != nil && (newDstIpAddress.String() == net.ParseIP(o).String())
+							},
 						},
 						"dst_ip_cidr": {
 							Type:     schema.TypeInt,
@@ -105,6 +115,10 @@ func prepareRules(d *schema.ResourceData) []datatypes.Network_Firewall_Update_Re
 		rule.Protocol = sl.String(ruleMap["protocol"].(string))
 		if len(ruleMap["notes"].(string)) > 0 {
 			rule.Notes = sl.String(ruleMap["notes"].(string))
+		}
+
+		if strings.Contains(*rule.SourceIpAddress, ":") || strings.Contains(*rule.DestinationIpAddress, ":") {
+			rule.Version = sl.Int(6)
 		}
 		rules = append(rules, rule)
 	}
@@ -213,7 +227,20 @@ func appendAnyOpenRule(rules []datatypes.Network_Firewall_Update_Request_Rule, p
 		Protocol:                  sl.String(protocol),
 		Notes:                     sl.String("terraform-default-anyopen-" + protocol),
 	}
-	return append(rules, ruleAnyOpen)
+
+	ruleAnyOpenIpv6 := datatypes.Network_Firewall_Update_Request_Rule{
+		OrderValue:                sl.Int(len(rules) + 1),
+		Action:                    sl.String("permit"),
+		SourceIpAddress:           sl.String("any"),
+		DestinationIpAddress:      sl.String("any"),
+		DestinationPortRangeStart: sl.Int(1),
+		DestinationPortRangeEnd:   sl.Int(65535),
+		Protocol:                  sl.String(protocol),
+		Notes:                     sl.String("terraform-default-anyopen-" + protocol + "-ipv6"),
+		Version:                   sl.Int(6),
+	}
+
+	return append(rules, ruleAnyOpen, ruleAnyOpenIpv6)
 }
 
 func resourceSoftLayerFwHardwareDedicatedRulesUpdate(d *schema.ResourceData, meta interface{}) error {
