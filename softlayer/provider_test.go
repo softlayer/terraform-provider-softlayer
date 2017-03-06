@@ -31,7 +31,7 @@ func testAccPreCheck(t *testing.T) {
 	for _, param := range []string{"username", "api_key", "endpoint_url"} {
 		value, _ := testAccProvider.Schema[param].DefaultFunc()
 		if value == "" {
-			t.Fatalf("A SoftLayer %s was not found. Read gopherlayer docs for how to configure this.", param)
+			t.Fatalf("A SoftLayer %s was not found. Read softlayer-go docs for how to configure this.", param)
 		}
 	}
 }
