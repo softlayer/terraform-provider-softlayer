@@ -3,6 +3,12 @@
 	"ignore": "appengine test",
 	"package": [
 		{
+			"checksumSHA1": "5Byq2AiiJHz8UFgx24gqjPANuXg=",
+			"path": "github.com/minsikl/netscaler-nitro-go",
+			"revision": "d153fdcbbd6453b1e14cfdb99f2b9c5bf0f38a3d",
+			"revisionTime": "2016-11-09T04:20:57Z"
+		},
+		{
 			"path": "github.com/minsikl/netscaler-nitro-go...",
 			"revision": ""
 		},
@@ -137,6 +143,12 @@
 			"path": "golang.org/x/text/encoding/internal/identifier",
 			"revision": "2556e8494a202e0b4008f70eda8cdb089b03fa50",
 			"revisionTime": "2016-10-23T19:44:40Z"
+		},
+		{
+			"checksumSHA1": "ziMb9+ANGRJSSIuxYdRbA+cDRBQ=",
+			"path": "golang.org/x/text/transform",
+			"revision": "f28f36722d5ef2f9655ad3de1f248e3e52ad5ebd",
+			"revisionTime": "2017-02-28T17:26:26Z"
 		}
 	],
 	"rootPath": "github.com/softlayer/terraform-provider-softlayer"
