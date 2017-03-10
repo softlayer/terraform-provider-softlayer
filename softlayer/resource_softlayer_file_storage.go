@@ -30,6 +30,7 @@ const (
 	performanceType = "Performance"
 	fileStorage     = "FILE_STORAGE"
 	blockStorage    = "BLOCK_STORAGE"
+	retryTime       = 5
 )
 
 var (
@@ -723,16 +724,24 @@ func updateAllowedIpAddresses(d *schema.ResourceData, sess *session.Session, sto
 			if len(ipObject) != 1 {
 				return fmt.Errorf("Number of IP address is %d", len(ipObject))
 			}
-			_, err = services.GetNetworkStorageService(sess).
-				Id(id).
-				AllowAccessFromHostList([]datatypes.Container_Network_Storage_Host{
-					{
-						Id:         ipObject[0].Id,
-						ObjectType: sl.String("SoftLayer_Network_Subnet_IpAddress"),
-					},
-				})
-			if err != nil {
-				return err
+
+			for {
+				_, err = services.GetNetworkStorageService(sess).
+					Id(id).
+					AllowAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+						{
+							Id:         ipObject[0].Id,
+							ObjectType: sl.String("SoftLayer_Network_Subnet_IpAddress"),
+						},
+					})
+				if err != nil {
+					if strings.Contains(err.Error(), "SoftLayer_Exception_Network_Storage_Group_MassAccessControlModification") {
+						time.Sleep(retryTime * time.Second)
+						continue
+					}
+					return err
+				}
+				break
 			}
 		}
 	}
@@ -747,16 +756,23 @@ func updateAllowedIpAddresses(d *schema.ResourceData, sess *session.Session, sto
 			}
 		}
 		if isDeletedId {
-			_, err := services.GetNetworkStorageService(sess).
-				Id(id).
-				RemoveAccessFromHostList([]datatypes.Container_Network_Storage_Host{
-					{
-						Id:         oldAllowedIpAddresses.Id,
-						ObjectType: sl.String("SoftLayer_Network_Subnet_IpAddress"),
-					},
-				})
-			if err != nil {
-				return err
+			for {
+				_, err := services.GetNetworkStorageService(sess).
+					Id(id).
+					RemoveAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+						{
+							Id:         oldAllowedIpAddresses.Id,
+							ObjectType: sl.String("SoftLayer_Network_Subnet_IpAddress"),
+						},
+					})
+				if err != nil {
+					if strings.Contains(err.Error(), "SoftLayer_Exception_Network_Storage_Group_MassAccessControlModification") {
+						time.Sleep(retryTime * time.Second)
+						continue
+					}
+					return err
+				}
+				break
 			}
 		}
 	}
@@ -853,16 +869,23 @@ func updateAllowedVirtualGuestIds(d *schema.ResourceData, sess *session.Session,
 			}
 		}
 		if isNewId {
-			_, err := services.GetNetworkStorageService(sess).
-				Id(id).
-				AllowAccessFromHostList([]datatypes.Container_Network_Storage_Host{
-					{
-						Id:         sl.Int(newId.(int)),
-						ObjectType: sl.String("SoftLayer_Virtual_Guest"),
-					},
-				})
-			if err != nil {
-				return err
+			for {
+				_, err := services.GetNetworkStorageService(sess).
+					Id(id).
+					AllowAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+						{
+							Id:         sl.Int(newId.(int)),
+							ObjectType: sl.String("SoftLayer_Virtual_Guest"),
+						},
+					})
+				if err != nil {
+					if strings.Contains(err.Error(), "SoftLayer_Exception_Network_Storage_Group_MassAccessControlModification") {
+						time.Sleep(retryTime * time.Second)
+						continue
+					}
+					return err
+				}
+				break
 			}
 		}
 	}
@@ -877,16 +900,23 @@ func updateAllowedVirtualGuestIds(d *schema.ResourceData, sess *session.Session,
 			}
 		}
 		if isDeletedId {
-			_, err := services.GetNetworkStorageService(sess).
-				Id(id).
-				RemoveAccessFromHostList([]datatypes.Container_Network_Storage_Host{
-					{
-						Id:         sl.Int(*oldAllowedVirtualGuest.Id),
-						ObjectType: sl.String("SoftLayer_Virtual_Guest"),
-					},
-				})
-			if err != nil {
-				return err
+			for {
+				_, err := services.GetNetworkStorageService(sess).
+					Id(id).
+					RemoveAccessFromHostList([]datatypes.Container_Network_Storage_Host{
+						{
+							Id:         sl.Int(*oldAllowedVirtualGuest.Id),
+							ObjectType: sl.String("SoftLayer_Virtual_Guest"),
+						},
+					})
+				if err != nil {
+					if strings.Contains(err.Error(), "SoftLayer_Exception_Network_Storage_Group_MassAccessControlModification") {
+						time.Sleep(retryTime * time.Second)
+						continue
+					}
+					return err
+				}
+				break
 			}
 		}
 	}
