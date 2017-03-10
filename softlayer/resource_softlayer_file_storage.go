@@ -30,6 +30,7 @@ const (
 	performanceType = "Performance"
 	fileStorage     = "FILE_STORAGE"
 	blockStorage    = "BLOCK_STORAGE"
+	retryTime       = 5
 )
 
 var (
@@ -735,7 +736,7 @@ func updateAllowedIpAddresses(d *schema.ResourceData, sess *session.Session, sto
 					})
 				if err != nil {
 					if strings.Contains(err.Error(), "SoftLayer_Exception_Network_Storage_Group_MassAccessControlModification") {
-						time.Sleep(5 * time.Second)
+						time.Sleep(retryTime * time.Second)
 						continue
 					}
 					return err
@@ -766,7 +767,7 @@ func updateAllowedIpAddresses(d *schema.ResourceData, sess *session.Session, sto
 					})
 				if err != nil {
 					if strings.Contains(err.Error(), "SoftLayer_Exception_Network_Storage_Group_MassAccessControlModification") {
-						time.Sleep(5 * time.Second)
+						time.Sleep(retryTime * time.Second)
 						continue
 					}
 					return err
@@ -879,7 +880,7 @@ func updateAllowedVirtualGuestIds(d *schema.ResourceData, sess *session.Session,
 					})
 				if err != nil {
 					if strings.Contains(err.Error(), "SoftLayer_Exception_Network_Storage_Group_MassAccessControlModification") {
-						time.Sleep(5 * time.Second)
+						time.Sleep(retryTime * time.Second)
 						continue
 					}
 					return err
@@ -910,7 +911,7 @@ func updateAllowedVirtualGuestIds(d *schema.ResourceData, sess *session.Session,
 					})
 				if err != nil {
 					if strings.Contains(err.Error(), "SoftLayer_Exception_Network_Storage_Group_MassAccessControlModification") {
-						time.Sleep(5 * time.Second)
+						time.Sleep(retryTime * time.Second)
 						continue
 					}
 					return err
