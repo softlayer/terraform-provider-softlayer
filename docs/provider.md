@@ -16,7 +16,7 @@ provider "softlayer" {
 # This will create a new SSH key that will show up under the
 # Devices>Manage>SSH Keys in the SoftLayer console.
 resource "softlayer_ssh_key" "testkey1" {
-    name = "testkey1"
+    label = "testkey1"
     public_key = "${file("~/.ssh/id_rsa_test_key_1.pub")}"
     # Windows Example:
     # public_key = "${file("C:\ssh\keys\path\id_rsa_test_key_1.pub")}"
