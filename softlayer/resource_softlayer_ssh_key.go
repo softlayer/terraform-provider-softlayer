@@ -8,6 +8,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -203,13 +204,22 @@ func resourceSoftLayerSSHKeyDelete(d *schema.ResourceData, meta interface{}) err
 	}
 
 	log.Printf("[INFO] Deleting SSH key: %d", id)
-	_, err = service.Id(id).DeleteObject()
-	if err != nil {
-		return fmt.Errorf("Error deleting SSH key: %s", err)
+	tries := 0
+	for {
+		_, err = service.Id(id).DeleteObject()
+		if err != nil {
+			if strings.Contains(err.Error(), "it is currently being used") && tries < 5 {
+				log.Printf("SSH key %d is still being used. Waiting to delete...\n", id)
+				time.Sleep(1 * time.Minute)
+				tries = tries + 1
+				continue
+			}
+		}
+		break
 	}
 
 	d.SetId("")
-	return nil
+	return err
 }
 
 func resourceSoftLayerSSHKeyExists(d *schema.ResourceData, meta interface{}) (bool, error) {
