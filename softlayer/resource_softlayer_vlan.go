@@ -262,7 +262,20 @@ func resourceSoftLayerVlanDelete(d *schema.ResourceData, meta interface{}) error
 	// If the VLAN has a billing item, the function deletes the billing item and returns so that
 	// the VLAN resource in a terraform state file can be deleted. Physical VLAN will be deleted
 	// automatically which the VLAN doesn't have any child resources.
-	_, err = services.GetBillingItemService(sess).Id(*billingItem.Id).CancelService()
+	tries := 0
+	for {
+		_, err = services.GetBillingItemService(sess).Id(*billingItem.Id).CancelService()
+		// servers still on the VLAN
+		if err != nil {
+			if strings.Contains(err.Error(), "servers still on the VLAN") && tries < 5 {
+				log.Printf("[DEBUG] VLAN %d still has servers. Waiting to delete...\n", vlanId)
+				time.Sleep(1 * time.Minute)
+				tries = tries + 1
+				continue
+			}
+		}
+		break
+	}
 
 	return err
 }
