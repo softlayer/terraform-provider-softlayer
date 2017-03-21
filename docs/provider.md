@@ -65,6 +65,14 @@ provider "softlayer" {}
 
 You can also put credentials in _~/.softlayer_. See the [softlayer api python client docs](http://softlayer-python.readthedocs.io/en/latest/config_file.html) for details on this configuration file.
 
+**~/.softlayer**:
+
+```
+[softlayer]
+username = <your username>
+api_key = <your api key>
+```
+
 Other optional properties you can set in the provider:
 
 ```hcl
