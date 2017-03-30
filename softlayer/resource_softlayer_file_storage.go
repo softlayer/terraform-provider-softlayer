@@ -684,7 +684,11 @@ func getIops(storage datatypes.Network_Storage, storageType string) (float64, er
 				if err != nil {
 					return 0, err
 				}
-				return float64(provisionedIops) / float64(*storage.CapacityGb), nil
+				enduranceIops := float64(provisionedIops / *storage.CapacityGb)
+				if enduranceIops < 1 {
+					enduranceIops = 0.25
+				}
+				return enduranceIops, nil
 			}
 		}
 	case performanceType:
