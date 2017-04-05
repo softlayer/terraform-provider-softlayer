@@ -325,7 +325,54 @@ func resourceSoftLayerBlockStorageRead(d *schema.ResourceData, meta interface{})
 }
 
 func resourceSoftLayerBlockStorageUpdate(d *schema.ResourceData, meta interface{}) error {
-	return resourceSoftLayerFileStorageUpdate(d, meta)
+	sess := meta.(ProviderConfig).SoftLayerSession()
+	id, err := strconv.Atoi(d.Id())
+	if err != nil {
+		return fmt.Errorf("Not a valid ID, must be an integer: %s", err)
+	}
+
+	storage, err := services.GetNetworkStorageService(sess).
+		Id(id).
+		Mask(storageDetailMask).
+		GetObject()
+
+	if err != nil {
+		return fmt.Errorf("Error updating storage information: %s", err)
+	}
+
+	// Update allowed_ip_addresses
+	if d.HasChange("allowed_ip_addresses") {
+		err := updateAllowedIpAddresses(d, sess, storage)
+		if err != nil {
+			return fmt.Errorf("Error updating storage information: %s", err)
+		}
+	}
+
+	// Update allowed_subnets
+	if d.HasChange("allowed_subnets") {
+		err := updateAllowedSubnets(d, sess, storage)
+		if err != nil {
+			return fmt.Errorf("Error updating storage information: %s", err)
+		}
+	}
+
+	// Update allowed_virtual_guest_ids
+	if d.HasChange("allowed_virtual_guest_ids") {
+		err := updateAllowedVirtualGuestIds(d, sess, storage)
+		if err != nil {
+			return fmt.Errorf("Error updating storage information: %s", err)
+		}
+	}
+
+	// Update allowed_hardware_ids
+	if d.HasChange("allowed_hardware_ids") {
+		err := updateAllowedHardwareIds(d, sess, storage)
+		if err != nil {
+			return fmt.Errorf("Error updating storage information: %s", err)
+		}
+	}
+
+	return resourceSoftLayerBlockStorageRead(d, meta)
 }
 
 func resourceSoftLayerBlockStorageDelete(d *schema.ResourceData, meta interface{}) error {
