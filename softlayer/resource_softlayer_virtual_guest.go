@@ -662,6 +662,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	result, err := service.Id(id).Mask(
 		"hostname,domain,startCpus,maxMemory,dedicatedAccountHostOnlyFlag," +
 			"primaryIpAddress,primaryBackendIpAddress,privateNetworkOnlyFlag," +
+			"operatingSystemReferenceCode,blockDeviceTemplateGroup[id]," +
 			"hourlyBillingFlag,localDiskFlag," +
 			"notes,userData[value],tagReferences[id,tag[name]]," +
 			"datacenter[id,name,longName]," +
@@ -678,6 +679,17 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 
 	d.Set("hostname", *result.Hostname)
 	d.Set("domain", *result.Domain)
+
+	// Pull in OS ref code or image id. Useful only when importing a virtual guest in.
+	if result.BlockDeviceTemplateGroup != nil && result.BlockDeviceTemplateGroup.Id != nil {
+		if _, ok := d.GetOk("image_id"); !ok {
+			d.Set("image_id", *result.BlockDeviceTemplateGroup.Id)
+		}
+	} else if result.OperatingSystemReferenceCode != nil {
+		if _, ok := d.GetOk("os_reference_code"); !ok {
+			d.Set("os_reference_code", *result.OperatingSystemReferenceCode)
+		}
+	}
 
 	if result.Datacenter != nil {
 		d.Set("datacenter", *result.Datacenter.Name)
