@@ -134,7 +134,10 @@ func createNotifications(d *schema.ResourceData, meta interface{}, guestId int) 
 
 		// Don't create the notification object if one already exists for the same user and vm
 		if !notificationExists(notificationLinks, userId.(int)) {
-			notificationService.CreateObject(&userNotificationOpts)
+			_, err = notificationService.CreateObject(&userNotificationOpts)
+			if err != nil {
+				return fmt.Errorf("Error creating notification for user id %d: %s", userId.(int), err)
+			}
 		}
 	}
 
