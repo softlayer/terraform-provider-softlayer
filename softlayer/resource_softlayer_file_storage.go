@@ -594,17 +594,19 @@ func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}) (interfac
 
 			// Check volume status.
 			log.Println("Checking volume status.")
-			resultStr := ""
+			var resultObj interface{}
 			err = sess.DoRequest(
 				"SoftLayer_Network_Storage",
 				"getObject",
 				nil,
 				&sl.Options{Id: &id, Mask: "volumeStatus"},
-				&resultStr,
+				&resultObj,
 			)
 			if err != nil {
 				return false, "retry", nil
 			}
+
+			resultStr := fmt.Sprintf("%v", resultObj)
 
 			if !strings.Contains(resultStr, "PROVISION_COMPLETED") &&
 				!strings.Contains(resultStr, "Volume Provisioning has completed") {
@@ -635,7 +637,9 @@ func getPrice(productItems []datatypes.Product_Item, keyName string, categoryCod
 	for _, item := range productItems {
 		if strings.HasPrefix(*item.KeyName, keyName) {
 			for _, price := range item.Prices {
-				if *price.Categories[0].CategoryCode == categoryCode && price.LocationGroupId == nil {
+				// When price.LocationGroupId is null, xml-rpc returns <value> <string/> </value> and
+				// softlayer-go returns &0 instead of nil.
+				if *price.Categories[0].CategoryCode == categoryCode && (price.LocationGroupId == nil || *price.LocationGroupId == 0) {
 					if capacityRestrictionType == "STORAGE_SPACE" {
 						if price.CapacityRestrictionMinimum == nil ||
 							price.CapacityRestrictionMaximum == nil {
