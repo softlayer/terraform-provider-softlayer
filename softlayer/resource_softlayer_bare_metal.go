@@ -526,11 +526,9 @@ func setHardwareTags(id int, d *schema.ResourceData, meta interface{}) error {
 	service := services.GetHardwareService(meta.(ProviderConfig).SoftLayerSession())
 
 	tags := getTags(d)
-	if tags != "" {
-		_, err := service.Id(id).SetTags(sl.String(tags))
-		if err != nil {
-			return fmt.Errorf("Could not set tags on bare metal server %d", id)
-		}
+	_, err := service.Id(id).SetTags(sl.String(tags))
+	if err != nil {
+		return fmt.Errorf("Could not set tags on bare metal server %d", id)
 	}
 
 	return nil
