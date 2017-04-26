@@ -31,6 +31,7 @@ func TestAccSoftLayerFileStorage_Basic(t *testing.T) {
 						"softlayer_file_storage.fs_endurance", "snapshot_capacity", "10"),
 					testAccCheckSoftLayerResources("softlayer_file_storage.fs_endurance", "datacenter",
 						"softlayer_virtual_guest.storagevm1", "datacenter"),
+					resource.TestCheckResourceAttr("softlayer_file_storage.fs_endurance", "notes", "endurance notes"),
 					// Performance Storage
 					testAccCheckSoftLayerFileStorageExists("softlayer_file_storage.fs_performance"),
 					resource.TestCheckResourceAttr(
@@ -41,6 +42,7 @@ func TestAccSoftLayerFileStorage_Basic(t *testing.T) {
 						"softlayer_file_storage.fs_performance", "iops", "100"),
 					testAccCheckSoftLayerResources("softlayer_file_storage.fs_performance", "datacenter",
 						"softlayer_virtual_guest.storagevm1", "datacenter"),
+					resource.TestCheckResourceAttr("softlayer_file_storage.fs_performance", "notes", "performance notes"),
 				),
 			},
 
@@ -51,10 +53,12 @@ func TestAccSoftLayerFileStorage_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr("softlayer_file_storage.fs_endurance", "allowed_virtual_guest_ids.#", "1"),
 					resource.TestCheckResourceAttr("softlayer_file_storage.fs_endurance", "allowed_subnets.#", "1"),
 					resource.TestCheckResourceAttr("softlayer_file_storage.fs_endurance", "allowed_ip_addresses.#", "1"),
+					resource.TestCheckResourceAttr("softlayer_file_storage.fs_endurance", "notes", "updated endurance notes"),
 					// Performance Storage
 					resource.TestCheckResourceAttr("softlayer_file_storage.fs_performance", "allowed_virtual_guest_ids.#", "1"),
 					resource.TestCheckResourceAttr("softlayer_file_storage.fs_performance", "allowed_subnets.#", "1"),
 					resource.TestCheckResourceAttr("softlayer_file_storage.fs_performance", "allowed_ip_addresses.#", "1"),
+					resource.TestCheckResourceAttr("softlayer_file_storage.fs_performance", "notes", ""),
 				),
 			},
 		},
@@ -111,6 +115,7 @@ resource "softlayer_file_storage" "fs_endurance" {
         capacity = 20
         iops = 0.25
         snapshot_capacity = 10
+        notes = "endurance notes"
 }
 
 resource "softlayer_file_storage" "fs_performance" {
@@ -118,6 +123,7 @@ resource "softlayer_file_storage" "fs_performance" {
         datacenter = "${softlayer_virtual_guest.storagevm1.datacenter}"
         capacity = 20
         iops = 100
+        notes = "performance notes"
 }
 `
 const testAccCheckSoftLayerFileStorageConfig_update = `
@@ -144,6 +150,7 @@ resource "softlayer_file_storage" "fs_endurance" {
         allowed_subnets = [ "${softlayer_virtual_guest.storagevm1.private_subnet}" ]
         allowed_ip_addresses = [ "${softlayer_virtual_guest.storagevm1.ipv4_address_private}" ]
         snapshot_capacity = 10
+        notes = "updated endurance notes"
 }
 
 resource "softlayer_file_storage" "fs_performance" {
