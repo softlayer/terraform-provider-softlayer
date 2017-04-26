@@ -32,6 +32,7 @@ func TestAccSoftLayerFileStorage_Basic(t *testing.T) {
 					testAccCheckSoftLayerResources("softlayer_file_storage.fs_endurance", "datacenter",
 						"softlayer_virtual_guest.storagevm1", "datacenter"),
 					resource.TestCheckResourceAttr("softlayer_file_storage.fs_endurance", "notes", "endurance notes"),
+					resource.TestCheckResourceAttrSet("softlayer_file_storage.fs_endurance", "mountpoint"),
 					// Performance Storage
 					testAccCheckSoftLayerFileStorageExists("softlayer_file_storage.fs_performance"),
 					resource.TestCheckResourceAttr(
@@ -43,6 +44,7 @@ func TestAccSoftLayerFileStorage_Basic(t *testing.T) {
 					testAccCheckSoftLayerResources("softlayer_file_storage.fs_performance", "datacenter",
 						"softlayer_virtual_guest.storagevm1", "datacenter"),
 					resource.TestCheckResourceAttr("softlayer_file_storage.fs_performance", "notes", "performance notes"),
+					resource.TestCheckResourceAttrSet("softlayer_file_storage.fs_performance", "mountpoint"),
 				),
 			},
 

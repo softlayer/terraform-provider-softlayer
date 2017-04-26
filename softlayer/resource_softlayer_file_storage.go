@@ -171,6 +171,11 @@ func resourceSoftLayerFileStorage() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+
+			"mountpoint": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -315,6 +320,12 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 	if storage.Notes != nil {
 		d.Set("notes", *storage.Notes)
 	}
+
+	mountpoint, err := services.GetNetworkStorageService(sess).Id(storageId).GetFileNetworkMountAddress()
+	if err != nil {
+		return fmt.Errorf("Error retrieving storage information: %s", err)
+	}
+	d.Set("mountpoint", mountpoint)
 
 	return nil
 }

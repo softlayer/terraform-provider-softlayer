@@ -80,3 +80,4 @@ The following attributes are exported:
 * `id` - id of the storage.
 * `hostname` - The fully qualified domain name of the storage. 
 * `volumename` - The name of the storage volume.
+* `mountpoint` - The network mount address of the storage.
