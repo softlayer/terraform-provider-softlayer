@@ -16,6 +16,7 @@ modules-dev/
 *~
 .*.swp
 .idea
+.vscode
 *.iml
 *.test
 *.iml
