@@ -25,7 +25,7 @@ const (
 	storageEndurancePackageType   = "ADDITIONAL_SERVICES_ENTERPRISE_STORAGE"
 	storageMask                   = "id,billingItem.orderItem.order.id"
 	storageDetailMask             = "id,capacityGb,iops,storageType,username,serviceResourceBackendIpAddress,properties[type]" +
-		",serviceResourceName,allowedIpAddresses,allowedSubnets,allowedVirtualGuests[id,allowedHost[name,credential[username,password]]],allowedHardware[id,allowedHost[name,credential[username,password]]],snapshotCapacityGb,osType"
+		",serviceResourceName,allowedIpAddresses,allowedSubnets,allowedVirtualGuests[id,allowedHost[name,credential[username,password]]],allowedHardware[id,allowedHost[name,credential[username,password]]],snapshotCapacityGb,osType,notes"
 	itemMask        = "id,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode],capacityRestrictionMinimum,capacityRestrictionMaximum,locationGroupId]"
 	enduranceType   = "Endurance"
 	performanceType = "Performance"
@@ -165,6 +165,16 @@ func resourceSoftLayerFileStorage() *schema.Resource {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+
+			"notes": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"mountpoint": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 		},
 	}
@@ -307,6 +317,16 @@ func resourceSoftLayerFileStorageRead(d *schema.ResourceData, meta interface{}) 
 		d.Set("os_type", *storage.OsType.Name)
 	}
 
+	if storage.Notes != nil {
+		d.Set("notes", *storage.Notes)
+	}
+
+	mountpoint, err := services.GetNetworkStorageService(sess).Id(storageId).GetFileNetworkMountAddress()
+	if err != nil {
+		return fmt.Errorf("Error retrieving storage information: %s", err)
+	}
+	d.Set("mountpoint", mountpoint)
+
 	return nil
 }
 
@@ -353,6 +373,14 @@ func resourceSoftLayerFileStorageUpdate(d *schema.ResourceData, meta interface{}
 	// Update allowed_hardware_ids
 	if d.HasChange("allowed_hardware_ids") {
 		err := updateAllowedHardwareIds(d, sess, storage)
+		if err != nil {
+			return fmt.Errorf("Error updating storage information: %s", err)
+		}
+	}
+
+	// Update notes
+	if d.HasChange("notes") {
+		err := updateNotes(d, sess, storage)
 		if err != nil {
 			return fmt.Errorf("Error updating storage information: %s", err)
 		}
@@ -973,5 +1001,21 @@ func updateAllowedHardwareIds(d *schema.ResourceData, sess *session.Session, sto
 			}
 		}
 	}
+	return nil
+}
+
+func updateNotes(d *schema.ResourceData, sess *session.Session, storage datatypes.Network_Storage) error {
+	id := *storage.Id
+	notes := d.Get("notes").(string)
+
+	if (storage.Notes != nil && *storage.Notes != notes) || (storage.Notes == nil && notes != "") {
+		_, err := services.GetNetworkStorageService(sess).
+			Id(id).
+			EditObject(&datatypes.Network_Storage{Notes: sl.String(notes)})
+		if err != nil {
+			return fmt.Errorf("Error adding note to storage (%d): %s", id, err)
+		}
+	}
+
 	return nil
 }

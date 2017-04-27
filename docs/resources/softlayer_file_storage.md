@@ -68,6 +68,9 @@ The following arguments are supported:
 * `allowed_ip_addresses` | *array of string*
     * Specifies allowed IP addresses. IP addresses should be in the same data center.
     * **Optional**    
+* `notes` | *string*
+    * Specifies a note to associate with the file storage.
+    * **Optional**    
     
 
 ## Attributes Reference
@@ -77,3 +80,4 @@ The following attributes are exported:
 * `id` - id of the storage.
 * `hostname` - The fully qualified domain name of the storage. 
 * `volumename` - The name of the storage volume.
+* `mountpoint` - The network mount address of the storage.
