@@ -110,10 +110,13 @@ func (x *XmlRpcTransport) DoRequest(
 
 	mask := options.Mask
 	if mask != "" {
-		if !strings.HasPrefix(mask, "mask[") {
+		if !strings.HasPrefix(mask, "mask[") && !strings.Contains(mask, ";") && strings.Contains(mask, ",") {
 			mask = fmt.Sprintf("mask[%s]", mask)
+			headers["SoftLayer_ObjectMask"] = map[string]string{"mask": mask}
+		} else {
+			headers[fmt.Sprintf("%sObjectMask", service)] =
+				map[string]interface{}{"mask": genXMLMask(mask)}
 		}
-		headers["SoftLayer_ObjectMask"] = map[string]string{"mask": mask}
 	}
 
 	if options.Filter != "" {
@@ -144,10 +147,10 @@ func (x *XmlRpcTransport) DoRequest(
 	}
 
 	// Add incoming arguments to xmlrpc parameter array
-	params := []interface{}{
-		map[string]interface{}{
-			"headers": headers,
-		},
+	params := []interface{}{}
+
+	if len(headers) > 0 {
+		params = append(params, map[string]interface{}{"headers": headers})
 	}
 
 	for _, arg := range args {
@@ -164,4 +167,29 @@ func (x *XmlRpcTransport) DoRequest(
 	}
 
 	return err
+}
+
+func genXMLMask(mask string) interface{} {
+	objectMask := map[string]interface{}{}
+	for _, item := range strings.Split(mask, ";") {
+		if !strings.Contains(item, ".") {
+			objectMask[item] = []string{}
+			continue
+		}
+
+		level := objectMask
+		names := strings.Split(item, ".")
+		totalNames := len(names)
+		for i, name := range names {
+			if i == totalNames-1 {
+				level[name] = []string{}
+				continue
+			}
+
+			level[name] = map[string]interface{}{}
+			level = level[name].(map[string]interface{})
+		}
+	}
+
+	return objectMask
 }
