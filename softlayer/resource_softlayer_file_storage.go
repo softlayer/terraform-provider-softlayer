@@ -5,6 +5,10 @@ import (
 	"log"
 	"strconv"
 
+	"regexp"
+	"strings"
+	"time"
+
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
@@ -14,9 +18,6 @@ import (
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
-	"regexp"
-	"strings"
-	"time"
 )
 
 const (
@@ -594,22 +595,12 @@ func WaitForStorageAvailable(d *schema.ResourceData, meta interface{}) (interfac
 
 			// Check volume status.
 			log.Println("Checking volume status.")
-			var resultObj interface{}
-			err = sess.DoRequest(
-				"SoftLayer_Network_Storage",
-				"getObject",
-				nil,
-				&sl.Options{Id: &id, Mask: "volumeStatus"},
-				&resultObj,
-			)
+			netStore, err := service.Id(id).Mask("volumeStatus").GetObject()
 			if err != nil {
 				return false, "retry", nil
 			}
 
-			resultStr := fmt.Sprintf("%v", resultObj)
-
-			if !strings.Contains(resultStr, "PROVISION_COMPLETED") &&
-				!strings.Contains(resultStr, "Volume Provisioning has completed") {
+			if netStore.VolumeStatus == nil || *netStore.VolumeStatus != "PROVISION_COMPLETED" {
 				return result, "provisioning", nil
 			}
 
