@@ -1114,11 +1114,9 @@ func setGuestTags(id int, d *schema.ResourceData, meta interface{}) error {
 	service := services.GetVirtualGuestService(meta.(ProviderConfig).SoftLayerSession())
 
 	tags := getTags(d)
-	if tags != "" {
-		_, err := service.Id(id).SetTags(sl.String(tags))
-		if err != nil {
-			return fmt.Errorf("Could not set tags on virtual guest %d", id)
-		}
+	_, err := service.Id(id).SetTags(sl.String(tags))
+	if err != nil {
+		return fmt.Errorf("Could not set tags on virtual guest %d", id)
 	}
 
 	return nil
