@@ -3,6 +3,7 @@ package softlayer
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"time"
 
@@ -163,6 +164,13 @@ func resourceSoftLayerObjectStorageAccountDelete(d *schema.ResourceData, meta in
 
 func resourceSoftLayerObjectStorageAccountExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	err := resourceSoftLayerObjectStorageAccountRead(d, meta)
+	if err != nil {
+		if strings.Contains(err.Error(), "Could not find account") {
+			return false, nil
+		}
 
-	return err == nil, err
+		return false, err
+	}
+
+	return true, nil
 }

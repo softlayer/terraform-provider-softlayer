@@ -636,6 +636,11 @@ func resourceSoftLayerLbVpxServiceExists101(d *schema.ResourceData, meta interfa
 	sess := meta.(ProviderConfig).SoftLayerSession()
 	lbService, err := network.GetNadcLbVipServiceByName(sess, nadcId, vipName, serviceName)
 	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
 		return false, fmt.Errorf("Unable to get load balancer service %s: %s", serviceName, err)
 	}
 

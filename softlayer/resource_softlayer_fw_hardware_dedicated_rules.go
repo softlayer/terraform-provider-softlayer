@@ -6,13 +6,14 @@ import (
 	"strconv"
 	"strings"
 
+	"log"
+	"time"
+
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
-	"log"
-	"time"
 )
 
 const (
@@ -321,6 +322,11 @@ func resourceSoftLayerFwHardwareDedicatedRulesExists(d *schema.ResourceData, met
 		GetObject()
 
 	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
 		return false, fmt.Errorf("Error retrieving firewall rules: %s", err)
 	}
 

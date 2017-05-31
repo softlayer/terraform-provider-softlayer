@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"log"
 
+	"strconv"
+	"strings"
+
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/sl"
-	"strconv"
-	"strings"
 )
 
 func resourceSoftLayerSecurityCertificate() *schema.Resource {
@@ -172,8 +173,17 @@ func resourceSoftLayerSecurityCertificateExists(d *schema.ResourceData, meta int
 	}
 
 	cert, err := service.Id(id).GetObject()
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
 
-	return err == nil && cert.Id != nil && *cert.Id == id, nil
+		return false, fmt.Errorf("Error obtaining security certificate: %s", err)
+	}
+
+	return cert.Id != nil && *cert.Id == id, nil
 }
 
 func normalizeCert(cert interface{}) string {

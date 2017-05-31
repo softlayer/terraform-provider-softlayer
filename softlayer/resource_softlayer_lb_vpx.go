@@ -595,6 +595,15 @@ func resourceSoftLayerLbVpxExists(d *schema.ResourceData, meta interface{}) (boo
 	}
 
 	nadc, err := service.Mask("id").Id(id).GetObject()
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
 
-	return nadc.Id != nil && *nadc.Id == id && err == nil, nil
+		return false, fmt.Errorf("Error retrieving lb vpx: %s", err)
+	}
+
+	return nadc.Id != nil && *nadc.Id == id, nil
 }

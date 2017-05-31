@@ -649,7 +649,17 @@ func resourceSoftLayerScaleGroupExists(d *schema.ResourceData, meta interface{})
 	}
 
 	result, err := scaleGroupService.Id(groupId).Mask("id").GetObject()
-	return result.Id != nil && err == nil && *result.Id == groupId, nil
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
+
+		return false, fmt.Errorf("Error obtaining scale group: %s", err)
+	}
+
+	return result.Id != nil && *result.Id == groupId, nil
 }
 
 func getLocationGroupRegionalId(sess *session.Session, locationGroupRegionalName string) (int, error) {

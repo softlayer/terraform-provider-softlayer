@@ -290,7 +290,13 @@ func resourceSoftLayerLbLocalExists(d *schema.ResourceData, meta interface{}) (b
 		GetObject()
 
 	if err != nil {
-		return false, err
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
+
+		return false, fmt.Errorf("Error retrieving local lb: %s", err)
 	}
 
 	return true, nil

@@ -424,6 +424,14 @@ func resourceSoftLayerDnsDomainRecordExists(d *schema.ResourceData, meta interfa
 	}
 
 	record, err := service.Id(id).GetObject()
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
+		return false, fmt.Errorf("Error retrieving domain record: %s", err)
+	}
 
-	return err == nil && record.Id != nil && *record.Id == id, nil
+	return record.Id != nil && *record.Id == id, nil
 }

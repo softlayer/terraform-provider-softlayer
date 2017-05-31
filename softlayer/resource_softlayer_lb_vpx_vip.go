@@ -606,8 +606,17 @@ func resourceSoftLayerLbVpxVipExists101(d *schema.ResourceData, meta interface{}
 	}
 
 	vip, err := network.GetNadcLbVipByName(sess, nadcId, vipName)
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
 
-	return vip != nil && err == nil && *vip.Name == vipName, nil
+		return false, fmt.Errorf("Unable to get load balancer vpx vip: %s", err)
+	}
+
+	return vip != nil && *vip.Name == vipName, nil
 }
 
 func resourceSoftLayerLbVpxVipExists105(d *schema.ResourceData, meta interface{}) (bool, error) {

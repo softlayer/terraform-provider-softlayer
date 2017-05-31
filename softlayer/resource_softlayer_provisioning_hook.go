@@ -131,5 +131,15 @@ func resourceSoftLayerProvisioningHookExists(d *schema.ResourceData, meta interf
 	}
 
 	result, err := service.Id(hookId).GetObject()
-	return result.Id != nil && err == nil && *result.Id == hookId, nil
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
+
+		return false, fmt.Errorf("Unable to get provisioning hook: %s", err)
+	}
+
+	return result.Id != nil && *result.Id == hookId, nil
 }

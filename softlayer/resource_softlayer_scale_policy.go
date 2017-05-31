@@ -339,7 +339,17 @@ func resourceSoftLayerScalePolicyExists(d *schema.ResourceData, meta interface{}
 	}
 
 	result, err := service.Id(policyId).Mask("id").GetObject()
-	return result.Id != nil && *result.Id == policyId && err == nil, nil
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
+
+		return false, fmt.Errorf("Error obtaining scale policy: %s", err)
+	}
+
+	return result.Id != nil && *result.Id == policyId, nil
 }
 
 func validateTriggerTypes(d *schema.ResourceData) error {

@@ -278,5 +278,15 @@ func resourceSoftLayerBasicMonitorExists(d *schema.ResourceData, meta interface{
 	}
 
 	result, err := service.Id(basicMonitorId).GetObject()
-	return err == nil && *result.Id == basicMonitorId, nil
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
+
+		return false, fmt.Errorf("Error retrieving basic monitor info: %s", err)
+	}
+
+	return result.Id != nil && *result.Id == basicMonitorId, nil
 }

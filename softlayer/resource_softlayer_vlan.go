@@ -289,9 +289,18 @@ func resourceSoftLayerVlanExists(d *schema.ResourceData, meta interface{}) (bool
 		return false, fmt.Errorf("Not a valid vlan ID, must be an integer: %s", err)
 	}
 
-	_, err = service.Id(vlanId).Mask("id").GetObject()
+	result, err := service.Id(vlanId).Mask("id").GetObject()
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
 
-	return err == nil, err
+		return false, fmt.Errorf("Error obtaining vlan: %s", err)
+	}
+
+	return result.Id != nil && *result.Id == vlanId, nil
 }
 
 func findVlanByOrderId(sess *session.Session, orderId int) (datatypes.Network_Vlan, error) {

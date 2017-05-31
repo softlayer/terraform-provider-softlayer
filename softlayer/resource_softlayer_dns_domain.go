@@ -196,5 +196,15 @@ func resourceSoftLayerDnsDomainExists(d *schema.ResourceData, meta interface{}) 
 	}
 
 	result, err := service.Id(dnsId).GetObject()
-	return err == nil && result.Id != nil && *result.Id == dnsId, nil
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok {
+			if apiErr.StatusCode == 404 {
+				return false, nil
+			}
+		}
+
+		return false, fmt.Errorf("Error retrieving domain info: %s", err)
+	}
+
+	return result.Id != nil && *result.Id == dnsId, nil
 }

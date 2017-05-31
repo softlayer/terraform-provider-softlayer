@@ -454,7 +454,7 @@ func resourceSoftLayerBareMetalExists(d *schema.ResourceData, meta interface{}) 
 		}
 	}
 
-	return err == nil && result.Id != nil && *result.Id == id, nil
+	return result.Id != nil && *result.Id == id, nil
 }
 
 // Bare metal creation does not return a bare metal object with an Id.
