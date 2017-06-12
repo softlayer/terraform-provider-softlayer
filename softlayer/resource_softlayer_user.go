@@ -474,6 +474,13 @@ func resourceSoftLayerUserExists(d *schema.ResourceData, meta interface{}) (bool
 
 	result, err := service.Id(id).GetObject()
 
+	// When a user is deleted, it has remained with "CANCEL_PENDING" status in specific time period.
+	// The user with this status should be considered as a non-exist user.
+	if result.UserStatus != nil && result.UserStatus.KeyName != nil &&
+		*result.UserStatus.KeyName == "CANCEL_PENDING" {
+		return false, nil
+	}
+
 	return result.Id != nil && *result.Id == id && err == nil, nil
 }
 
