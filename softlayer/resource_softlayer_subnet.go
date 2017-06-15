@@ -20,7 +20,7 @@ import (
 
 const (
 	SubnetMask = "id,addressSpace,subnetType,version,ipAddressCount," +
-		"broadcastAddress,cidr,note,endPointIpAddress[ipAddress],networkVlan[id]"
+		"networkIdentifier,cidr,note,endPointIpAddress[ipAddress],networkVlan[id]"
 )
 
 var (
@@ -55,7 +55,16 @@ func resourceSoftLayerSubnet() *schema.Resource {
 
 			"network": {
 				Type:     schema.TypeString,
-				Computed: true,
+				Required: true,
+				ForceNew: true,
+				ValidateFunc: func(v interface{}, k string) (ws []string, errs []error) {
+					network := v.(string)
+					if network != "PRIVATE" && network != "PUBLIC" {
+						errs = append(errs, errors.New(
+							"network should be either 'PRIVATE' or 'PUBLIC'"))
+					}
+					return
+				},
 			},
 
 			"type": {
@@ -93,17 +102,21 @@ func resourceSoftLayerSubnet() *schema.Resource {
 				ForceNew: true,
 			},
 
+			// vlan_id should be configured when type is "Portable"
 			"vlan_id": {
-				Type:     schema.TypeInt,
-				Required: true,
-				ForceNew: true,
+				Type:          schema.TypeInt,
+				Optional:      true,
+				Computed:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"endpoint_ip"},
 			},
 
 			// endpoint_ip should be configured when type is "Static"
 			"endpoint_ip": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"vlan_id"},
 			},
 
 			// Provides IP address/netmask format (ex. 10.10.10.10/28)
@@ -194,7 +207,7 @@ func resourceSoftLayerSubnetUpdate(d *schema.ResourceData, meta interface{}) err
 			return fmt.Errorf("Error updating subnet: %s", err)
 		}
 	}
-	return resourceSoftLayerVlanRead(d, meta)
+	return resourceSoftLayerSubnetRead(d, meta)
 }
 
 func resourceSoftLayerSubnetDelete(d *schema.ResourceData, meta interface{}) error {
@@ -282,6 +295,9 @@ func buildSubnetProductOrderContainer(d *schema.ResourceData, sess *session.Sess
 
 	// 1. Get a package
 	typeStr := d.Get("type").(string)
+	vlanId := d.Get("vlan_id").(int)
+	network := d.Get("network").(string)
+
 	pkg, err := product.GetPackageByType(sess, subnetPackageTypeMap[typeStr])
 	if err != nil {
 		return &datatypes.Container_Product_Order_Network_Subnet{}, err
@@ -293,14 +309,7 @@ func buildSubnetProductOrderContainer(d *schema.ResourceData, sess *session.Sess
 		return &datatypes.Container_Product_Order_Network_Subnet{}, err
 	}
 
-	// 3. Get vlanType
-	vlanId := d.Get("vlan_id").(int)
-	vlanType, err := getVlanType(sess, vlanId)
-	if err != nil {
-		return &datatypes.Container_Product_Order_Network_Subnet{}, err
-	}
-
-	// 4. Select items which have a matching capacity, vlanType, and IP version.
+	// 3. Select items which have a matching capacity, network, and IP version.
 	capacity := d.Get("capacity").(int)
 	ipVersionStr := "_IP_"
 	if d.Get("ip_version").(int) == 6 {
@@ -309,7 +318,7 @@ func buildSubnetProductOrderContainer(d *schema.ResourceData, sess *session.Sess
 	SubnetItems := []datatypes.Product_Item{}
 	for _, item := range productItems {
 		if int(*item.Capacity) == d.Get("capacity").(int) &&
-			strings.Contains(*item.KeyName, vlanType) &&
+			strings.Contains(*item.KeyName, network) &&
 			strings.Contains(*item.KeyName, ipVersionStr) {
 			SubnetItems = append(SubnetItems, item)
 		}
