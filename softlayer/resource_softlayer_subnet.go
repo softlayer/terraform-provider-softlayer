@@ -26,8 +26,15 @@ const (
 var (
 	// Map subnet types to product package keyname in SoftLayer_Product_Item
 	subnetPackageTypeMap = map[string]string{
-		"STATIC_IP_ROUTED": "ADDITIONAL_SERVICES_STATIC_IP_ADDRESSES",
-		"ROUTED_TO_VLAN":   "ADDITIONAL_SERVICES_PORTABLE_IP_ADDRESSES",
+		"Static":   "ADDITIONAL_SERVICES_STATIC_IP_ADDRESSES",
+		"Portable": "ADDITIONAL_SERVICES_PORTABLE_IP_ADDRESSES",
+	}
+
+	// Map SL internal type code to subnet type.
+	subnetTypeMap = map[string]string{
+		"SECONDARY_ON_VLAN": "Portable",
+		"ROUTED_TO_VLAN":    "Portable",
+		"STATIC_IP_ROUTED":  "Static",
 	}
 )
 
@@ -46,7 +53,7 @@ func resourceSoftLayerSubnet() *schema.Resource {
 				Computed: true,
 			},
 
-			"vlan_type": {
+			"network": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -57,9 +64,9 @@ func resourceSoftLayerSubnet() *schema.Resource {
 				ForceNew: true,
 				ValidateFunc: func(v interface{}, k string) (ws []string, errs []error) {
 					typeStr := v.(string)
-					if typeStr != "ROUTED_TO_VLAN" && typeStr != "STATIC_IP_ROUTED" {
+					if typeStr != "Portable" && typeStr != "Static" {
 						errs = append(errs, errors.New(
-							"type should be either ROUTED_TO_VLAN or STATIC_IP_ROUTED."))
+							"type should be either Portable or Static."))
 					}
 					return
 				},
@@ -92,7 +99,7 @@ func resourceSoftLayerSubnet() *schema.Resource {
 				ForceNew: true,
 			},
 
-			// endpoint_ip should be configured when type is "STATIC_IP_ROUTED"
+			// endpoint_ip should be configured when type is "Static"
 			"endpoint_ip": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -100,7 +107,7 @@ func resourceSoftLayerSubnet() *schema.Resource {
 			},
 
 			// Provides IP address/netmask format (ex. 10.10.10.10/28)
-			"name": &schema.Schema{
+			"subnet": &schema.Schema{
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -154,14 +161,12 @@ func resourceSoftLayerSubnetRead(d *schema.ResourceData, meta interface{}) error
 		return fmt.Errorf("Error retrieving a subnet: %s", err)
 	}
 
-	d.Set("vlan_type", *subnet.AddressSpace)
+	d.Set("network", *subnet.AddressSpace)
 	d.Set("type", *subnet.SubnetType)
-	if *subnet.SubnetType == "SECONDARY_ON_VLAN" {
-		d.Set("type", "ROUTED_TO_VLAN")
-	}
+	d.Set("type", subnetTypeMap[*subnet.SubnetType])
 	d.Set("ip_version", *subnet.Version)
 	d.Set("capacity", *subnet.IpAddressCount)
-	d.Set("name", *subnet.BroadcastAddress+"/"+strconv.Itoa(*subnet.Cidr))
+	d.Set("subnet", *subnet.NetworkIdentifier+"/"+strconv.Itoa(*subnet.Cidr))
 	if subnet.Note != nil {
 		d.Set("notes", *subnet.Note)
 	}
@@ -329,9 +334,9 @@ func buildSubnetProductOrderContainer(d *schema.ResourceData, sess *session.Sess
 	}
 
 	if endpointIp, ok := d.GetOk("endpoint_ip"); ok {
-		if typeStr != "STATIC_IP_ROUTED" {
+		if typeStr != "Static" {
 			return &datatypes.Container_Product_Order_Network_Subnet{},
-				fmt.Errorf("endpoint_ip is only available when type is STATIC_IP_ROUTED.")
+				fmt.Errorf("endpoint_ip is only available when type is Static.")
 		}
 		endpointIpStr := endpointIp.(string)
 		subnet, err := services.GetNetworkSubnetService(sess).Mask("ipAddresses").GetSubnetForIpAddress(sl.String(endpointIpStr))
@@ -365,5 +370,5 @@ func getVlanType(sess *session.Session, vlanId int) (string, error) {
 			return "PRIVATE", nil
 		}
 	}
-	return "", fmt.Errorf("Unable to determine vlan_type.")
+	return "", fmt.Errorf("Unable to determine network.")
 }
