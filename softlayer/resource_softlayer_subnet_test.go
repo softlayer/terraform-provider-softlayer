@@ -74,6 +74,7 @@ resource "softlayer_virtual_guest" "subnetvm1" {
     memory = 1024
     disks = [25]
     local_disk = false
+    ipv6_enabled = true
 }
 
 resource "softlayer_subnet" "portable_subnet" {
@@ -90,7 +91,25 @@ resource "softlayer_subnet" "static_subnet" {
   network = "PUBLIC"
   ip_version = 4
   capacity = 4
-  endpoint_ip="${softlayer_virtual_guest.subnetvm1.ipv4_address}"
+  endpoint_ip="${softlayer_virtual_guest.subnetvm1.ipv6_address}"
+  notes = "static_subnet"
+}
+
+resource "softlayer_subnet" "portable_subnet_v6" {
+  type = "Portable"
+  network = "PRIVATE"
+  ip_version = 6
+  capacity = 4
+  vlan_id = "${softlayer_virtual_guest.subnetvm1.private_vlan_id}"
+  notes = "portable_subnet"
+}
+
+resource "softlayer_subnet" "static_subnet_v6" {
+  type = "Static"
+  network = "PUBLIC"
+  ip_version = 6
+  capacity = 4
+  endpoint_ip="${softlayer_virtual_guest.subnetvm1.ipv6_address}"
   notes = "static_subnet"
 }
 `
@@ -126,4 +145,23 @@ resource "softlayer_subnet" "static_subnet" {
   capacity = 4
   endpoint_ip="${softlayer_virtual_guest.subnetvm1.ipv4_address}"
   notes = "static_subnet_updated"
-}`
+}
+
+resource "softlayer_subnet" "portable_subnet_v6" {
+  type = "Portable"
+  network = "PRIVATE"
+  ip_version = 6
+  capacity = 4
+  vlan_id = "${softlayer_virtual_guest.subnetvm1.private_vlan_id}"
+  notes = "portable_subnet"
+}
+
+resource "softlayer_subnet" "static_subnet_v6" {
+  type = "Static"
+  network = "PUBLIC"
+  ip_version = 6
+  capacity = 4
+  endpoint_ip="${softlayer_virtual_guest.subnetvm1.ipv6_address}"
+  notes = "static_subnet"
+}
+`

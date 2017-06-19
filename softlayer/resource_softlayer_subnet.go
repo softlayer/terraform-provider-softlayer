@@ -34,6 +34,7 @@ var (
 	subnetTypeMap = map[string]string{
 		"SECONDARY_ON_VLAN": "Portable",
 		"ROUTED_TO_VLAN":    "Portable",
+		"SUBNET_ON_VLAN":    "Portable",
 		"STATIC_IP_ROUTED":  "Static",
 	}
 )
