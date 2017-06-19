@@ -15,7 +15,7 @@ func TestAccSoftLayerSubnet_Basic(t *testing.T) {
 			resource.TestStep{
 				Config: testAccCheckSoftLayerSubnetConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
-					// Check portable IP
+					// Check portable IPv4
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.portable_subnet", "type", "Portable"),
 					resource.TestCheckResourceAttr(
@@ -30,7 +30,8 @@ func TestAccSoftLayerSubnet_Basic(t *testing.T) {
 						regexp.MustCompile(`^(([01]?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))\.){3}([01]?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))`)),
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.portable_subnet", "notes", "portable_subnet"),
-					// Check static IP
+
+					// Check static IPv4
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.static_subnet", "type", "Static"),
 					resource.TestCheckResourceAttr(
@@ -45,6 +46,33 @@ func TestAccSoftLayerSubnet_Basic(t *testing.T) {
 						regexp.MustCompile(`^(([01]?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))\.){3}([01]?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))`)),
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.static_subnet", "notes", "static_subnet"),
+
+					// Check portable IPv6
+					resource.TestCheckResourceAttr(
+						"softlayer_subnet.portable_subnet_v6", "type", "Portable"),
+					resource.TestCheckResourceAttr(
+						"softlayer_subnet.portable_subnet_v6", "network", "PUBLIC"),
+					resource.TestCheckResourceAttr(
+						"softlayer_subnet.portable_subnet_v6", "ip_version", "6"),
+					resource.TestCheckResourceAttr(
+						"softlayer_subnet.portable_subnet_v6", "capacity", "64"),
+					testAccCheckSoftLayerResources("softlayer_subnet.portable_subnet_v6", "vlan_id",
+						"softlayer_virtual_guest.subnetvm1", "public_vlan_id"),
+					resource.TestCheckResourceAttr(
+						"softlayer_subnet.portable_subnet_v6", "notes", "portable_subnet"),
+					// Check static IPv6
+					resource.TestCheckResourceAttr(
+						"softlayer_subnet.static_subnet_v6", "type", "Static"),
+					resource.TestCheckResourceAttr(
+						"softlayer_subnet.static_subnet_v6", "network", "PUBLIC"),
+					resource.TestCheckResourceAttr(
+						"softlayer_subnet.static_subnet_v6", "ip_version", "6"),
+					resource.TestCheckResourceAttr(
+						"softlayer_subnet.static_subnet_v6", "capacity", "64"),
+					testAccCheckSoftLayerResources("softlayer_subnet.static_subnet_v6", "endpoint_ip",
+						"softlayer_virtual_guest.subnetvm1", "ipv6_address"),
+					resource.TestCheckResourceAttr(
+						"softlayer_subnet.static_subnet_v6", "notes", "static_subnet"),
 				),
 			},
 
@@ -66,7 +94,7 @@ resource "softlayer_virtual_guest" "subnetvm1" {
     hostname = "subnetvm1"
     domain = "example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "dal06"
+    datacenter = "dal05"
     network_speed = 100
     hourly_billing = true
     private_network_only = false
@@ -97,10 +125,10 @@ resource "softlayer_subnet" "static_subnet" {
 
 resource "softlayer_subnet" "portable_subnet_v6" {
   type = "Portable"
-  network = "PRIVATE"
+  network = "PUBLIC"
   ip_version = 6
-  capacity = 4
-  vlan_id = "${softlayer_virtual_guest.subnetvm1.private_vlan_id}"
+  capacity = 64
+  vlan_id = "${softlayer_virtual_guest.subnetvm1.public_vlan_id}"
   notes = "portable_subnet"
 }
 
@@ -108,7 +136,7 @@ resource "softlayer_subnet" "static_subnet_v6" {
   type = "Static"
   network = "PUBLIC"
   ip_version = 6
-  capacity = 4
+  capacity = 64
   endpoint_ip="${softlayer_virtual_guest.subnetvm1.ipv6_address}"
   notes = "static_subnet"
 }
@@ -119,7 +147,7 @@ resource "softlayer_virtual_guest" "subnetvm1" {
     hostname = "subnetvm1"
     domain = "example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "dal06"
+    datacenter = "dal05"
     network_speed = 100
     hourly_billing = true
     private_network_only = false
@@ -149,10 +177,10 @@ resource "softlayer_subnet" "static_subnet" {
 
 resource "softlayer_subnet" "portable_subnet_v6" {
   type = "Portable"
-  network = "PRIVATE"
+  network = "PUBLIC"
   ip_version = 6
-  capacity = 4
-  vlan_id = "${softlayer_virtual_guest.subnetvm1.private_vlan_id}"
+  capacity = 64
+  vlan_id = "${softlayer_virtual_guest.subnetvm1.public_vlan_id}"
   notes = "portable_subnet"
 }
 
@@ -160,7 +188,7 @@ resource "softlayer_subnet" "static_subnet_v6" {
   type = "Static"
   network = "PUBLIC"
   ip_version = 6
-  capacity = 4
+  capacity = 64
   endpoint_ip="${softlayer_virtual_guest.subnetvm1.ipv6_address}"
   notes = "static_subnet"
 }

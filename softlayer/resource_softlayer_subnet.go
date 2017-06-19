@@ -20,7 +20,7 @@ import (
 
 const (
 	SubnetMask = "id,addressSpace,subnetType,version,ipAddressCount," +
-		"networkIdentifier,cidr,note,endPointIpAddress[ipAddress],networkVlan[id]"
+		"networkIdentifier,cidr,note,endPointIpAddress[ipAddress],networkVlan[id],totalIpAddresses"
 )
 
 var (
@@ -179,7 +179,10 @@ func resourceSoftLayerSubnetRead(d *schema.ResourceData, meta interface{}) error
 	d.Set("type", *subnet.SubnetType)
 	d.Set("type", subnetTypeMap[*subnet.SubnetType])
 	d.Set("ip_version", *subnet.Version)
-	d.Set("capacity", *subnet.IpAddressCount)
+	d.Set("capacity", *subnet.TotalIpAddresses)
+	if *subnet.Version == 6 {
+		d.Set("capacity", 64)
+	}
 	d.Set("subnet", *subnet.NetworkIdentifier+"/"+strconv.Itoa(*subnet.Cidr))
 	if subnet.Note != nil {
 		d.Set("notes", *subnet.Note)
@@ -272,9 +275,10 @@ func findSubnetByOrderId(sess *session.Session, orderId int) (datatypes.Network_
 			}
 			return nil, "pending", nil
 		},
-		Timeout:    10 * time.Minute,
-		Delay:      5 * time.Second,
-		MinTimeout: 3 * time.Second,
+		Timeout:        30 * time.Minute,
+		Delay:          5 * time.Second,
+		MinTimeout:     3 * time.Second,
+		NotFoundChecks: 1440,
 	}
 
 	pendingResult, err := stateConf.WaitForState()

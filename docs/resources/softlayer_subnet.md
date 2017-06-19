@@ -84,8 +84,8 @@ The following arguments are supported:
     * Accepted values for a public portable IPv4 subnet are 4, 8, 16, and 32.
     * Accepted values for a private portable IPv4 subnet are 4, 8, 16, 32, and 64.
     * Accepted values for a public static IPv4 subnet are 1, 2, 4, 8, 16, and 32.
-    * Accepted value for a public portable IPv6 subnet is 64. 2^64 IP addresses will be provided.
-    * Accepted value for a public static IPv6 subnet is 64.  2^64 IP addresses will be provided.
+    * Accepted value for a public portable IPv6 subnet is 64. /64 block is created and 2^64 IP addresses are provided.
+    * Accepted value for a public static IPv6 subnet is 64.  /64 block is created and 2^64 IP addresses are provided.
     * **Required** 
 * `vlan_id` | *int*
     * VLAN id for portable subnet. It should be configured when the subnet is a portable subnet. Both public VLAN ID and private VLAN ID can 
