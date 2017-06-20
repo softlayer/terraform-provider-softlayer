@@ -29,14 +29,6 @@ var (
 		"Static":   "ADDITIONAL_SERVICES_STATIC_IP_ADDRESSES",
 		"Portable": "ADDITIONAL_SERVICES_PORTABLE_IP_ADDRESSES",
 	}
-
-	// Map SL internal type code to subnet type.
-	subnetTypeMap = map[string]string{
-		"SECONDARY_ON_VLAN": "Portable",
-		"ROUTED_TO_VLAN":    "Portable",
-		"SUBNET_ON_VLAN":    "Portable",
-		"STATIC_IP_ROUTED":  "Static",
-	}
 )
 
 func resourceSoftLayerSubnet() *schema.Resource {
@@ -177,7 +169,11 @@ func resourceSoftLayerSubnetRead(d *schema.ResourceData, meta interface{}) error
 
 	d.Set("network", *subnet.AddressSpace)
 	d.Set("type", *subnet.SubnetType)
-	d.Set("type", subnetTypeMap[*subnet.SubnetType])
+	if strings.Contains(*subnet.SubnetType, "STATIC") {
+		d.Set("type", "Static")
+	} else if strings.Contains(*subnet.SubnetType, "VLAN") {
+		d.Set("type", "Portable")
+	}
 	d.Set("ip_version", *subnet.Version)
 	d.Set("capacity", *subnet.TotalIpAddresses)
 	if *subnet.Version == 6 {
@@ -264,13 +260,13 @@ func findSubnetByOrderId(sess *session.Session, orderId int) (datatypes.Network_
 			subnets, err := services.GetAccountService(sess).
 				Filter(filter.Path("subnets.billingItem.orderItem.order.id").
 					Eq(strconv.Itoa(orderId)).Build()).
-				Mask("id").
+				Mask("id,activeTransaction").
 				GetSubnets()
 			if err != nil {
 				return datatypes.Network_Subnet{}, "", err
 			}
 
-			if len(subnets) == 1 {
+			if len(subnets) == 1 && subnets[0].ActiveTransaction == nil {
 				return subnets[0], "complete", nil
 			}
 			return nil, "pending", nil

@@ -94,7 +94,7 @@ resource "softlayer_virtual_guest" "subnetvm1" {
     hostname = "subnetvm1"
     domain = "example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "dal05"
+    datacenter = "wdc04"
     network_speed = 100
     hourly_billing = true
     private_network_only = false
@@ -119,7 +119,7 @@ resource "softlayer_subnet" "static_subnet" {
   network = "PUBLIC"
   ip_version = 4
   capacity = 4
-  endpoint_ip="${softlayer_virtual_guest.subnetvm1.ipv6_address}"
+  endpoint_ip="${softlayer_virtual_guest.subnetvm1.ipv4_address}"
   notes = "static_subnet"
 }
 
@@ -147,7 +147,7 @@ resource "softlayer_virtual_guest" "subnetvm1" {
     hostname = "subnetvm1"
     domain = "example.com"
     os_reference_code = "DEBIAN_7_64"
-    datacenter = "dal05"
+    datacenter = "wdc04"
     network_speed = 100
     hourly_billing = true
     private_network_only = false
@@ -155,6 +155,7 @@ resource "softlayer_virtual_guest" "subnetvm1" {
     memory = 1024
     disks = [25]
     local_disk = false
+    ipv6_enabled = true
 }
 
 resource "softlayer_subnet" "portable_subnet" {
