@@ -105,7 +105,11 @@ func (r *RestTransport) DoRequest(sess *Session, service string, method string, 
 		if str == "null" {
 			str = ""
 		} else if str[0] == '"' && str[strIdx] == '"' {
-			str = str[1:strIdx]
+			rawStr := rawString{str}
+			err = json.Unmarshal([]byte(`{"val":`+str+`}`), &rawStr)
+			if err == nil {
+				str = rawStr.Val
+			}
 		}
 		*pResult.(*string) = str
 	default:
@@ -118,6 +122,10 @@ func (r *RestTransport) DoRequest(sess *Session, service string, method string, 
 	}
 
 	return err
+}
+
+type rawString struct {
+	Val string
 }
 
 func buildPath(service string, method string, options *sl.Options) string {
@@ -180,7 +188,11 @@ func makeHTTPRequest(session *Session, path string, requestType string, requestB
 		return nil, 0, err
 	}
 
-	req.SetBasicAuth(session.UserName, session.APIKey)
+	if session.APIKey != "" {
+		req.SetBasicAuth(session.UserName, session.APIKey)
+	} else if session.AuthToken != "" {
+		req.SetBasicAuth(fmt.Sprintf("%d", session.UserId), session.AuthToken)
+	}
 
 	req.URL.RawQuery = encodeQuery(options)
 

@@ -45,80 +45,80 @@
 		{
 			"checksumSHA1": "KeNIYJQUdE6o196SaYuLMmjEPZM=",
 			"path": "github.com/softlayer/softlayer-go/config",
-			"revision": "f08ac397693b0284825c3392a5afb1f61ac3a4c9",
-			"revisionTime": "2017-04-27T16:48:03Z"
+			"revision": "413a1c1e3dca8e0b979bc834181df95ae70bfd50",
+			"revisionTime": "2017-06-21T18:58:22Z"
 		},
 		{
-			"checksumSHA1": "yCIryelA4K1pdLqbV0btM0XSp94=",
+			"checksumSHA1": "MuNEBvc3lQsRvDc0yiDr1jzBNfo=",
 			"path": "github.com/softlayer/softlayer-go/datatypes",
-			"revision": "f08ac397693b0284825c3392a5afb1f61ac3a4c9",
-			"revisionTime": "2017-04-27T16:48:03Z"
+			"revision": "413a1c1e3dca8e0b979bc834181df95ae70bfd50",
+			"revisionTime": "2017-06-21T18:58:22Z"
 		},
 		{
 			"checksumSHA1": "4jZJFKT7jM0qZaxJT5DYSEDg0tI=",
 			"path": "github.com/softlayer/softlayer-go/examples",
-			"revision": "f08ac397693b0284825c3392a5afb1f61ac3a4c9",
-			"revisionTime": "2017-04-27T16:48:03Z"
+			"revision": "413a1c1e3dca8e0b979bc834181df95ae70bfd50",
+			"revisionTime": "2017-06-21T18:58:22Z"
 		},
 		{
-			"checksumSHA1": "b9JSH4B1W6MjC//xpnQB7qwtbPM=",
+			"checksumSHA1": "2UnaaOo4TreSegFy3tNtQ3NRv18=",
 			"path": "github.com/softlayer/softlayer-go/filter",
-			"revision": "f08ac397693b0284825c3392a5afb1f61ac3a4c9",
-			"revisionTime": "2017-04-27T16:48:03Z"
+			"revision": "413a1c1e3dca8e0b979bc834181df95ae70bfd50",
+			"revisionTime": "2017-06-21T18:58:22Z"
 		},
 		{
 			"checksumSHA1": "8w7mbrWkcP0yCAdX3BpPr1vndrY=",
 			"path": "github.com/softlayer/softlayer-go/helpers/hardware",
-			"revision": "f08ac397693b0284825c3392a5afb1f61ac3a4c9",
-			"revisionTime": "2017-04-27T16:48:03Z"
+			"revision": "413a1c1e3dca8e0b979bc834181df95ae70bfd50",
+			"revisionTime": "2017-06-21T18:58:22Z"
 		},
 		{
 			"checksumSHA1": "iIil9KYj6J7ZEK4dG9UirsFuq1Y=",
 			"path": "github.com/softlayer/softlayer-go/helpers/location",
-			"revision": "f08ac397693b0284825c3392a5afb1f61ac3a4c9",
-			"revisionTime": "2017-04-27T16:48:03Z"
+			"revision": "413a1c1e3dca8e0b979bc834181df95ae70bfd50",
+			"revisionTime": "2017-06-21T18:58:22Z"
 		},
 		{
 			"checksumSHA1": "r0ijpEVlR3yuirWa/4b6yCDIjEE=",
 			"path": "github.com/softlayer/softlayer-go/helpers/network",
-			"revision": "f08ac397693b0284825c3392a5afb1f61ac3a4c9",
-			"revisionTime": "2017-04-27T16:48:03Z"
+			"revision": "413a1c1e3dca8e0b979bc834181df95ae70bfd50",
+			"revisionTime": "2017-06-21T18:58:22Z"
 		},
 		{
 			"checksumSHA1": "bGG9wihg55FY7q/kHVE5KQV8XmE=",
 			"path": "github.com/softlayer/softlayer-go/helpers/order",
-			"revision": "f08ac397693b0284825c3392a5afb1f61ac3a4c9",
-			"revisionTime": "2017-04-27T16:48:03Z"
+			"revision": "413a1c1e3dca8e0b979bc834181df95ae70bfd50",
+			"revisionTime": "2017-06-21T18:58:22Z"
 		},
 		{
-			"checksumSHA1": "3pXDrCqMd7e7Xb0TCQDsvkIWPIs=",
+			"checksumSHA1": "LX7V83DWKUCL2DBxiTCN30Bhm+U=",
 			"path": "github.com/softlayer/softlayer-go/helpers/product",
-			"revision": "f08ac397693b0284825c3392a5afb1f61ac3a4c9",
-			"revisionTime": "2017-04-27T16:48:03Z"
+			"revision": "413a1c1e3dca8e0b979bc834181df95ae70bfd50",
+			"revisionTime": "2017-06-21T18:58:22Z"
 		},
 		{
 			"checksumSHA1": "6PpeMwmz39rCvqqn1a/xrNb6ER4=",
 			"path": "github.com/softlayer/softlayer-go/helpers/virtual",
-			"revision": "f08ac397693b0284825c3392a5afb1f61ac3a4c9",
-			"revisionTime": "2017-04-27T16:48:03Z"
+			"revision": "413a1c1e3dca8e0b979bc834181df95ae70bfd50",
+			"revisionTime": "2017-06-21T18:58:22Z"
 		},
 		{
-			"checksumSHA1": "1GZ3vJI1qXV76b931naR1RU6LAQ=",
+			"checksumSHA1": "gCS7XyVNzhkJ3kFMmvMsIcWYBF8=",
 			"path": "github.com/softlayer/softlayer-go/services",
-			"revision": "f08ac397693b0284825c3392a5afb1f61ac3a4c9",
-			"revisionTime": "2017-04-27T16:48:03Z"
+			"revision": "413a1c1e3dca8e0b979bc834181df95ae70bfd50",
+			"revisionTime": "2017-06-21T18:58:22Z"
 		},
 		{
-			"checksumSHA1": "7wqVg6C5jdqEPFMcfWKtac+0C7U=",
+			"checksumSHA1": "GPQgh5vZzEiYQSO3kZs2PquU5u4=",
 			"path": "github.com/softlayer/softlayer-go/session",
-			"revision": "f08ac397693b0284825c3392a5afb1f61ac3a4c9",
-			"revisionTime": "2017-04-27T16:48:03Z"
+			"revision": "413a1c1e3dca8e0b979bc834181df95ae70bfd50",
+			"revisionTime": "2017-06-21T18:58:22Z"
 		},
 		{
-			"checksumSHA1": "ezx/hLd9la9B/UwbBLCmq7LPobU=",
+			"checksumSHA1": "rRLFLMdzIFBSVSNDy34s01ZYGjs=",
 			"path": "github.com/softlayer/softlayer-go/sl",
-			"revision": "f08ac397693b0284825c3392a5afb1f61ac3a4c9",
-			"revisionTime": "2017-04-27T16:48:03Z"
+			"revision": "413a1c1e3dca8e0b979bc834181df95ae70bfd50",
+			"revisionTime": "2017-06-21T18:58:22Z"
 		},
 		{
 			"checksumSHA1": "Mr4ur60bgQJnQFfJY0dGtwWwMPE=",
