@@ -670,7 +670,8 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 			"primaryVersion6IpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]," +
 			"primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]," +
 			"primaryBackendNetworkComponent[networkVlan[id]," +
-			"primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]",
+			"primaryIpAddressRecord[subnet,guestNetworkComponentBinding[ipAddressId]]]," +
+			"postInstallScriptUri",
 	).GetObject()
 
 	if err != nil {
@@ -719,6 +720,7 @@ func resourceSoftLayerVirtualGuestRead(d *schema.ResourceData, meta interface{})
 	d.Set("private_network_only", *result.PrivateNetworkOnlyFlag)
 	d.Set("hourly_billing", *result.HourlyBillingFlag)
 	d.Set("local_disk", *result.LocalDiskFlag)
+	d.Set("post_install_script_uri", *result.PostInstallScriptUri)
 
 	if result.PrimaryNetworkComponent.NetworkVlan != nil {
 		d.Set("public_vlan_id", *result.PrimaryNetworkComponent.NetworkVlan.Id)
