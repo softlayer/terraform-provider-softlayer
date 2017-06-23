@@ -78,7 +78,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 
 			"datacenter": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 				ForceNew: true,
 			},
 
@@ -154,7 +154,13 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 
 			"fixed_config_preset": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				ForceNew: true,
+			},
+
+			"quote_id": {
+				Type:     schema.TypeInt,
+				Optional: true,
 				ForceNew: true,
 			},
 
@@ -193,10 +199,12 @@ func getBareMetalOrderFromResourceData(d *schema.ResourceData, meta interface{})
 		NetworkComponents:      []datatypes.Network_Component{networkComponent},
 		PostInstallScriptUri:   sl.String(d.Get("post_install_script_uri").(string)),
 		BareMetalInstanceFlag:  sl.Int(1),
+	}
 
-		FixedConfigurationPreset: &datatypes.Product_Package_Preset{
-			KeyName: sl.String(d.Get("fixed_config_preset").(string)),
-		},
+	if fixed_config_preset, ok := d.GetOk("fixed_config_preset"); ok {
+		hardware.FixedConfigurationPreset = &datatypes.Product_Package_Preset{
+			KeyName: sl.String(fixed_config_preset.(string)),
+		}
 	}
 
 	if operatingSystemReferenceCode, ok := d.GetOk("os_reference_code"); ok {
@@ -267,23 +275,48 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 		return err
 	}
 
-	order, err := hwService.GenerateOrderTemplate(&hardware)
-	if err != nil {
-		return fmt.Errorf(
-			"Encountered problem trying to get the bare metal order template: %s", err)
-	}
+	quote_id := d.Get("quote_id").(int)
+	if quote_id > 0 {
+		quoteService := services.GetBillingOrderQuoteService(meta.(ProviderConfig).SoftLayerSession())
+		order, err := quoteService.Id(quote_id).GetRecalculatedOrderContainer(nil, sl.Bool(false))
+		if err != nil {
+			return fmt.Errorf(
+				"Encountered problem trying to get the bare metal order template from quote: %s", err)
+		}
+		order.Quantity = sl.Int(1)
+		order.PresetId = nil
+		order.Hardware = make([]datatypes.Hardware, 0, 1)
+		order.Hardware = append(
+			order.Hardware,
+			datatypes.Hardware{
+				Hostname: hardware.Hostname,
+				Domain:   hardware.Domain,
+			},
+		)
 
-	// Set image template id if it exists
-	if rawImageTemplateId, ok := d.GetOk("image_template_id"); ok {
-		imageTemplateId := rawImageTemplateId.(int)
-		order.ImageTemplateId = sl.Int(imageTemplateId)
-	}
+		log.Println("[INFO] Ordering bare metal server")
+		_, err = orderService.PlaceOrder(&order, sl.Bool(false))
+		if err != nil {
+			return fmt.Errorf("Error ordering bare metal server: %s\n%+v\n", err, order)
+		}
+	} else {
+		order, err := hwService.GenerateOrderTemplate(&hardware)
+		if err != nil {
+			return fmt.Errorf(
+				"Encountered problem trying to get the bare metal order template: %s", err)
+		}
 
-	log.Println("[INFO] Ordering bare metal server")
+		// Set image template id if it exists
+		if rawImageTemplateId, ok := d.GetOk("image_template_id"); ok {
+			imageTemplateId := rawImageTemplateId.(int)
+			order.ImageTemplateId = sl.Int(imageTemplateId)
+		}
 
-	_, err = orderService.PlaceOrder(&order, sl.Bool(false))
-	if err != nil {
-		return fmt.Errorf("Error ordering bare metal server: %s", err)
+		log.Println("[INFO] Ordering bare metal server")
+		_, err = orderService.PlaceOrder(&order, sl.Bool(false))
+		if err != nil {
+			return fmt.Errorf("Error ordering bare metal server: %s\n%+v\n", err, order)
+		}
 	}
 
 	log.Printf("[INFO] Bare Metal Server ID: %s", d.Id())

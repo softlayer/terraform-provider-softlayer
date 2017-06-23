@@ -55,7 +55,6 @@ func Provider() terraform.ResourceProvider {
 		ResourcesMap: map[string]*schema.Resource{
 			"softlayer_virtual_guest":               resourceSoftLayerVirtualGuest(),
 			"softlayer_bare_metal":                  resourceSoftLayerBareMetal(),
-			"softlayer_bare_metal_quote":            resourceSoftLayerBareMetalQuote(),
 			"softlayer_ssh_key":                     resourceSoftLayerSSHKey(),
 			"softlayer_dns_domain_record":           resourceSoftLayerDnsDomainRecord(),
 			"softlayer_dns_domain":                  resourceSoftLayerDnsDomain(),
