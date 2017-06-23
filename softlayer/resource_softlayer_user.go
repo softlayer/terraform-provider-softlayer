@@ -491,7 +491,7 @@ func resourceSoftLayerUserExists(d *schema.ResourceData, meta interface{}) (bool
 		}
 		return false, fmt.Errorf("Error retrieving user information: %s", err)
 	}
-	return true, nil
+	return result.Id != nil && *result.Id == id, nil
 }
 
 func getTimezoneIDByName(sess *session.Session, shortName string) (int, error) {
