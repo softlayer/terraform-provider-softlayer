@@ -472,6 +472,10 @@ func resourceSoftLayerUserExists(d *schema.ResourceData, meta interface{}) (bool
 
 	id, err := strconv.Atoi(d.Id())
 
+	if err != nil {
+		return false, fmt.Errorf("Not a valid ID, must be an integer: %s", err)
+	}
+
 	result, err := service.Id(id).GetObject()
 
 	// When a user is deleted, it has remained with "CANCEL_PENDING" status in specific time period.
@@ -481,7 +485,13 @@ func resourceSoftLayerUserExists(d *schema.ResourceData, meta interface{}) (bool
 		return false, nil
 	}
 
-	return result.Id != nil && *result.Id == id && err == nil, nil
+	if err != nil {
+		if apiErr, ok := err.(sl.Error); ok && apiErr.StatusCode == 404 {
+			return false, nil
+		}
+		return false, fmt.Errorf("Error retrieving user information: %s", err)
+	}
+	return true, nil
 }
 
 func getTimezoneIDByName(sess *session.Session, shortName string) (int, error) {
