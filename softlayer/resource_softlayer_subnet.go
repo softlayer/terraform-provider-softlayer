@@ -46,18 +46,11 @@ func resourceSoftLayerSubnet() *schema.Resource {
 				Computed: true,
 			},
 
-			"network": {
-				Type:     schema.TypeString,
-				Required: true,
+			"private": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
 				ForceNew: true,
-				ValidateFunc: func(v interface{}, k string) (ws []string, errs []error) {
-					network := v.(string)
-					if network != "PRIVATE" && network != "PUBLIC" {
-						errs = append(errs, errors.New(
-							"network should be either 'PRIVATE' or 'PUBLIC'"))
-					}
-					return
-				},
 			},
 
 			"type": {
@@ -77,7 +70,8 @@ func resourceSoftLayerSubnet() *schema.Resource {
 			// IP version 4 or IP version 6
 			"ip_version": {
 				Type:     schema.TypeInt,
-				Required: true,
+				Optional: true,
+				Default:  4,
 				ForceNew: true,
 				ValidateFunc: func(v interface{}, k string) (ws []string, errs []error) {
 					ipVersion := v.(int)
@@ -113,7 +107,7 @@ func resourceSoftLayerSubnet() *schema.Resource {
 			},
 
 			// Provides IP address/netmask format (ex. 10.10.10.10/28)
-			"subnet": &schema.Schema{
+			"subnet_cidr": &schema.Schema{
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -167,7 +161,12 @@ func resourceSoftLayerSubnetRead(d *schema.ResourceData, meta interface{}) error
 		return fmt.Errorf("Error retrieving a subnet: %s", err)
 	}
 
-	d.Set("network", *subnet.AddressSpace)
+	if *subnet.AddressSpace == "PRIVATE" {
+		d.Set("private", true)
+	} else if *subnet.AddressSpace == "PUBLIC" {
+		d.Set("private", false)
+	}
+
 	d.Set("type", *subnet.SubnetType)
 	if strings.Contains(*subnet.SubnetType, "STATIC") {
 		d.Set("type", "Static")
@@ -179,16 +178,15 @@ func resourceSoftLayerSubnetRead(d *schema.ResourceData, meta interface{}) error
 	if *subnet.Version == 6 {
 		d.Set("capacity", 64)
 	}
-	d.Set("subnet", *subnet.NetworkIdentifier+"/"+strconv.Itoa(*subnet.Cidr))
+	d.Set("subnet_cidr", *subnet.NetworkIdentifier+"/"+strconv.Itoa(*subnet.Cidr))
 	if subnet.Note != nil {
 		d.Set("notes", *subnet.Note)
 	}
 	if subnet.EndPointIpAddress != nil {
 		d.Set("endpoint_ip", *subnet.EndPointIpAddress.IpAddress)
 	}
-	if subnet.NetworkVlan != nil {
-		d.Set("vlan_id", *subnet.NetworkVlan.Id)
-	}
+	d.Set("notes", sl.Get(subnet.Note, nil))
+
 	return nil
 }
 
@@ -297,7 +295,11 @@ func buildSubnetProductOrderContainer(d *schema.ResourceData, sess *session.Sess
 	// 1. Get a package
 	typeStr := d.Get("type").(string)
 	vlanId := d.Get("vlan_id").(int)
-	network := d.Get("network").(string)
+	private := d.Get("private").(bool)
+	network := "PUBLIC"
+	if private {
+		network = "PRIVATE"
+	}
 
 	pkg, err := product.GetPackageByType(sess, subnetPackageTypeMap[typeStr])
 	if err != nil {

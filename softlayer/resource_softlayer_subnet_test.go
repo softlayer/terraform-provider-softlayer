@@ -19,14 +19,14 @@ func TestAccSoftLayerSubnet_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.portable_subnet", "type", "Portable"),
 					resource.TestCheckResourceAttr(
-						"softlayer_subnet.portable_subnet", "network", "PRIVATE"),
+						"softlayer_subnet.portable_subnet", "private", "true"),
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.portable_subnet", "ip_version", "4"),
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.portable_subnet", "capacity", "4"),
 					testAccCheckSoftLayerResources("softlayer_subnet.portable_subnet", "vlan_id",
 						"softlayer_virtual_guest.subnetvm1", "private_vlan_id"),
-					resource.TestMatchResourceAttr("softlayer_subnet.portable_subnet", "subnet",
+					resource.TestMatchResourceAttr("softlayer_subnet.portable_subnet", "subnet_cidr",
 						regexp.MustCompile(`^(([01]?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))\.){3}([01]?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))`)),
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.portable_subnet", "notes", "portable_subnet"),
@@ -35,14 +35,14 @@ func TestAccSoftLayerSubnet_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.static_subnet", "type", "Static"),
 					resource.TestCheckResourceAttr(
-						"softlayer_subnet.static_subnet", "network", "PUBLIC"),
+						"softlayer_subnet.static_subnet", "private", "false"),
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.static_subnet", "ip_version", "4"),
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.static_subnet", "capacity", "4"),
 					testAccCheckSoftLayerResources("softlayer_subnet.static_subnet", "endpoint_ip",
 						"softlayer_virtual_guest.subnetvm1", "ipv4_address"),
-					resource.TestMatchResourceAttr("softlayer_subnet.static_subnet", "subnet",
+					resource.TestMatchResourceAttr("softlayer_subnet.static_subnet", "subnet_cidr",
 						regexp.MustCompile(`^(([01]?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))\.){3}([01]?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))`)),
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.static_subnet", "notes", "static_subnet"),
@@ -51,7 +51,7 @@ func TestAccSoftLayerSubnet_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.portable_subnet_v6", "type", "Portable"),
 					resource.TestCheckResourceAttr(
-						"softlayer_subnet.portable_subnet_v6", "network", "PUBLIC"),
+						"softlayer_subnet.portable_subnet_v6", "private", "false"),
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.portable_subnet_v6", "ip_version", "6"),
 					resource.TestCheckResourceAttr(
@@ -64,7 +64,7 @@ func TestAccSoftLayerSubnet_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.static_subnet_v6", "type", "Static"),
 					resource.TestCheckResourceAttr(
-						"softlayer_subnet.static_subnet_v6", "network", "PUBLIC"),
+						"softlayer_subnet.static_subnet_v6", "private", "false"),
 					resource.TestCheckResourceAttr(
 						"softlayer_subnet.static_subnet_v6", "ip_version", "6"),
 					resource.TestCheckResourceAttr(
@@ -107,7 +107,7 @@ resource "softlayer_virtual_guest" "subnetvm1" {
 
 resource "softlayer_subnet" "portable_subnet" {
   type = "Portable"
-  network = "PRIVATE"
+  private = true
   ip_version = 4
   capacity = 4
   vlan_id = "${softlayer_virtual_guest.subnetvm1.private_vlan_id}"
@@ -116,7 +116,7 @@ resource "softlayer_subnet" "portable_subnet" {
 
 resource "softlayer_subnet" "static_subnet" {
   type = "Static"
-  network = "PUBLIC"
+  private = false
   ip_version = 4
   capacity = 4
   endpoint_ip="${softlayer_virtual_guest.subnetvm1.ipv4_address}"
@@ -125,7 +125,7 @@ resource "softlayer_subnet" "static_subnet" {
 
 resource "softlayer_subnet" "portable_subnet_v6" {
   type = "Portable"
-  network = "PUBLIC"
+  private = false
   ip_version = 6
   capacity = 64
   vlan_id = "${softlayer_virtual_guest.subnetvm1.public_vlan_id}"
@@ -134,7 +134,7 @@ resource "softlayer_subnet" "portable_subnet_v6" {
 
 resource "softlayer_subnet" "static_subnet_v6" {
   type = "Static"
-  network = "PUBLIC"
+  private = false
   ip_version = 6
   capacity = 64
   endpoint_ip="${softlayer_virtual_guest.subnetvm1.ipv6_address}"
@@ -160,7 +160,7 @@ resource "softlayer_virtual_guest" "subnetvm1" {
 
 resource "softlayer_subnet" "portable_subnet" {
   type = "Portable"
-  network = "PRIVATE"
+  private = true
   ip_version = 4
   capacity = 4
   vlan_id = "${softlayer_virtual_guest.subnetvm1.private_vlan_id}"
@@ -169,7 +169,7 @@ resource "softlayer_subnet" "portable_subnet" {
 
 resource "softlayer_subnet" "static_subnet" {
   type = "Static"
-  network = "PUBLIC"
+  private = false
   ip_version = 4
   capacity = 4
   endpoint_ip="${softlayer_virtual_guest.subnetvm1.ipv4_address}"
@@ -178,7 +178,7 @@ resource "softlayer_subnet" "static_subnet" {
 
 resource "softlayer_subnet" "portable_subnet_v6" {
   type = "Portable"
-  network = "PUBLIC"
+  private = false
   ip_version = 6
   capacity = 64
   vlan_id = "${softlayer_virtual_guest.subnetvm1.public_vlan_id}"
@@ -187,7 +187,7 @@ resource "softlayer_subnet" "portable_subnet_v6" {
 
 resource "softlayer_subnet" "static_subnet_v6" {
   type = "Static"
-  network = "PUBLIC"
+  private = false
   ip_version = 6
   capacity = 64
   endpoint_ip="${softlayer_virtual_guest.subnetvm1.ipv6_address}"
