@@ -26,7 +26,7 @@ The following example will create a private portable subnet which has one availa
 # Create a new portable subnet
 resource "softlayer_subnet" "portable_subnet" {
   type = "Portable"
-  network = "PRIVATE"
+  private = true
   ip_version = 4
   capacity = 4
   vlan_id = 1234567
@@ -41,7 +41,7 @@ The following example will create a public static subnet which has four availabl
 # Create a new static subnet
 resource "softlayer_subnet" "static_subnet" {
   type = "Static"
-  network = "PUBLIC"
+  private = false
   ip_version = 4
   capacity = 4
   endpoint_ip="151.1.1.1"
@@ -54,7 +54,7 @@ The following example returns first IP address in the subnet `test`:
 ```hcl
 resource "softlayer_subnet" "test" {
   type = "Static"
-  network = "PUBLIC"
+  private = false
   ip_version = 4
   capacity = 4
   endpoint_ip="159.8.181.82"
@@ -70,15 +70,16 @@ output "first_ip_address" {
 
 The following arguments are supported:
 
-* `network` | *string*
-    * Set the network property of the subnet if it is public or private. Accepted values are PRIVATE and PUBLIC.
+* `private` | *boolean*
+    * Set the network property of the subnet if it is public or private.
     * **Required**
 * `type` | *string*
     * Set the type of the subnet. Accepted values are Portable and Static.
     * **Required**
 * `ip_version` | *int*
     * Set the IP version of the subnet. Accepted values are 4 and 6.
-    * **Required**
+    * *Default*: true
+    * **Optional**
 * `capacity` | *int*
     * Set the size of the subnet.
     * Accepted values for a public portable IPv4 subnet are 4, 8, 16, and 32.
