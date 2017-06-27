@@ -107,4 +107,4 @@ The following arguments are supported:
 The following attributes are exported:
 
 * `id` - id of the subnet.
-* `subnet` - It rovides IP address/netmask format (ex. 10.10.10.10/28). It can be used to get an available IP address in `subnet`. 
+* `subnet_cidr` - It rovides IP address/cidr format (ex. 10.10.10.10/28). It can be used to get an available IP address in `subnet`. 

@@ -106,7 +106,7 @@ func resourceSoftLayerSubnet() *schema.Resource {
 				ConflictsWith: []string{"vlan_id"},
 			},
 
-			// Provides IP address/netmask format (ex. 10.10.10.10/28)
+			// Provides IP address/cidr format (ex. 10.10.10.10/28)
 			"subnet_cidr": &schema.Schema{
 				Type:     schema.TypeString,
 				Computed: true,
