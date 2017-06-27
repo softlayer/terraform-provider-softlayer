@@ -167,11 +167,15 @@ func resourceSoftLayerSubnetRead(d *schema.ResourceData, meta interface{}) error
 		d.Set("private", false)
 	}
 
-	d.Set("type", *subnet.SubnetType)
+	if subnet.SubnetType == nil {
+		return fmt.Errorf("Invalid vlan type: the subnet type is null.")
+	}
 	if strings.Contains(*subnet.SubnetType, "STATIC") {
 		d.Set("type", "Static")
 	} else if strings.Contains(*subnet.SubnetType, "VLAN") {
 		d.Set("type", "Portable")
+	} else {
+		return fmt.Errorf("Invalid vlan type: %s", *subnet.SubnetType)
 	}
 	d.Set("ip_version", *subnet.Version)
 	d.Set("capacity", *subnet.TotalIpAddresses)
