@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/softlayer/softlayer-go/datatypes"
 	"github.com/softlayer/softlayer-go/filter"
+	"github.com/softlayer/softlayer-go/helpers/location"
+	"github.com/softlayer/softlayer-go/helpers/product"
 	"github.com/softlayer/softlayer-go/services"
 	"github.com/softlayer/softlayer-go/sl"
 )
@@ -178,6 +180,46 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Set:      schema.HashString,
 			},
+
+			"model": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
+			},
+
+			"cpu": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
+			},
+
+			"memory": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
+			},
+
+			"disk_controller": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
+			},
+
+			"disks": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+
+			"redundant_power_supply": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -290,12 +332,128 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 			order.Hardware,
 			hardware,
 		)
-	} else {
-		// Build a bare metal template from scratch.
+	} else if _, ok := d.GetOk("fixed_config_preset"); ok {
+		// Build a pre-configured bare metal server
 		order, err = services.GetHardwareService(sess).GenerateOrderTemplate(&hardware)
 		if err != nil {
 			return fmt.Errorf(
 				"Encountered problem trying to get the bare metal order template: %s", err)
+		}
+	} else {
+		// Build a custom bare metal server
+		dc, err := location.GetDatacenterByName(sess, d.Get("datacenter").(string), "id")
+		if err != nil {
+			return err
+		}
+
+		model, ok := d.GetOk("model")
+		if !ok {
+			return fmt.Errorf("The attribute 'model' is not defined.")
+		}
+
+		// 1. Get a package by keyName
+		pkg, err := product.GetPackageByKeyName(sess, model.(string))
+		if err != nil {
+			return err
+		}
+
+		// 2. Get all prices for the package
+		items, err := product.GetPackageProducts(sess, *pkg.Id, "id,categories,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode]]")
+		if err != nil {
+			return err
+		}
+
+		log.Printf("**************** Length of items %d", len(items))
+
+		// 3. Build price items
+		disks := d.Get("disks").([]interface{})
+		server, err := getItemPriceId(items, "server", d.Get("cpu").(string))
+		if err != nil {
+			return err
+		}
+		os, err := getItemPriceId(items, "os", "OS_UBUNTU_14_04_LTS_TRUSTY_TAHR_64_BIT")
+		if err != nil {
+			return err
+		}
+		ram, err := getItemPriceId(items, "ram", d.Get("memory").(string))
+		if err != nil {
+			return err
+		}
+		diskController, err := getItemPriceId(items, "disk_controller", d.Get("disk_controller").(string))
+		if err != nil {
+			return err
+		}
+		disk0, err := getItemPriceId(items, "disk0", disks[0].(string))
+		if err != nil {
+			return err
+		}
+		portSpeed, err := getItemPriceId(items, "port_speed", "1_GBPS_PUBLIC_PRIVATE_NETWORK_UPLINKS")
+		if err != nil {
+			return err
+		}
+		/*
+			powerSupply, err := getItemPriceId(items, "power_supply", "REDUNDANT_POWER_SUPPLY")
+			if err != nil {
+				return err
+			}
+		*/
+		bandwidth, err := getItemPriceId(items, "bandwidth", "BANDWIDTH_20000_GB")
+		if err != nil {
+			return err
+		}
+		priIpAddress, err := getItemPriceId(items, "pri_ip_addresses", "1_IP_ADDRESS")
+		if err != nil {
+			return err
+		}
+		remoteManagement, err := getItemPriceId(items, "remote_management", "REBOOT_KVM_OVER_IP")
+		if err != nil {
+			return err
+		}
+		vpnManagement, err := getItemPriceId(items, "vpn_management", "UNLIMITED_SSL_VPN_USERS_1_PPTP_VPN_USER_PER_ACCOUNT")
+		if err != nil {
+			return err
+		}
+		monitoring, err := getItemPriceId(items, "monitoring", "MONITORING_HOST_PING")
+		if err != nil {
+			return err
+		}
+		notification, err := getItemPriceId(items, "notification", "NOTIFICATION_EMAIL_AND_TICKET")
+		if err != nil {
+			return err
+		}
+		response, err := getItemPriceId(items, "response", "AUTOMATED_NOTIFICATION")
+		if err != nil {
+			return err
+		}
+		vulnerabilityScanner, err := getItemPriceId(items, "vulnerability_scanner", "NESSUS_VULNERABILITY_ASSESSMENT_REPORTING")
+		if err != nil {
+			return err
+		}
+		order = datatypes.Container_Product_Order{
+			Quantity: sl.Int(1),
+			Hardware: []datatypes.Hardware{{
+				Hostname: sl.String(d.Get("hostname").(string)),
+				Domain:   sl.String(d.Get("domain").(string)),
+			}},
+			Location:  sl.String(strconv.Itoa(*dc.Id)),
+			PackageId: pkg.Id,
+			Prices: []datatypes.Product_Item_Price{
+				server,
+				os,
+				ram,
+				diskController,
+				disk0,
+				portSpeed,
+				//	powerSupply,
+				bandwidth,
+				priIpAddress,
+				remoteManagement,
+				vpnManagement,
+				monitoring,
+				notification,
+				response,
+				vulnerabilityScanner,
+			},
 		}
 	}
 
@@ -575,4 +733,21 @@ func setHardwareNotes(id int, d *schema.ResourceData, meta interface{}) error {
 	}
 
 	return nil
+}
+
+// Example : getItemPriceId(items, 'server', 'INTEL_XEON_2690_2_60')
+func getItemPriceId(items []datatypes.Product_Item, categoryCode string, keyName string) (datatypes.Product_Item_Price, error) {
+	for _, item := range items {
+		for _, itemCategory := range item.Categories {
+			if *itemCategory.CategoryCode == categoryCode && *item.KeyName == keyName {
+				for _, price := range item.Prices {
+					if price.LocationGroupId == nil {
+						return datatypes.Product_Item_Price{Id: price.Id}, nil
+					}
+				}
+			}
+		}
+	}
+	return datatypes.Product_Item_Price{},
+		fmt.Errorf("Could not find the matching item with categorycode %s and keyName %s", categoryCode, keyName)
 }

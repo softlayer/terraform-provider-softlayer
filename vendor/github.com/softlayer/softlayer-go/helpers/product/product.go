@@ -80,6 +80,44 @@ func GetPackageByType(
 	return packages[0], nil
 }
 
+// GetPackageByKeyName Get the Product_Package which matches the specified
+// package keyName
+func GetPackageByKeyName(
+sess *session.Session,
+keyName string,
+mask ...string,
+) (datatypes.Product_Package, error) {
+
+	objectMask := "id,keyName,name,description,isActive,type[keyName]"
+	if len(mask) > 0 {
+		objectMask = mask[0]
+	}
+
+	service := services.GetProductPackageService(sess)
+
+	// Get package id
+	packages, err := service.
+	Mask(objectMask).
+		Filter(
+		filter.Build(
+			filter.Path("keyName").Eq(keyName),
+		),
+	).
+		Limit(1).
+		GetAllObjects()
+	if err != nil {
+		return datatypes.Product_Package{}, err
+	}
+
+	packages = rejectOutletPackages(packages)
+
+	if len(packages) == 0 {
+		return datatypes.Product_Package{}, fmt.Errorf("No product packages found for %s", keyName)
+	}
+
+	return packages[0], nil
+}
+
 // rejectOutletPackages removes packages whose description or name contains the
 // string "OUTLET".
 func rejectOutletPackages(packages []datatypes.Product_Package) []datatypes.Product_Package {
