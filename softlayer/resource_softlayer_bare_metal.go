@@ -78,6 +78,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew: true,
 			},
 
+			// Optional and computed when a quote_id is povided.
 			"datacenter": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -242,12 +243,9 @@ func getBareMetalOrderFromResourceData(d *schema.ResourceData, meta interface{})
 		NetworkComponents:      []datatypes.Network_Component{networkComponent},
 		PostInstallScriptUri:   sl.String(d.Get("post_install_script_uri").(string)),
 		BareMetalInstanceFlag:  sl.Int(1),
-	}
-
-	if fixed_config_preset, ok := d.GetOk("fixed_config_preset"); ok {
-		hardware.FixedConfigurationPreset = &datatypes.Product_Package_Preset{
-			KeyName: sl.String(fixed_config_preset.(string)),
-		}
+		FixedConfigurationPreset: &datatypes.Product_Package_Preset{
+			KeyName: sl.String(d.Get("fixed_config_preset").(string)),
+		},
 	}
 
 	if operatingSystemReferenceCode, ok := d.GetOk("os_reference_code"); ok {
@@ -311,13 +309,13 @@ func getBareMetalOrderFromResourceData(d *schema.ResourceData, meta interface{})
 func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ProviderConfig).SoftLayerSession()
 	var order datatypes.Container_Product_Order
-
-	hardware, err := getBareMetalOrderFromResourceData(d, meta)
-	if err != nil {
-		return err
+	var err error
+	quote_id := d.Get("quote_id").(int)
+	hardware := datatypes.Hardware{
+		Hostname: sl.String(d.Get("hostname").(string)),
+		Domain:   sl.String(d.Get("domain").(string)),
 	}
 
-	quote_id := d.Get("quote_id").(int)
 	if quote_id > 0 {
 		// Build a bare metal template from the quote.
 		order, err = services.GetBillingOrderQuoteService(sess).
@@ -334,6 +332,10 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 		)
 	} else if _, ok := d.GetOk("fixed_config_preset"); ok {
 		// Build a pre-configured bare metal server
+		hardware, err = getBareMetalOrderFromResourceData(d, meta)
+		if err != nil {
+			return err
+		}
 		order, err = services.GetHardwareService(sess).GenerateOrderTemplate(&hardware)
 		if err != nil {
 			return fmt.Errorf(
@@ -341,14 +343,20 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 		}
 	} else {
 		// Build a custom bare metal server
-		dc, err := location.GetDatacenterByName(sess, d.Get("datacenter").(string), "id")
-		if err != nil {
-			return err
-		}
-
+		// Check mandatory attributes of custom bare metal server ordering.
 		model, ok := d.GetOk("model")
 		if !ok {
 			return fmt.Errorf("The attribute 'model' is not defined.")
+		}
+
+		datacenter, ok := d.GetOk("datacenter")
+		if !ok {
+			return fmt.Errorf("The attribute 'datacenter' is not defined.")
+		}
+
+		dc, err := location.GetDatacenterByName(sess, datacenter.(string), "id")
+		if err != nil {
+			return err
 		}
 
 		// 1. Get a package by keyName
@@ -362,8 +370,6 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 		if err != nil {
 			return err
 		}
-
-		log.Printf("**************** Length of items %d", len(items))
 
 		// 3. Build price items
 		disks := d.Get("disks").([]interface{})
@@ -383,10 +389,7 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 		if err != nil {
 			return err
 		}
-		disk0, err := getItemPriceId(items, "disk0", disks[0].(string))
-		if err != nil {
-			return err
-		}
+
 		portSpeed, err := getItemPriceId(items, "port_speed", "1_GBPS_PUBLIC_PRIVATE_NETWORK_UPLINKS")
 		if err != nil {
 			return err
@@ -431,10 +434,9 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 		}
 		order = datatypes.Container_Product_Order{
 			Quantity: sl.Int(1),
-			Hardware: []datatypes.Hardware{{
-				Hostname: sl.String(d.Get("hostname").(string)),
-				Domain:   sl.String(d.Get("domain").(string)),
-			}},
+			Hardware: []datatypes.Hardware{
+				hardware,
+			},
 			Location:  sl.String(strconv.Itoa(*dc.Id)),
 			PackageId: pkg.Id,
 			Prices: []datatypes.Product_Item_Price{
@@ -442,7 +444,6 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 				os,
 				ram,
 				diskController,
-				disk0,
 				portSpeed,
 				//	powerSupply,
 				bandwidth,
@@ -454,6 +455,18 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 				response,
 				vulnerabilityScanner,
 			},
+		}
+
+		// Add prices of disks.
+		diskLen := len(disks)
+		if diskLen > 0 {
+			for i, disk := range disks {
+				diskPrice, err := getItemPriceId(items, "disk"+strconv.Itoa(i), disk.(string))
+				if err != nil {
+					return err
+				}
+				order.Prices = append(order.Prices, diskPrice)
+			}
 		}
 	}
 
@@ -670,9 +683,10 @@ func waitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interfa
 				return bms[0], "provisioned", nil
 			}
 		},
-		Timeout:    4 * time.Hour,
-		Delay:      30 * time.Second,
-		MinTimeout: 2 * time.Minute,
+		Timeout:        24 * time.Hour,
+		Delay:          60 * time.Second,
+		MinTimeout:     2 * time.Minute,
+		NotFoundChecks: 24 * 60,
 	}
 
 	return stateConf.WaitForState()
@@ -697,9 +711,10 @@ func waitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}
 				return bm, "active", nil
 			}
 		},
-		Timeout:    4 * time.Hour,
-		Delay:      5 * time.Second,
-		MinTimeout: 1 * time.Minute,
+		Timeout:        24 * time.Hour,
+		Delay:          60 * time.Second,
+		MinTimeout:     2 * time.Minute,
+		NotFoundChecks: 24 * 60,
 	}
 
 	return stateConf.WaitForState()
