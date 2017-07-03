@@ -78,6 +78,22 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew: true,
 			},
 
+			// Custom bare metal server only
+			"redundant_network": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+				ForceNew: true,
+			},
+
+			// Custom bare metal server only
+			"unbonded_network": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+				ForceNew: true,
+			},
+
 			// Optional and computed when a quote_id is povided.
 			"datacenter": {
 				Type:     schema.TypeString,
@@ -696,10 +712,11 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 		return datatypes.Container_Product_Order{}, err
 	}
 
-	portSpeed, err := getItemPriceId(items, "port_speed", "1_GBPS_PUBLIC_PRIVATE_NETWORK_UPLINKS")
+	portSpeed, err := findNetworkItemPriceId(items, d)
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
+
 	/*
 		powerSupply, err := getItemPriceId(items, "power_supply", "REDUNDANT_POWER_SUPPLY")
 		if err != nil {
@@ -840,4 +857,52 @@ func setCommonBareMetalOptions(d *schema.ResourceData, meta interface{}, order d
 	}
 
 	return order, nil
+}
+
+func findNetworkItemPriceId(items []datatypes.Product_Item, d *schema.ResourceData) (datatypes.Product_Item_Price, error) {
+	networkSpeed := d.Get("network_speed").(int)
+	redundantNetwork := d.Get("redundant_network").(bool)
+	unbondedNetwork := d.Get("unbonded_network").(bool)
+	privateNetworkOnly := d.Get("private_network_only").(bool)
+
+	networkSpeedStr := "_MBPS_"
+	redundantNetworkStr := ""
+	unbondedNetworkStr := ""
+
+	if networkSpeed < 1000 {
+		networkSpeedStr = strconv.Itoa(networkSpeed) + networkSpeedStr
+	} else {
+		networkSpeedStr = strconv.Itoa(networkSpeed/1000) + "_GBPS"
+	}
+	if redundantNetwork {
+		redundantNetworkStr = "_REDUNDANT"
+	}
+
+	if unbondedNetwork {
+		unbondedNetworkStr = "_UNBONDED"
+	}
+
+	for _, item := range items {
+		for _, itemCategory := range item.Categories {
+			if *itemCategory.CategoryCode == "port_speed" &&
+				strings.HasPrefix(*item.KeyName, networkSpeedStr) &&
+				strings.Contains(*item.KeyName, redundantNetworkStr) &&
+				strings.Contains(*item.KeyName, unbondedNetworkStr) {
+				if (privateNetworkOnly && strings.Contains(*item.KeyName, "_PUBLIC_PRIVATE")) ||
+					(!privateNetworkOnly && !strings.Contains(*item.KeyName, "_PUBLIC_PRIVATE")) ||
+					(!unbondedNetwork && strings.Contains(*item.KeyName, "_UNBONDED")) ||
+					!redundantNetwork && strings.Contains(*item.KeyName, "_REDUNDANT") {
+					break
+				}
+				for _, price := range item.Prices {
+					if price.LocationGroupId == nil {
+						return datatypes.Product_Item_Price{Id: price.Id}, nil
+					}
+				}
+			}
+		}
+	}
+	return datatypes.Product_Item_Price{},
+		fmt.Errorf("Could not find the network with %s, %s, %s, and private_network_only = %t",
+			networkSpeedStr, redundantNetworkStr, unbondedNetworkStr, privateNetworkOnly)
 }
