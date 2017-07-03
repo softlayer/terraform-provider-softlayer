@@ -331,7 +331,7 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 			hardware,
 		)
 	} else if _, ok := d.GetOk("fixed_config_preset"); ok {
-		// Build a pre-configured bare metal server
+		// Build a pre-configured bare metal server template using fixed_config_preset.
 		hardware, err = getBareMetalOrderFromResourceData(d, meta)
 		if err != nil {
 			return err
@@ -342,138 +342,18 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 				"Encountered problem trying to get the bare metal order template: %s", err)
 		}
 	} else {
-		// Build a custom bare metal server
-		// Check mandatory attributes of custom bare metal server ordering.
-		model, ok := d.GetOk("model")
-		if !ok {
-			return fmt.Errorf("The attribute 'model' is not defined.")
-		}
-
-		datacenter, ok := d.GetOk("datacenter")
-		if !ok {
-			return fmt.Errorf("The attribute 'datacenter' is not defined.")
-		}
-
-		dc, err := location.GetDatacenterByName(sess, datacenter.(string), "id")
+		// Build a custom bare metal server template
+		order, err = getCustomBareMetalOrder(d, meta)
 		if err != nil {
-			return err
-		}
-
-		// 1. Get a package by keyName
-		pkg, err := product.GetPackageByKeyName(sess, model.(string))
-		if err != nil {
-			return err
-		}
-
-		// 2. Get all prices for the package
-		items, err := product.GetPackageProducts(sess, *pkg.Id, "id,categories,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode]]")
-		if err != nil {
-			return err
-		}
-
-		// 3. Build price items
-		disks := d.Get("disks").([]interface{})
-		server, err := getItemPriceId(items, "server", d.Get("cpu").(string))
-		if err != nil {
-			return err
-		}
-		os, err := getItemPriceId(items, "os", "OS_UBUNTU_14_04_LTS_TRUSTY_TAHR_64_BIT")
-		if err != nil {
-			return err
-		}
-		ram, err := getItemPriceId(items, "ram", d.Get("memory").(string))
-		if err != nil {
-			return err
-		}
-		diskController, err := getItemPriceId(items, "disk_controller", d.Get("disk_controller").(string))
-		if err != nil {
-			return err
-		}
-
-		portSpeed, err := getItemPriceId(items, "port_speed", "1_GBPS_PUBLIC_PRIVATE_NETWORK_UPLINKS")
-		if err != nil {
-			return err
-		}
-		/*
-			powerSupply, err := getItemPriceId(items, "power_supply", "REDUNDANT_POWER_SUPPLY")
-			if err != nil {
-				return err
-			}
-		*/
-		bandwidth, err := getItemPriceId(items, "bandwidth", "BANDWIDTH_20000_GB")
-		if err != nil {
-			return err
-		}
-		priIpAddress, err := getItemPriceId(items, "pri_ip_addresses", "1_IP_ADDRESS")
-		if err != nil {
-			return err
-		}
-		remoteManagement, err := getItemPriceId(items, "remote_management", "REBOOT_KVM_OVER_IP")
-		if err != nil {
-			return err
-		}
-		vpnManagement, err := getItemPriceId(items, "vpn_management", "UNLIMITED_SSL_VPN_USERS_1_PPTP_VPN_USER_PER_ACCOUNT")
-		if err != nil {
-			return err
-		}
-		monitoring, err := getItemPriceId(items, "monitoring", "MONITORING_HOST_PING")
-		if err != nil {
-			return err
-		}
-		notification, err := getItemPriceId(items, "notification", "NOTIFICATION_EMAIL_AND_TICKET")
-		if err != nil {
-			return err
-		}
-		response, err := getItemPriceId(items, "response", "AUTOMATED_NOTIFICATION")
-		if err != nil {
-			return err
-		}
-		vulnerabilityScanner, err := getItemPriceId(items, "vulnerability_scanner", "NESSUS_VULNERABILITY_ASSESSMENT_REPORTING")
-		if err != nil {
-			return err
-		}
-		order = datatypes.Container_Product_Order{
-			Quantity: sl.Int(1),
-			Hardware: []datatypes.Hardware{
-				hardware,
-			},
-			Location:  sl.String(strconv.Itoa(*dc.Id)),
-			PackageId: pkg.Id,
-			Prices: []datatypes.Product_Item_Price{
-				server,
-				os,
-				ram,
-				diskController,
-				portSpeed,
-				//	powerSupply,
-				bandwidth,
-				priIpAddress,
-				remoteManagement,
-				vpnManagement,
-				monitoring,
-				notification,
-				response,
-				vulnerabilityScanner,
-			},
-		}
-
-		// Add prices of disks.
-		diskLen := len(disks)
-		if diskLen > 0 {
-			for i, disk := range disks {
-				diskPrice, err := getItemPriceId(items, "disk"+strconv.Itoa(i), disk.(string))
-				if err != nil {
-					return err
-				}
-				order.Prices = append(order.Prices, diskPrice)
-			}
+			return fmt.Errorf(
+				"Encountered problem trying to get the custom bare metal order template: %s", err)
 		}
 	}
 
-	// Set image template id if it exists
-	if rawImageTemplateId, ok := d.GetOk("image_template_id"); ok {
-		imageTemplateId := rawImageTemplateId.(int)
-		order.ImageTemplateId = sl.Int(imageTemplateId)
+	order, err = setCommonBareMetalOptions(d, meta, order)
+	if err != nil {
+		return fmt.Errorf(
+			"Encountered problem trying to configure bare metal server options: %s", err)
 	}
 
 	log.Println("[INFO] Ordering bare metal server")
@@ -765,4 +645,199 @@ func getItemPriceId(items []datatypes.Product_Item, categoryCode string, keyName
 	}
 	return datatypes.Product_Item_Price{},
 		fmt.Errorf("Could not find the matching item with categorycode %s and keyName %s", categoryCode, keyName)
+}
+
+func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatypes.Container_Product_Order, error) {
+	// Check mandatory attributes of custom bare metal server ordering.
+	sess := meta.(ProviderConfig).SoftLayerSession()
+	model, ok := d.GetOk("model")
+	if !ok {
+		return datatypes.Container_Product_Order{}, fmt.Errorf("The attribute 'model' is not defined.")
+	}
+
+	datacenter, ok := d.GetOk("datacenter")
+	if !ok {
+		return datatypes.Container_Product_Order{}, fmt.Errorf("The attribute 'datacenter' is not defined.")
+	}
+
+	dc, err := location.GetDatacenterByName(sess, datacenter.(string), "id")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+
+	// 1. Get a package by keyName
+	pkg, err := product.GetPackageByKeyName(sess, model.(string))
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+
+	// 2. Get all prices for the package
+	items, err := product.GetPackageProducts(sess, *pkg.Id, "id,categories,capacity,description,units,keyName,prices[id,categories[id,name,categoryCode]]")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+
+	// 3. Build price items
+	disks := d.Get("disks").([]interface{})
+	server, err := getItemPriceId(items, "server", d.Get("cpu").(string))
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	os, err := getItemPriceId(items, "os", "OS_UBUNTU_14_04_LTS_TRUSTY_TAHR_64_BIT")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	ram, err := getItemPriceId(items, "ram", d.Get("memory").(string))
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	diskController, err := getItemPriceId(items, "disk_controller", d.Get("disk_controller").(string))
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+
+	portSpeed, err := getItemPriceId(items, "port_speed", "1_GBPS_PUBLIC_PRIVATE_NETWORK_UPLINKS")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	/*
+		powerSupply, err := getItemPriceId(items, "power_supply", "REDUNDANT_POWER_SUPPLY")
+		if err != nil {
+			return err
+		}
+	*/
+	bandwidth, err := getItemPriceId(items, "bandwidth", "BANDWIDTH_20000_GB")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	priIpAddress, err := getItemPriceId(items, "pri_ip_addresses", "1_IP_ADDRESS")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	remoteManagement, err := getItemPriceId(items, "remote_management", "REBOOT_KVM_OVER_IP")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	vpnManagement, err := getItemPriceId(items, "vpn_management", "UNLIMITED_SSL_VPN_USERS_1_PPTP_VPN_USER_PER_ACCOUNT")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	monitoring, err := getItemPriceId(items, "monitoring", "MONITORING_HOST_PING")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	notification, err := getItemPriceId(items, "notification", "NOTIFICATION_EMAIL_AND_TICKET")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	response, err := getItemPriceId(items, "response", "AUTOMATED_NOTIFICATION")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	vulnerabilityScanner, err := getItemPriceId(items, "vulnerability_scanner", "NESSUS_VULNERABILITY_ASSESSMENT_REPORTING")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	order := datatypes.Container_Product_Order{
+		Quantity: sl.Int(1),
+		Hardware: []datatypes.Hardware{{
+			Hostname: sl.String(d.Get("hostname").(string)),
+			Domain:   sl.String(d.Get("domain").(string)),
+		},
+		},
+		Location:  sl.String(strconv.Itoa(*dc.Id)),
+		PackageId: pkg.Id,
+		Prices: []datatypes.Product_Item_Price{
+			server,
+			os,
+			ram,
+			diskController,
+			portSpeed,
+			//	powerSupply,
+			bandwidth,
+			priIpAddress,
+			remoteManagement,
+			vpnManagement,
+			monitoring,
+			notification,
+			response,
+			vulnerabilityScanner,
+		},
+	}
+
+	// Add prices of disks.
+	diskLen := len(disks)
+	if diskLen > 0 {
+		for i, disk := range disks {
+			diskPrice, err := getItemPriceId(items, "disk"+strconv.Itoa(i), disk.(string))
+			if err != nil {
+				return datatypes.Container_Product_Order{}, err
+			}
+			order.Prices = append(order.Prices, diskPrice)
+		}
+	}
+
+	return order, nil
+}
+
+func setCommonBareMetalOptions(d *schema.ResourceData, meta interface{}, order datatypes.Container_Product_Order) (datatypes.Container_Product_Order, error) {
+	public_vlan_id := d.Get("public_vlan_id").(int)
+
+	if public_vlan_id > 0 {
+		order.Hardware[0].PrimaryNetworkComponent = &datatypes.Network_Component{
+			NetworkVlan: &datatypes.Network_Vlan{Id: sl.Int(public_vlan_id)},
+		}
+	}
+
+	private_vlan_id := d.Get("private_vlan_id").(int)
+	if private_vlan_id > 0 {
+		order.Hardware[0].PrimaryBackendNetworkComponent = &datatypes.Network_Component{
+			NetworkVlan: &datatypes.Network_Vlan{Id: sl.Int(private_vlan_id)},
+		}
+	}
+
+	if public_subnet, ok := d.GetOk("public_subnet"); ok {
+		subnet := public_subnet.(string)
+		subnetId, err := getSubnetId(subnet, meta)
+		if err != nil {
+			return datatypes.Container_Product_Order{}, fmt.Errorf("Error determining id for subnet %s: %s", subnet, err)
+		}
+
+		order.Hardware[0].PrimaryNetworkComponent.NetworkVlan.PrimarySubnetId = sl.Int(subnetId)
+	}
+
+	if private_subnet, ok := d.GetOk("private_subnet"); ok {
+		subnet := private_subnet.(string)
+		subnetId, err := getSubnetId(subnet, meta)
+		if err != nil {
+			return datatypes.Container_Product_Order{}, fmt.Errorf("Error determining id for subnet %s: %s", subnet, err)
+		}
+
+		order.Hardware[0].PrimaryBackendNetworkComponent.NetworkVlan.PrimarySubnetId = sl.Int(subnetId)
+	}
+
+	if userMetadata, ok := d.GetOk("user_metadata"); ok {
+		order.Hardware[0].UserData = []datatypes.Hardware_Attribute{
+			{Value: sl.String(userMetadata.(string))},
+		}
+	}
+
+	// Get configured ssh_keys
+	ssh_key_ids := d.Get("ssh_key_ids").([]interface{})
+	if len(ssh_key_ids) > 0 {
+		order.Hardware[0].SshKeys = make([]datatypes.Security_Ssh_Key, 0, len(ssh_key_ids))
+		for _, ssh_key_id := range ssh_key_ids {
+			order.Hardware[0].SshKeys = append(order.Hardware[0].SshKeys, datatypes.Security_Ssh_Key{
+				Id: sl.Int(ssh_key_id.(int)),
+			})
+		}
+	}
+
+	// Set image template id if it exists
+	if rawImageTemplateId, ok := d.GetOk("image_template_id"); ok {
+		imageTemplateId := rawImageTemplateId.(int)
+		order.ImageTemplateId = sl.Int(imageTemplateId)
+	}
+
+	return order, nil
 }
