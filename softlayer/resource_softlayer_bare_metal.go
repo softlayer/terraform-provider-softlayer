@@ -694,7 +694,6 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	}
 
 	// 3. Build price items
-	disks := d.Get("disks").([]interface{})
 	server, err := getItemPriceId(items, "server", d.Get("cpu").(string))
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
@@ -717,16 +716,12 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 		return datatypes.Container_Product_Order{}, err
 	}
 
-	/*
-		powerSupply, err := getItemPriceId(items, "power_supply", "REDUNDANT_POWER_SUPPLY")
-		if err != nil {
-			return err
-		}
-	*/
 	bandwidth, err := getItemPriceId(items, "bandwidth", "BANDWIDTH_20000_GB")
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
+
+	// Other common basic options
 	priIpAddress, err := getItemPriceId(items, "pri_ip_addresses", "1_IP_ADDRESS")
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
@@ -755,6 +750,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
+
 	order := datatypes.Container_Product_Order{
 		Quantity: sl.Int(1),
 		Hardware: []datatypes.Hardware{{
@@ -770,7 +766,6 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 			ram,
 			diskController,
 			portSpeed,
-			//	powerSupply,
 			bandwidth,
 			priIpAddress,
 			remoteManagement,
@@ -783,6 +778,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	}
 
 	// Add prices of disks.
+	disks := d.Get("disks").([]interface{})
 	diskLen := len(disks)
 	if diskLen > 0 {
 		for i, disk := range disks {
@@ -792,6 +788,15 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 			}
 			order.Prices = append(order.Prices, diskPrice)
 		}
+	}
+
+	// Add redundant power supply
+	if d.Get("redundant_power_supply").(bool) {
+		powerSupply, err := getItemPriceId(items, "power_supply", "REDUNDANT_POWER_SUPPLY")
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+		order.Prices = append(order.Prices, powerSupply)
 	}
 
 	return order, nil
