@@ -213,7 +213,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 			},
 
 			"memory": {
-				Type:     schema.TypeString,
+				Type:     schema.TypeInt,
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
@@ -702,10 +702,12 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
-	ram, err := getItemPriceId(items, "ram", d.Get("memory").(string))
+
+	ram, err := findMemoryItemPriceId(items, d)
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
+
 	diskController, err := getItemPriceId(items, "disk_controller", d.Get("disk_controller").(string))
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
@@ -721,7 +723,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 		return datatypes.Container_Product_Order{}, err
 	}
 
-	// Other common basic options
+	// Other common default options
 	priIpAddress, err := getItemPriceId(items, "pri_ip_addresses", "1_IP_ADDRESS")
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
@@ -910,4 +912,28 @@ func findNetworkItemPriceId(items []datatypes.Product_Item, d *schema.ResourceDa
 	return datatypes.Product_Item_Price{},
 		fmt.Errorf("Could not find the network with %s, %s, %s, and private_network_only = %t",
 			networkSpeedStr, redundantNetworkStr, unbondedNetworkStr, privateNetworkOnly)
+}
+
+func findMemoryItemPriceId(items []datatypes.Product_Item, d *schema.ResourceData) (datatypes.Product_Item_Price, error) {
+	memory := d.Get("memory").(int)
+	memoryStr := "RAM_" + strconv.Itoa(memory) + "_GB"
+	availableMemories := ""
+
+	for _, item := range items {
+		for _, itemCategory := range item.Categories {
+			if *itemCategory.CategoryCode == "ram" {
+				availableMemories = availableMemories + *item.KeyName + "(" + *item.Description + ")" + ", "
+				if strings.HasPrefix(*item.KeyName, memoryStr) {
+					for _, price := range item.Prices {
+						if price.LocationGroupId == nil {
+							return datatypes.Product_Item_Price{Id: price.Id}, nil
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return datatypes.Product_Item_Price{},
+		fmt.Errorf("Could not find the price item for %d GB memory. Available items are %s", memory, availableMemories)
 }
