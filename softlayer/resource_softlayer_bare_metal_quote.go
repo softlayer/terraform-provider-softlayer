@@ -15,13 +15,13 @@ import (
 	"github.com/softlayer/softlayer-go/sl"
 )
 
-func resourceSoftLayerBareMetal() *schema.Resource {
+func resourceSoftLayerBareMetalQuote() *schema.Resource {
 	return &schema.Resource{
-		Create:   resourceSoftLayerBareMetalCreate,
-		Read:     resourceSoftLayerBareMetalRead,
-		Update:   resourceSoftLayerBareMetalUpdate,
-		Delete:   resourceSoftLayerBareMetalDelete,
-		Exists:   resourceSoftLayerBareMetalExists,
+		Create:   resourceSoftLayerBareMetalQuoteCreate,
+		Read:     resourceSoftLayerBareMetalQuoteRead,
+		Update:   resourceSoftLayerBareMetalQuoteUpdate,
+		Delete:   resourceSoftLayerBareMetalQuoteDelete,
+		Exists:   resourceSoftLayerBareMetalQuoteExists,
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
@@ -55,33 +55,6 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"os_reference_code": {
-				Type:          schema.TypeString,
-				Optional:      true,
-				ForceNew:      true,
-				ConflictsWith: []string{"image_template_id"},
-			},
-
-			"hourly_billing": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  true,
-				ForceNew: true,
-			},
-
-			"private_network_only": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
-				ForceNew: true,
-			},
-
-			"datacenter": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-			},
-
 			"public_vlan_id": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -108,13 +81,6 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
-			},
-
-			"network_speed": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  100,
-				ForceNew: true,
 			},
 
 			"public_ipv4_address": {
@@ -152,23 +118,10 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"fixed_config_preset": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-			},
-
 			"quote_id": {
 				Type:     schema.TypeInt,
-				Optional: true,
+				Required: true,
 				ForceNew: true,
-			},
-
-			"image_template_id": {
-				Type:          schema.TypeInt,
-				Optional:      true,
-				ForceNew:      true,
-				ConflictsWith: []string{"os_reference_code"},
 			},
 
 			"tags": {
@@ -181,142 +134,38 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 	}
 }
 
-func getBareMetalOrderFromResourceData(d *schema.ResourceData, meta interface{}) (datatypes.Hardware, error) {
-	dc := datatypes.Location{
-		Name: sl.String(d.Get("datacenter").(string)),
-	}
-
-	networkComponent := datatypes.Network_Component{
-		MaxSpeed: sl.Int(d.Get("network_speed").(int)),
-	}
-
-	hardware := datatypes.Hardware{
-		Hostname:               sl.String(d.Get("hostname").(string)),
-		Domain:                 sl.String(d.Get("domain").(string)),
-		HourlyBillingFlag:      sl.Bool(d.Get("hourly_billing").(bool)),
-		PrivateNetworkOnlyFlag: sl.Bool(d.Get("private_network_only").(bool)),
-		Datacenter:             &dc,
-		NetworkComponents:      []datatypes.Network_Component{networkComponent},
-		PostInstallScriptUri:   sl.String(d.Get("post_install_script_uri").(string)),
-		BareMetalInstanceFlag:  sl.Int(1),
-	}
-
-	if fixed_config_preset, ok := d.GetOk("fixed_config_preset"); ok {
-		hardware.FixedConfigurationPreset = &datatypes.Product_Package_Preset{
-			KeyName: sl.String(fixed_config_preset.(string)),
-		}
-	}
-
-	if operatingSystemReferenceCode, ok := d.GetOk("os_reference_code"); ok {
-		hardware.OperatingSystemReferenceCode = sl.String(operatingSystemReferenceCode.(string))
-	}
-
-	public_vlan_id := d.Get("public_vlan_id").(int)
-	if public_vlan_id > 0 {
-		hardware.PrimaryNetworkComponent = &datatypes.Network_Component{
-			NetworkVlan: &datatypes.Network_Vlan{Id: sl.Int(public_vlan_id)},
-		}
-	}
-
-	private_vlan_id := d.Get("private_vlan_id").(int)
-	if private_vlan_id > 0 {
-		hardware.PrimaryBackendNetworkComponent = &datatypes.Network_Component{
-			NetworkVlan: &datatypes.Network_Vlan{Id: sl.Int(private_vlan_id)},
-		}
-	}
-
-	if public_subnet, ok := d.GetOk("public_subnet"); ok {
-		subnet := public_subnet.(string)
-		subnetId, err := getSubnetId(subnet, meta)
-		if err != nil {
-			return hardware, fmt.Errorf("Error determining id for subnet %s: %s", subnet, err)
-		}
-
-		hardware.PrimaryNetworkComponent.NetworkVlan.PrimarySubnetId = sl.Int(subnetId)
-	}
-
-	if private_subnet, ok := d.GetOk("private_subnet"); ok {
-		subnet := private_subnet.(string)
-		subnetId, err := getSubnetId(subnet, meta)
-		if err != nil {
-			return hardware, fmt.Errorf("Error determining id for subnet %s: %s", subnet, err)
-		}
-
-		hardware.PrimaryBackendNetworkComponent.NetworkVlan.PrimarySubnetId = sl.Int(subnetId)
-	}
-
-	if userMetadata, ok := d.GetOk("user_metadata"); ok {
-		hardware.UserData = []datatypes.Hardware_Attribute{
-			{Value: sl.String(userMetadata.(string))},
-		}
-	}
-
-	// Get configured ssh_keys
-	ssh_key_ids := d.Get("ssh_key_ids").([]interface{})
-	if len(ssh_key_ids) > 0 {
-		hardware.SshKeys = make([]datatypes.Security_Ssh_Key, 0, len(ssh_key_ids))
-		for _, ssh_key_id := range ssh_key_ids {
-			hardware.SshKeys = append(hardware.SshKeys, datatypes.Security_Ssh_Key{
-				Id: sl.Int(ssh_key_id.(int)),
-			})
-		}
-	}
-
-	return hardware, nil
-}
-
-func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerBareMetalQuoteCreate(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ProviderConfig).SoftLayerSession()
-	hwService := services.GetHardwareService(sess)
 	orderService := services.GetProductOrderService(sess)
+	quoteService := services.GetBillingOrderQuoteService(sess)
 
-	hardware, err := getBareMetalOrderFromResourceData(d, meta)
+	order, err := quoteService.Id(d.Get("quote_id").(int)).GetRecalculatedOrderContainer(nil, sl.Bool(false))
 	if err != nil {
-		return err
+		return fmt.Errorf(
+			"Encountered problem trying to get the bare metal order template from quote: %s", err)
 	}
 
-	quote_id := d.Get("quote_id").(int)
-	if quote_id > 0 {
-		quoteService := services.GetBillingOrderQuoteService(meta.(ProviderConfig).SoftLayerSession())
-		order, err := quoteService.Id(quote_id).GetRecalculatedOrderContainer(nil, sl.Bool(false))
-		if err != nil {
-			return fmt.Errorf(
-				"Encountered problem trying to get the bare metal order template from quote: %s", err)
-		}
-		order.Quantity = sl.Int(1)
-		order.PresetId = nil
-		order.Hardware = make([]datatypes.Hardware, 0, 1)
-		order.Hardware = append(
-			order.Hardware,
-			datatypes.Hardware{
-				Hostname: hardware.Hostname,
-				Domain:   hardware.Domain,
-			},
-		)
+	// Set additional parameters
+	order.Quantity = sl.Int(1)
+	order.PresetId = nil
+	order.Hardware = make([]datatypes.Hardware, 0, 1)
+	order.Hardware = append(
+		order.Hardware,
+		datatypes.Hardware{
+			Hostname: sl.String(d.Get("hostname").(string)),
+			Domain:   sl.String(d.Get("domain").(string)),
+		},
+	)
+	hardware := datatypes.Hardware{
+		Hostname: sl.String(d.Get("hostname").(string)),
+		Domain:   sl.String(d.Get("domain").(string)),
+	}
 
-		log.Println("[INFO] Ordering bare metal server")
-		_, err = orderService.PlaceOrder(&order, sl.Bool(false))
-		if err != nil {
-			return fmt.Errorf("Error ordering bare metal server: %s\n%+v\n", err, order)
-		}
-	} else {
-		order, err := hwService.GenerateOrderTemplate(&hardware)
-		if err != nil {
-			return fmt.Errorf(
-				"Encountered problem trying to get the bare metal order template: %s", err)
-		}
+	log.Println("[INFO] Ordering bare metal server")
 
-		// Set image template id if it exists
-		if rawImageTemplateId, ok := d.GetOk("image_template_id"); ok {
-			imageTemplateId := rawImageTemplateId.(int)
-			order.ImageTemplateId = sl.Int(imageTemplateId)
-		}
-
-		log.Println("[INFO] Ordering bare metal server")
-		_, err = orderService.PlaceOrder(&order, sl.Bool(false))
-		if err != nil {
-			return fmt.Errorf("Error ordering bare metal server: %s\n%+v\n", err, order)
-		}
+	_, err = orderService.PlaceOrder(&order, sl.Bool(false))
+	if err != nil {
+		return fmt.Errorf("Error ordering bare metal server: %s", err)
 	}
 
 	log.Printf("[INFO] Bare Metal Server ID: %s", d.Id())
@@ -348,7 +197,7 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 	return resourceSoftLayerBareMetalRead(d, meta)
 }
 
-func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerBareMetalQuoteRead(d *schema.ResourceData, meta interface{}) error {
 	service := services.GetHardwareService(meta.(ProviderConfig).SoftLayerSession())
 
 	id, err := strconv.Atoi(d.Id())
@@ -373,18 +222,10 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 	d.Set("hostname", *result.Hostname)
 	d.Set("domain", *result.Domain)
 
-	if result.Datacenter != nil {
-		d.Set("datacenter", *result.Datacenter.Name)
-	}
-
-	d.Set("network_speed", *result.PrimaryNetworkComponent.MaxSpeed)
 	if result.PrimaryIpAddress != nil {
 		d.Set("public_ipv4_address", *result.PrimaryIpAddress)
 	}
 	d.Set("private_ipv4_address", *result.PrimaryBackendIpAddress)
-
-	d.Set("private_network_only", *result.PrivateNetworkOnlyFlag)
-	d.Set("hourly_billing", *result.HourlyBillingFlag)
 
 	if result.PrimaryNetworkComponent.NetworkVlan != nil {
 		d.Set("public_vlan_id", *result.PrimaryNetworkComponent.NetworkVlan.Id)
@@ -412,17 +253,13 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 	}
 
 	connInfo := map[string]string{"type": "ssh"}
-	if !*result.PrivateNetworkOnlyFlag && result.PrimaryIpAddress != nil {
-		connInfo["host"] = *result.PrimaryIpAddress
-	} else {
-		connInfo["host"] = *result.PrimaryBackendIpAddress
-	}
+	connInfo["host"] = *result.PrimaryBackendIpAddress
 	d.SetConnInfo(connInfo)
 
 	return nil
 }
 
-func resourceSoftLayerBareMetalUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerBareMetalQuoteUpdate(d *schema.ResourceData, meta interface{}) error {
 	id, _ := strconv.Atoi(d.Id())
 
 	if d.HasChange("tags") {
@@ -442,7 +279,7 @@ func resourceSoftLayerBareMetalUpdate(d *schema.ResourceData, meta interface{}) 
 	return nil
 }
 
-func resourceSoftLayerBareMetalDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceSoftLayerBareMetalQuoteDelete(d *schema.ResourceData, meta interface{}) error {
 	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetHardwareService(sess)
 
@@ -463,7 +300,7 @@ func resourceSoftLayerBareMetalDelete(d *schema.ResourceData, meta interface{}) 
 
 	billingItemService := services.GetBillingItemService(sess)
 	_, err = billingItemService.Id(*billingItem.Id).CancelItem(
-		sl.Bool(true), sl.Bool(true), sl.String("No longer required"), sl.String("Please cancel this server"),
+		sl.Bool(false), sl.Bool(true), sl.String("No longer required"), sl.String("Please cancel this server"),
 	)
 	if err != nil {
 		return fmt.Errorf("Error canceling the bare metal server (%d): %s", id, err)
@@ -472,7 +309,7 @@ func resourceSoftLayerBareMetalDelete(d *schema.ResourceData, meta interface{}) 
 	return nil
 }
 
-func resourceSoftLayerBareMetalExists(d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceSoftLayerBareMetalQuoteExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	service := services.GetHardwareService(meta.(ProviderConfig).SoftLayerSession())
 
 	id, err := strconv.Atoi(d.Id())
@@ -487,14 +324,14 @@ func resourceSoftLayerBareMetalExists(d *schema.ResourceData, meta interface{}) 
 		}
 	}
 
-	return result.Id != nil && *result.Id == id, nil
+	return err == nil && result.Id != nil && *result.Id == id, nil
 }
 
 // Bare metal creation does not return a bare metal object with an Id.
 // Have to wait on provision date to become available on server that matches
 // hostname and domain.
 // http://sldn.softlayer.com/blog/bpotter/ordering-bare-metal-servers-using-softlayer-api
-func waitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interface{}, error) {
+func waitForBareMetalQuoteProvision(d *datatypes.Hardware, meta interface{}) (interface{}, error) {
 	hostname := *d.Hostname
 	domain := *d.Domain
 	log.Printf("Waiting for server (%s.%s) to have to be provisioned", hostname, domain)
@@ -528,7 +365,7 @@ func waitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interfa
 	return stateConf.WaitForState()
 }
 
-func waitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}, error) {
+func waitForNoBareMetalQuoteActiveTransactions(id int, meta interface{}) (interface{}, error) {
 	log.Printf("Waiting for server (%d) to have zero active transactions", id)
 	service := services.GetHardwareServerService(meta.(ProviderConfig).SoftLayerSession())
 
@@ -555,32 +392,6 @@ func waitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}
 	return stateConf.WaitForState()
 }
 
-func setHardwareTags(id int, d *schema.ResourceData, meta interface{}) error {
-	service := services.GetHardwareService(meta.(ProviderConfig).SoftLayerSession())
+// Depends on ressource_softlayer_bare_metal.go setHardwareTags
 
-	tags := getTags(d)
-	_, err := service.Id(id).SetTags(sl.String(tags))
-	if err != nil {
-		return fmt.Errorf("Could not set tags on bare metal server %d", id)
-	}
-
-	return nil
-}
-
-func setHardwareNotes(id int, d *schema.ResourceData, meta interface{}) error {
-	service := services.GetHardwareServerService(meta.(ProviderConfig).SoftLayerSession())
-
-	result, err := service.Id(id).GetObject()
-	if err != nil {
-		return err
-	}
-
-	result.Notes = sl.String(d.Get("notes").(string))
-
-	_, err = service.Id(id).EditObject(&result)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+// Depends on ressource_softlayer_bare_metal.go setHardwareNotes
