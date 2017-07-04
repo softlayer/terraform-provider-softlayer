@@ -648,24 +648,29 @@ func setHardwareNotes(id int, d *schema.ResourceData, meta interface{}) error {
 
 // Example : getItemPriceId(items, 'server', 'INTEL_XEON_2690_2_60')
 func getItemPriceId(items []datatypes.Product_Item, categoryCode string, keyName string) (datatypes.Product_Item_Price, error) {
+	availableItems := ""
 	for _, item := range items {
 		for _, itemCategory := range item.Categories {
-			if *itemCategory.CategoryCode == categoryCode && *item.KeyName == keyName {
-				for _, price := range item.Prices {
-					if price.LocationGroupId == nil {
-						return datatypes.Product_Item_Price{Id: price.Id}, nil
+			if *itemCategory.CategoryCode == categoryCode {
+				availableItems = availableItems + *item.KeyName + " ( " + *item.Description + " ) , "
+				if *item.KeyName == keyName {
+					for _, price := range item.Prices {
+						if price.LocationGroupId == nil {
+							return datatypes.Product_Item_Price{Id: price.Id}, nil
+						}
 					}
 				}
 			}
 		}
 	}
 	return datatypes.Product_Item_Price{},
-		fmt.Errorf("Could not find the matching item with categorycode %s and keyName %s", categoryCode, keyName)
+		fmt.Errorf("Could not find the matching item with categorycode %s and keyName %s. Available items are %s", categoryCode, keyName, availableItems)
 }
 
 func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatypes.Container_Product_Order, error) {
-	// Check mandatory attributes of custom bare metal server ordering.
 	sess := meta.(ProviderConfig).SoftLayerSession()
+
+	// Check mandatory attributes of custom bare metal server ordering.
 	model, ok := d.GetOk("model")
 	if !ok {
 		return datatypes.Container_Product_Order{}, fmt.Errorf("The attribute 'model' is not defined.")
@@ -676,6 +681,11 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 		return datatypes.Container_Product_Order{}, fmt.Errorf("The attribute 'datacenter' is not defined.")
 	}
 
+	osReferenceCode, ok := d.GetOk("os_reference_code")
+	if !ok {
+		return datatypes.Container_Product_Order{}, fmt.Errorf("The attribute 'os_reference_code' is not defined.")
+	}
+
 	dc, err := location.GetDatacenterByName(sess, datacenter.(string), "id")
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
@@ -684,6 +694,10 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	// 1. Get a package by keyName
 	pkg, err := product.GetPackageByKeyName(sess, model.(string))
 	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+
+	if pkg.Id == nil {
 		return datatypes.Container_Product_Order{}, err
 	}
 
@@ -698,7 +712,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
-	os, err := getItemPriceId(items, "os", "OS_UBUNTU_14_04_LTS_TRUSTY_TAHR_64_BIT")
+	os, err := getItemPriceId(items, "os", osReferenceCode.(string))
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}

@@ -111,7 +111,7 @@ mask ...string,
 
 	packages = rejectOutletPackages(packages)
 
-	if len(packages) == 0 {
+	if len(packages) == 0 || packages[0].Id == nil {
 		return datatypes.Product_Package{}, fmt.Errorf("No product packages found for %s", keyName)
 	}
 
