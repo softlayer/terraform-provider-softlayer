@@ -14,6 +14,7 @@ import (
 	"github.com/softlayer/softlayer-go/helpers/location"
 	"github.com/softlayer/softlayer-go/helpers/product"
 	"github.com/softlayer/softlayer-go/services"
+	"github.com/softlayer/softlayer-go/session"
 	"github.com/softlayer/softlayer-go/sl"
 )
 
@@ -669,6 +670,10 @@ func getItemPriceId(items []datatypes.Product_Item, categoryCode string, keyName
 
 func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatypes.Container_Product_Order, error) {
 	sess := meta.(ProviderConfig).SoftLayerSession()
+	// Validate attributes for custom bare metal server ordering.
+	if d.Get("hourly_billing").(bool) {
+		return datatypes.Container_Product_Order{}, fmt.Errorf("Custom bare metal server only supports monthly billing.")
+	}
 
 	// Check mandatory attributes of custom bare metal server ordering.
 	model, ok := d.GetOk("model")
@@ -691,8 +696,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 		return datatypes.Container_Product_Order{}, err
 	}
 
-	// 1. Get a package by keyName
-	pkg, err := product.GetPackageByKeyName(sess, model.(string))
+	pkg, err := getPackageByModel(sess, model.(string))
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
@@ -718,11 +722,6 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	}
 
 	ram, err := findMemoryItemPriceId(items, d)
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
-	}
-
-	diskController, err := getItemPriceId(items, "disk_controller", d.Get("disk_controller").(string))
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
@@ -780,7 +779,6 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 			server,
 			os,
 			ram,
-			diskController,
 			portSpeed,
 			bandwidth,
 			priIpAddress,
@@ -791,6 +789,15 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 			response,
 			vulnerabilityScanner,
 		},
+	}
+
+	// Add disk controller
+	if dc, ok := d.GetOk("disk_controller"); ok {
+		diskController, err := getItemPriceId(items, "disk_controller", dc.(string))
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+		order.Prices = append(order.Prices, diskController)
 	}
 
 	// Add prices of disks.
@@ -950,4 +957,35 @@ func findMemoryItemPriceId(items []datatypes.Product_Item, d *schema.ResourceDat
 
 	return datatypes.Product_Item_Price{},
 		fmt.Errorf("Could not find the price item for %d GB memory. Available items are %s", memory, availableMemories)
+}
+
+func getPackageByModel(sess *session.Session, model string) (datatypes.Product_Package, error) {
+	objectMask := "id,keyName,name,description,isActive,type[keyName]"
+	service := services.GetProductPackageService(sess)
+	availableModels := ""
+
+	// Get package id
+	packages, err := service.Mask(objectMask).
+		Filter(
+			filter.Build(
+				filter.Path("type.keyName").Eq("BARE_METAL_CPU"),
+			),
+		).GetAllObjects()
+	if err != nil {
+		return datatypes.Product_Package{}, err
+	}
+
+	for _, pkg := range packages {
+		availableModels = availableModels + *pkg.KeyName // + " ( " + *pkg.Description + " ), "
+		if pkg.Description != nil {
+			availableModels = availableModels + " ( " + *pkg.Description + " ), "
+		} else {
+			availableModels = availableModels + ", "
+		}
+		if *pkg.KeyName == model {
+			return pkg, nil
+		}
+	}
+
+	return datatypes.Product_Package{}, fmt.Errorf("No custom bare metal model for %s. Available model(s) is(are) %s", model, availableModels)
 }
