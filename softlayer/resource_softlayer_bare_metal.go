@@ -95,6 +95,13 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew: true,
 			},
 
+			// Custom bare metal server only
+			"public_bandwidth": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				ForceNew: true,
+			},
+
 			// Optional and computed when a quote_id is povided.
 			"datacenter": {
 				Type:     schema.TypeString,
@@ -220,16 +227,16 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Computed: true,
 			},
 
-			"disk_controller": {
-				Type:     schema.TypeString,
+			"raid": {
+				Type:     schema.TypeInt,
 				Optional: true,
 				ForceNew: true,
-				Computed: true,
 			},
 
 			"disks": {
 				Type:     schema.TypeList,
 				Optional: true,
+				ForceNew: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 
@@ -665,7 +672,7 @@ func getItemPriceId(items []datatypes.Product_Item, categoryCode string, keyName
 		}
 	}
 	return datatypes.Product_Item_Price{},
-		fmt.Errorf("Could not find the matching item with categorycode %s and keyName %s. Available items are %s", categoryCode, keyName, availableItems)
+		fmt.Errorf("Could not find the matching item with categorycode %s and keyName %s. Available item(s) is(are) %s", categoryCode, keyName, availableItems)
 }
 
 func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatypes.Container_Product_Order, error) {
@@ -730,12 +737,12 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
-
-	bandwidth, err := getItemPriceId(items, "bandwidth", "BANDWIDTH_20000_GB")
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
-	}
-
+	/*
+		bandwidth, err := getItemPriceId(items, "bandwidth", "BANDWIDTH_20000_GB")
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+	*/
 	// Other common default options
 	priIpAddress, err := getItemPriceId(items, "pri_ip_addresses", "1_IP_ADDRESS")
 	if err != nil {
@@ -780,7 +787,6 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 			os,
 			ram,
 			portSpeed,
-			bandwidth,
 			priIpAddress,
 			remoteManagement,
 			vpnManagement,
@@ -792,12 +798,23 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	}
 
 	// Add disk controller
-	if dc, ok := d.GetOk("disk_controller"); ok {
-		diskController, err := getItemPriceId(items, "disk_controller", dc.(string))
+	if raid, ok := d.GetOk("raid"); ok {
+		raidStr := "DISK_CONTROLLER_RAID_" + strconv.Itoa(raid.(int))
+		diskController, err := getItemPriceId(items, "disk_controller", raidStr)
 		if err != nil {
 			return datatypes.Container_Product_Order{}, err
 		}
 		order.Prices = append(order.Prices, diskController)
+	}
+
+	// Add public bandwidth
+	if publicBandwidth, ok := d.GetOk("public_bandwidth"); ok {
+		publicBandwidthStr := "BANDWIDTH_" + strconv.Itoa(publicBandwidth.(int)) + "_GB"
+		bandwidth, err := getItemPriceId(items, "bandwidth", publicBandwidthStr)
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+		order.Prices = append(order.Prices, bandwidth)
 	}
 
 	// Add prices of disks.
@@ -976,7 +993,7 @@ func getPackageByModel(sess *session.Session, model string) (datatypes.Product_P
 	}
 
 	for _, pkg := range packages {
-		availableModels = availableModels + *pkg.KeyName // + " ( " + *pkg.Description + " ), "
+		availableModels = availableModels + *pkg.KeyName
 		if pkg.Description != nil {
 			availableModels = availableModels + " ( " + *pkg.Description + " ), "
 		} else {
