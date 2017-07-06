@@ -102,7 +102,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew: true,
 			},
 
-			// Optional and computed when a quote_id is povided.
+			// Computed when a quote_id is povided.
 			"datacenter": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -178,18 +178,40 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Optional: true,
 				Default:  nil,
 				ForceNew: true,
+				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+					// post_install_script_uri is only used for bare metal server ordering.
+					if d.State() == nil {
+						return false
+					}
+					return true
+				},
 			},
 
+			// pre-configured bare metal server only
 			"fixed_config_preset": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
+				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+					// fixed_config_preset is only used for pre-configured bare metal server ordering.
+					if d.State() == nil {
+						return false
+					}
+					return true
+				},
 			},
 
 			"quote_id": {
 				Type:     schema.TypeInt,
 				Optional: true,
 				ForceNew: true,
+				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+					// quote_id is only used for bare metal server ordering with the quote.
+					if d.State() == nil {
+						return false
+					}
+					return true
+				},
 			},
 
 			"image_template_id": {
@@ -206,20 +228,35 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Set:      schema.HashString,
 			},
 
+			// Custom bare metal server only
 			"model": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
-				Computed: true,
+				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+					// model is only used for custom bare metal server ordering.
+					if d.State() == nil {
+						return false
+					}
+					return true
+				},
 			},
 
+			// Custom bare metal server only
 			"cpu": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
-				Computed: true,
+				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
+					// cpu is only used for custom bare metal server ordering.
+					if d.State() == nil {
+						return false
+					}
+					return true
+				},
 			},
 
+			// Custom bare metal server only
 			"memory": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -227,12 +264,14 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Computed: true,
 			},
 
+			// Custom bare metal server only
 			"raid": {
 				Type:     schema.TypeInt,
 				Optional: true,
 				ForceNew: true,
 			},
 
+			// Custom bare metal server only
 			"disks": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -240,6 +279,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 
+			// Custom bare metal server only
 			"redundant_power_supply": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -381,7 +421,7 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 	}
 
 	log.Println("[INFO] Ordering bare metal server")
-	_, err = services.GetProductOrderService(sess).PlaceOrder(&order, sl.Bool(true))
+	_, err = services.GetProductOrderService(sess).PlaceOrder(&order, sl.Bool(false))
 	if err != nil {
 		return fmt.Errorf("Error ordering bare metal server: %s\n%+v\n", err, order)
 	}
@@ -430,7 +470,10 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 			"hourlyBillingFlag," +
 			"datacenter[id,name,longName]," +
 			"primaryNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],maxSpeed]," +
-			"primaryBackendNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],maxSpeed]",
+			"primaryBackendNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],maxSpeed]," +
+			"memoryCapacity,powerSupplyCount,bandwidthAllocation," +
+			"operatingSystem[softwareLicense[softwareDescription[referenceCode]]]," +
+			"backendNetworkComponentCount,primaryBackendNetworkComponent[networkVlanTrunkCount]",
 	).GetObject()
 
 	if err != nil {
@@ -467,6 +510,32 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 	}
 
 	d.Set("notes", sl.Get(result.Notes, nil))
+	d.Set("memory", *result.MemoryCapacity)
+
+	if *result.PowerSupplyCount == 2 {
+		d.Set("redundant_power_supply", true)
+	} else {
+		d.Set("redundant_power_supply", false)
+	}
+
+	d.Set("public_bandwidth", int(*result.BandwidthAllocation))
+
+	d.Set("redundant_network", false)
+	d.Set("unbonded_network", false)
+	if *result.BackendNetworkComponentCount > 2 && result.PrimaryBackendNetworkComponent != nil {
+		if *result.PrimaryBackendNetworkComponent.NetworkVlanTrunkCount > 0 {
+			d.Set("redundant_network", true)
+		} else {
+			d.Set("unbonded_network", true)
+		}
+	}
+
+	if result.OperatingSystem != nil &&
+		result.OperatingSystem.SoftwareLicense != nil &&
+		result.OperatingSystem.SoftwareLicense.SoftwareDescription != nil &&
+		result.OperatingSystem.SoftwareLicense.SoftwareDescription.ReferenceCode != nil {
+		d.Set("os_reference_code", *result.OperatingSystem.SoftwareLicense.SoftwareDescription.ReferenceCode)
+	}
 
 	tagReferences := result.TagReferences
 	tagReferencesLen := len(tagReferences)
@@ -737,12 +806,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
-	/*
-		bandwidth, err := getItemPriceId(items, "bandwidth", "BANDWIDTH_20000_GB")
-		if err != nil {
-			return datatypes.Container_Product_Order{}, err
-		}
-	*/
+
 	// Other common default options
 	priIpAddress, err := getItemPriceId(items, "pri_ip_addresses", "1_IP_ADDRESS")
 	if err != nil {
