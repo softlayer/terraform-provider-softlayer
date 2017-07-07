@@ -2,7 +2,6 @@
 
 Provides a `bare_metal` resource. This allows bare metals to be created, updated and deleted. It provides three different ways to create bare metal servers. 
 
-
 ```hcl
 # Create a new bare metal
 resource "softlayer_bare_metal" "pre-configured-bm1" {
@@ -31,19 +30,38 @@ resource "softlayer_bare_metal" "pre-configured-bm1" {
 
 The following arguments are supported:
 
+**Common attributes**
+
 * `hostname` | *string*
     * Hostname for the computing instance.
     * **Optional**
 * `domain` | *string*
     * Domain for the computing instance.
     * **Required**
+* `user_metadata` | *string*
+    * Arbitrary data to be made available to the computing instance.
+    * *Optional*
+* `notes` | *string*
+    * A note of up to 1000 characters about the server.
+    * *Optional*
+* `ssh_key_ids` | *array* of numbers
+    * SSH key _IDs_ to install on the computing instance upon provisioning.
+    * *Optional*
+
+    **Note:** Don't know the ID(s) for your SSH keys? See [here](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_ssh_key.md) for a way to reference your SSH keys by their labels.
+
+* `post_install_script_uri` | *string*
+    * As defined in the [SoftLayer_Virtual_Guest_SupplementalCreateObjectOptions](https://sldn.softlayer.com/reference/datatypes/SoftLayer_Virtual_Guest_SupplementalCreateObjectOptions).
+    * *Optional*
+*   `tags` | *array* of strings
+    * Set tags on this bare metal server. The characters permitted are A-Z, 0-9, whitespace, _ (underscore), - (hyphen), . (period), and : (colon). All other characters will be stripped away.
+    * *Optional*
+
+**Pre-set configured bare metal server / custom bare metal server attributes**
+
 * `datacenter` | *string*
     * Specifies which datacenter the instance is to be provisioned in.
-    * Quote has `datacenter` information already, so if `quote_id` is used, omit `datacenter` attribute.
-    * *Optional*
-* `fixed_config_preset` | *string*
-    * The configuration preset that the pre-set configuration bare metal server will be provisioned with. This governs the type of cpu, number of cores, amount of ram, and hard drives which the bare metal server will have. [Take a look at the available presets](https://api.softlayer.com/rest/v3/SoftLayer_Hardware/getCreateObjectOptions.json) (use your api key as the password), and find the key called _fixedConfigurationPresets_. Under that, the presets will be identified by the *keyName*s.
-    * Define this attribute for pre-set configuration bare metal server provisioning.
+    * It is a mandatory attribute for pre-set configured and custom bare metal servers.
     * *Optional*
 * `hourly_billing` | *boolean*
     * Specifies the billing type for the instance. When true the computing instance will be billed on hourly usage, otherwise it will be billed on a monthly basis.
@@ -71,6 +89,16 @@ The following arguments are supported:
     * Specifies whether or not the instance only has access to the private network. When true this flag specifies that a compute instance is to only have access to the private network.
     * *Default*: False
     * *Optional*
+
+**Pre-set configured bare metal server only attributes**
+
+* `fixed_config_preset` | *string*
+    * The configuration preset that the pre-set configuration bare metal server will be provisioned with. This governs the type of cpu, number of cores, amount of ram, and hard drives which the bare metal server will have. [Take a look at the available presets](https://api.softlayer.com/rest/v3/SoftLayer_Hardware/getCreateObjectOptions.json) (use your api key as the password), and find the key called _fixedConfigurationPresets_. Under that, the presets will be identified by the *keyName*s.
+    * It is a mandatory attribute for pre-set configuration bare metal server provisioning.
+    * *Optional*
+
+**Custom bare metal server / Quote based custom bare metal server provisionig attributes**
+
 * `public_vlan_id` | *int*
     * Public VLAN which is to be used for the public network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans). Click on the desired VLAN and note the id number in the URL.
     * Only custom bare metal servers support this attribute.
@@ -87,24 +115,50 @@ The following arguments are supported:
     * Private subnet which is to be used for the private network interface of the instance. Accepted values are primary private networks and can be found [here](https://control.softlayer.com/network/subnets).
     * Only custom bare metal servers support this attribute.
     * *Optional*
-* `user_metadata` | *string*
-    * Arbitrary data to be made available to the computing instance.
+
+**Custom bare metal server only attributes**
+
+* `redundant_network` | *boolean*
+    * If `redundant_network` is `true`, two physical network interfaces will be provided with a bonding configuration. 
+    * *Default*: False
     * *Optional*
-* `notes` | *string*
-    * A note of up to 1000 characters about the server.
+* `unbonded_network` | *boolean*
+    * If `unbonded_network` is `true`, two physical network interfaces will be provided.
+    * unbonded_network cannot be `true` when redudant_network is `true`.
+    * *Default*: False
     * *Optional*
-* `ssh_key_ids` | *array* of numbers
-    * SSH key _IDs_ to install on the computing instance upon provisioning.
+* `public_bandwidth` | *int*
+    * Public network traffic(GB) per month which can be used without additional charge. 
+    * `public_bandwidth` can be greater than 0 when `private_network_only` is `false` and the server is a monthly based server.
+    * *Optional*
+* `package_key_name` | *string*
+    * Custom bare metal server's package key name.
+    * *Optional*
+* `process_key_name` | *string*
+    * Custom bare metal server's process key name.
+    * *Optional*
+* `memory` | *int*
+    * Amount of memory(GB) for the server.
+    * *Optional*
+* `raid` | *int*
+    * RAID number for disks.
+    * *Optional*
+* `disks` | *list*
+    * Array of internal disks. 
+    * *Optional*
+* `redundant_power_supply` | *boolean*
+    * If `redundant_power_supply` is true, additional power supply will be provided. 
     * *Optional*
 
-    **Note:** Don't know the ID(s) for your SSH keys? See [here](https://github.com/softlayer/terraform-provider-softlayer/blob/master/docs/datasources/softlayer_ssh_key.md) for a way to reference your SSH keys by their labels.
+**Quote based probisioning only attributes**
 
-* `post_install_script_uri` | *string*
-    * As defined in the [SoftLayer_Virtual_Guest_SupplementalCreateObjectOptions](https://sldn.softlayer.com/reference/datatypes/SoftLayer_Virtual_Guest_SupplementalCreateObjectOptions).
+* `quote_id` | *int*
+    * Create a pre-set configured bare metal server or custom bare metal server using the quote. 
+    * If quote_id is defined, the terraform uses specifications in the quote to create a bare metal server.
+    * You can find the quote id by navigating on the portal to _Account > Sales > Quotes_, taking note of the id number in `QUOTE ID` column.
     * *Optional*
-*   `tags` | *array* of strings
-    * Set tags on this bare metal server. The characters permitted are A-Z, 0-9, whitespace, _ (underscore), - (hyphen), . (period), and : (colon). All other characters will be stripped away.
-    * *Optional*
+
+
 
 ## Attributes Reference
 
@@ -113,3 +167,7 @@ The following attributes are exported:
 * `id` - id of the bare metal.
 * `public_ipv4_address` - Public IPv4 address of the bare metal server.
 * `private_ipv4_address` - Private IPv4 address of the bare metal server.
+* `model` - Hardware model
+* `processor_type` - Processor type
+* `processors` - Number of processors.
+* `cores` - Number of cores.
