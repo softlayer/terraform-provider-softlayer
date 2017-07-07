@@ -118,6 +118,15 @@ The following arguments are supported:
 
 **Custom bare metal server only attributes**
 
+* `package_key_name` | *string*
+    * Custom bare metal server's package key name. This attribute is only used when a new custom bare metal server is created.
+    * *Optional*
+* `process_key_name` | *string*
+    * Custom bare metal server's process key name. This attribute is only used when a new custom bare metal server is created.
+    * *Optional*
+* `disk_key_names` | *list*
+    * Array of internal disk key names. This attribute is only used when a new custom bare metal server is created.
+    * *Optional*
 * `redundant_network` | *boolean*
     * If `redundant_network` is `true`, two physical network interfaces will be provided with a bonding configuration. 
     * *Default*: False
@@ -131,20 +140,11 @@ The following arguments are supported:
     * Public network traffic(GB) per month which can be used without additional charge. 
     * `public_bandwidth` can be greater than 0 when `private_network_only` is `false` and the server is a monthly based server.
     * *Optional*
-* `package_key_name` | *string*
-    * Custom bare metal server's package key name.
-    * *Optional*
-* `process_key_name` | *string*
-    * Custom bare metal server's process key name.
-    * *Optional*
 * `memory` | *int*
     * Amount of memory(GB) for the server.
     * *Optional*
 * `raid` | *int*
     * RAID number for disks.
-    * *Optional*
-* `disks` | *list*
-    * Array of internal disks. 
     * *Optional*
 * `redundant_power_supply` | *boolean*
     * If `redundant_power_supply` is true, additional power supply will be provided. 

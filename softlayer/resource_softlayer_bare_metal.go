@@ -189,6 +189,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				DiffSuppressFunc: applyOnce,
 			},
 
+			// Quote based provisioning only
 			"quote_id": {
 				Type:             schema.TypeInt,
 				Optional:         true,
@@ -211,22 +212,6 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 			},
 
 			// Custom bare metal server only
-			"model": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				DiffSuppressFunc: applyOnce,
-			},
-
-			// Custom bare metal server only
-			"cpu": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				DiffSuppressFunc: applyOnce,
-			},
-
-			// Custom bare metal server only
 			"memory": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -242,18 +227,33 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 			},
 
 			// Custom bare metal server only
-			"disks": {
-				Type:     schema.TypeList,
-				Optional: true,
-				ForceNew: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-			},
-
-			// Custom bare metal server only
 			"redundant_power_supply": {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Computed: true,
+			},
+
+			// Custom bare metal server requires key names for baremetal package, process, and disks.
+			"package_key_name": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
+			},
+
+			"process_key_name": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
+			},
+
+			"disk_key_names": {
+				Type:             schema.TypeList,
+				Optional:         true,
+				ForceNew:         true,
+				Elem:             &schema.Schema{Type: schema.TypeString},
+				DiffSuppressFunc: applyOnce,
 			},
 		},
 	}
@@ -391,7 +391,7 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 	}
 
 	log.Println("[INFO] Ordering bare metal server")
-	_, err = services.GetProductOrderService(sess).PlaceOrder(&order, sl.Bool(false))
+	_, err = services.GetProductOrderService(sess).PlaceOrder(&order, sl.Bool(true))
 	if err != nil {
 		return fmt.Errorf("Error ordering bare metal server: %s\n%+v\n", err, order)
 	}
@@ -722,9 +722,9 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	}
 
 	// Check mandatory attributes of custom bare metal server ordering.
-	model, ok := d.GetOk("model")
+	model, ok := d.GetOk("package_key_name")
 	if !ok {
-		return datatypes.Container_Product_Order{}, fmt.Errorf("The attribute 'model' is not defined.")
+		return datatypes.Container_Product_Order{}, fmt.Errorf("The attribute 'package_key_name' is not defined.")
 	}
 
 	datacenter, ok := d.GetOk("datacenter")
@@ -758,7 +758,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	}
 
 	// 3. Build price items
-	server, err := getItemPriceId(items, "server", d.Get("cpu").(string))
+	server, err := getItemPriceId(items, "server", d.Get("process_key_name").(string))
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
@@ -852,7 +852,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	}
 
 	// Add prices of disks.
-	disks := d.Get("disks").([]interface{})
+	disks := d.Get("disk_key_names").([]interface{})
 	diskLen := len(disks)
 	if diskLen > 0 {
 		for i, disk := range disks {
@@ -1038,7 +1038,7 @@ func getPackageByModel(sess *session.Session, model string) (datatypes.Product_P
 		}
 	}
 
-	return datatypes.Product_Package{}, fmt.Errorf("No custom bare metal model for %s. Available model(s) is(are) %s", model, availableModels)
+	return datatypes.Product_Package{}, fmt.Errorf("No custom bare metal package key name for %s. Available package key name(s) is(are) %s", model, availableModels)
 }
 
 func applyOnce(k, o, n string, d *schema.ResourceData) bool {
