@@ -220,6 +220,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 			},
 
 			// Custom bare metal server only
+			// Order single RAID group
 			"raid": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -254,6 +255,36 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew:         true,
 				Elem:             &schema.Schema{Type: schema.TypeString},
 				DiffSuppressFunc: applyOnce,
+			},
+
+			// Order multiple RAID groups
+			"storage_groups": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"array_type_id": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"hard_drives": {
+							Type:     schema.TypeList,
+							Elem:     &schema.Schema{Type: schema.TypeInt},
+							Required: true,
+						},
+						"array_size": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+						"partition_template_id": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+					},
+				},
+				DiffSuppressFunc: applyOnce,
+				ConflictsWith:    []string{"raid"},
 			},
 		},
 	}

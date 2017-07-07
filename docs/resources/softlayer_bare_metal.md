@@ -2,6 +2,7 @@
 
 Provides a `bare_metal` resource. This allows bare metals to be created, updated and deleted. It provides three different ways to create bare metal servers. 
 
+# Example of Pre-set configured bare metal server
 ```hcl
 # Create a new bare metal
 resource "softlayer_bare_metal" "pre-configured-bm1" {
@@ -26,6 +27,45 @@ resource "softlayer_bare_metal" "pre-configured-bm1" {
 }
 ```
 
+# Example of quote based ordering
+```hcl
+# Create a new bare metal
+resource "softlayer_bare_metal" "quote_test" {
+    hostname = "quote-bm-test"
+    domain = "example.com"
+    quote_id = 2209349
+}
+```
+
+# Example of custom bare metal server
+```hcl
+resource "softlayer_bare_metal" "custom_bm1" {
+    package_key_name = "DUAL_E52600_V4_12_DRIVES"
+    process_key_name = "INTEL_INTEL_XEON_E52620_V4_2_10"
+    memory = 64
+    hostname = "cust-bm"
+    domain = "ms.com"
+    os_reference_code = "OS_WINDOWS_2012_R2_FULL_DC_64_BIT_2"
+    datacenter = "wdc04"
+    network_speed = 100
+    public_bandwidth = 500
+    hourly_billing = false
+    private_network_only = false
+    unbonded_network = true
+    user_metadata = "{\"value\":\"newvalue\"}"
+    public_vlan_id = 12345678
+    private_vlan_id = 87654321
+    public_subnet = "50.97.46.160/28"
+    private_subnet = "10.56.109.128/26"
+    tags = [
+      "collectd",
+      "mesos-master"
+    ]
+    raid = 5
+    disk_key_names = [ "HARD_DRIVE_800GB_SSD", "HARD_DRIVE_800GB_SSD", "HARD_DRIVE_800GB_SSD" ]
+    redundant_power_supply = true
+}
+```
 ## Argument Reference
 
 The following arguments are supported:
@@ -171,3 +211,9 @@ The following attributes are exported:
 * `processor_type` - Processor type
 * `processors` - Number of processors.
 * `cores` - Number of cores.
+
+Raid configuration : https://sldn.softlayer.com/blog/hansKristian/Ordering-RAID-through-API
+
+get array type ids : https://api.softlayer.com/rest/v3/SoftLayer_Configuration_Storage_Group_Array_Type/getAllObjects
+
+https://api.softlayer.com/rest/v3/SoftLayer_Hardware_Component_Partition_OperatingSystem/1/getPartitionTemplates
