@@ -174,44 +174,26 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 			},
 
 			"post_install_script_uri": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  nil,
-				ForceNew: true,
-				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
-					// post_install_script_uri is only used for bare metal server ordering.
-					if d.State() == nil {
-						return false
-					}
-					return true
-				},
+				Type:             schema.TypeString,
+				Optional:         true,
+				Default:          nil,
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
 			},
 
 			// pre-configured bare metal server only
 			"fixed_config_preset": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
-					// fixed_config_preset is only used for pre-configured bare metal server ordering.
-					if d.State() == nil {
-						return false
-					}
-					return true
-				},
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
 			},
 
 			"quote_id": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				ForceNew: true,
-				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
-					// quote_id is only used for bare metal server ordering with the quote.
-					if d.State() == nil {
-						return false
-					}
-					return true
-				},
+				Type:             schema.TypeInt,
+				Optional:         true,
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
 			},
 
 			"image_template_id": {
@@ -230,30 +212,18 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 
 			// Custom bare metal server only
 			"model": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
-					// model is only used for custom bare metal server ordering.
-					if d.State() == nil {
-						return false
-					}
-					return true
-				},
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
 			},
 
 			// Custom bare metal server only
 			"cpu": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-				DiffSuppressFunc: func(k, o, n string, d *schema.ResourceData) bool {
-					// cpu is only used for custom bare metal server ordering.
-					if d.State() == nil {
-						return false
-					}
-					return true
-				},
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
 			},
 
 			// Custom bare metal server only
@@ -1069,4 +1039,11 @@ func getPackageByModel(sess *session.Session, model string) (datatypes.Product_P
 	}
 
 	return datatypes.Product_Package{}, fmt.Errorf("No custom bare metal model for %s. Available model(s) is(are) %s", model, availableModels)
+}
+
+func applyOnce(k, o, n string, d *schema.ResourceData) bool {
+	if len(d.Id()) == 0 {
+		return false
+	}
+	return true
 }

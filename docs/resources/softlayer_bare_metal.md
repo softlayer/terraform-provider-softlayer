@@ -1,12 +1,13 @@
 # `softlayer_bare_metal`
 
-Provides a `bare_metal` resource. This allows bare metals to be created, updated and deleted.
+Provides a `bare_metal` resource. This allows bare metals to be created, updated and deleted. It provides three different ways to create bare metal servers. 
+
 
 ```hcl
 # Create a new bare metal
-resource "softlayer_bare_metal" "twc_terraform_sample" {
-    hostname = "twc-terraform-sample-name"
-    domain = "bar.example.com"
+resource "softlayer_bare_metal" "pre-configured-bm1" {
+    hostname = "pre-configured-bm1"
+    domain = "example.com"
     os_reference_code = "UBUNTU_16_64"
     datacenter = "dal01"
     network_speed = 100 # Optional
@@ -38,16 +39,21 @@ The following arguments are supported:
     * **Required**
 * `datacenter` | *string*
     * Specifies which datacenter the instance is to be provisioned in.
-    * **Required**
+    * Quote has `datacenter` information already, so if `quote_id` is used, omit `datacenter` attribute.
+    * *Optional*
 * `fixed_config_preset` | *string*
-    * The configuration preset that the bare metal server will be provisioned with. This governs the type of cpu, number of cores, amount of ram, and hard drives which the bare metal server will have. [Take a look at the available presets](https://api.softlayer.com/rest/v3/SoftLayer_Hardware/getCreateObjectOptions.json) (use your api key as the password), and find the key called _fixedConfigurationPresets_. Under that, the presets will be identified by the *keyName*s.
-    * **Required**
+    * The configuration preset that the pre-set configuration bare metal server will be provisioned with. This governs the type of cpu, number of cores, amount of ram, and hard drives which the bare metal server will have. [Take a look at the available presets](https://api.softlayer.com/rest/v3/SoftLayer_Hardware/getCreateObjectOptions.json) (use your api key as the password), and find the key called _fixedConfigurationPresets_. Under that, the presets will be identified by the *keyName*s.
+    * Define this attribute for pre-set configuration bare metal server provisioning.
+    * *Optional*
 * `hourly_billing` | *boolean*
     * Specifies the billing type for the instance. When true the computing instance will be billed on hourly usage, otherwise it will be billed on a monthly basis.
+    * Only pre-set configuration bare metal servers support hourly billing.
     * *Default*: true
     * *Optional*
 * `os_reference_code` | *string*
-    * An operating system reference code that will be used to provision the computing instance. [Get a complete list of the os reference codes available](https://api.softlayer.com/rest/v3/SoftLayer_Virtual_Guest_Block_Device_Template_Group/getVhdImportSoftwareDescriptions.json?objectMask=referenceCode) (use your api key as the password).
+    * An operating system reference code that will be used to provision the computing instance. 
+    * [Get a complete list of the os reference codes available for pre-set configuration bare metal servers](https://api.softlayer.com/rest/v3/SoftLayer_Virtual_Guest_Block_Device_Template_Group/getVhdImportSoftwareDescriptions.json?objectMask=referenceCode) (use your api key as the password).
+    * [Get a complete list of the os reference codes available for custom bare metal servers]() (use your api key as the password).
     * *Optional*
     * **Conflicts with** `image_template_id`.
 * `image_template_id` | *int*
@@ -67,15 +73,19 @@ The following arguments are supported:
     * *Optional*
 * `public_vlan_id` | *int*
     * Public VLAN which is to be used for the public network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans). Click on the desired VLAN and note the id number in the URL.
+    * Only custom bare metal servers support this attribute.
     * *Optional*
 * `private_vlan_id` | *int*
     * Private VLAN which is to be used for the private network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans). Click on the desired VLAN and note the id number in the URL.
+    * Only custom bare metal servers support this attribute.
     * *Optional*
 * `public_subnet` | *string*
     * Public subnet which is to be used for the public network interface of the instance. Accepted values are primary public networks and can be found [here](https://control.softlayer.com/network/subnets).
+    * Only custom bare metal servers support this attribute.
     * *Optional*
 * `private_subnet` | *string*
     * Private subnet which is to be used for the private network interface of the instance. Accepted values are primary private networks and can be found [here](https://control.softlayer.com/network/subnets).
+    * Only custom bare metal servers support this attribute.
     * *Optional*
 * `user_metadata` | *string*
     * Arbitrary data to be made available to the computing instance.
