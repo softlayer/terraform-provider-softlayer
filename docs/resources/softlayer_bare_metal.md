@@ -14,10 +14,6 @@ resource "softlayer_bare_metal" "pre-configured-bm1" {
     hourly_billing = true # Optional
     private_network_only = false # Optional
     user_metadata = "{\"value\":\"newvalue\"}" # Optional
-    public_vlan_id = 12345678 # Optional
-    private_vlan_id = 87654321 # Optional
-    public_subnet = "50.97.46.160/28" # Optional
-    private_subnet = "10.56.109.128/26" # Optional
     fixed_config_preset = "S1270_8GB_2X1TBSATA_NORAID"
     image_template_id = 12345 # Optional
     tags = [
@@ -31,25 +27,47 @@ resource "softlayer_bare_metal" "pre-configured-bm1" {
 ```hcl
 # Create a new bare metal
 resource "softlayer_bare_metal" "quote_test" {
+
+# Mandatory attributes
+
     hostname = "quote-bm-test"
     domain = "example.com"
     quote_id = 2209349
+
+# Optional attributes
+
+    user_metadata = "{\"value\":\"newvalue\"}"
+    public_vlan_id = 12345678
+    private_vlan_id = 87654321
+    public_subnet = "50.97.46.160/28"
+    private_subnet = "10.56.109.128/26"
+    tags = [
+      "collectd",
+      "mesos-master"
+    ]
+
+    
 }
 ```
 
 # Example of custom bare metal server
 ```hcl
 resource "softlayer_bare_metal" "custom_bm1" {
+
+# Mandatory attributes
     package_key_name = "DUAL_E52600_V4_12_DRIVES"
     process_key_name = "INTEL_INTEL_XEON_E52620_V4_2_10"
     memory = 64
+    os_reference_code = "OS_WINDOWS_2012_R2_FULL_DC_64_BIT_2"
     hostname = "cust-bm"
     domain = "ms.com"
-    os_reference_code = "OS_WINDOWS_2012_R2_FULL_DC_64_BIT_2"
     datacenter = "wdc04"
     network_speed = 100
     public_bandwidth = 500
+    disk_key_names = [ "HARD_DRIVE_800GB_SSD", "HARD_DRIVE_800GB_SSD", "HARD_DRIVE_800GB_SSD" ]
     hourly_billing = false
+
+# Optional attributes
     private_network_only = false
     unbonded_network = true
     user_metadata = "{\"value\":\"newvalue\"}"
@@ -61,9 +79,8 @@ resource "softlayer_bare_metal" "custom_bm1" {
       "collectd",
       "mesos-master"
     ]
-    raid = 5
-    disk_key_names = [ "HARD_DRIVE_800GB_SSD", "HARD_DRIVE_800GB_SSD", "HARD_DRIVE_800GB_SSD" ]
     redundant_power_supply = true
+    storage_groups
 }
 ```
 ## Argument Reference

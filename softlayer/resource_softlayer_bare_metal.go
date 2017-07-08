@@ -220,14 +220,6 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 			},
 
 			// Custom bare metal server only
-			// Order single RAID group
-			"raid": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				ForceNew: true,
-			},
-
-			// Custom bare metal server only
 			"redundant_power_supply": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -284,10 +276,29 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 					},
 				},
 				DiffSuppressFunc: applyOnce,
-				ConflictsWith:    []string{"raid"},
 			},
 		},
 	}
+}
+
+func prepareStorageGroups(d *schema.ResourceData) []datatypes.Container_Product_Order_Storage_Group {
+	storageGroupLists := d.Get("storage_groups").(*schema.Set).List()
+	storageGroups := make([]datatypes.Container_Product_Order_Storage_Group, len(storageGroupLists))
+
+	for _, storageGroupList := range storageGroupLists {
+		storageGroup := storageGroupList.(map[string]interface{})
+		var storageGroupObj datatypes.Container_Product_Order_Storage_Group
+		storageGroupObj.ArrayTypeId = sl.Int(storageGroup["array_type_id"].(int))
+		hardDrives := storageGroup["hard_drives"].([]interface{})
+		storageGroupObj.HardDrives = make([]int, len(hardDrives))
+		for _, hardDrive := range hardDrives {
+			storageGroupObj.HardDrives = append(storageGroupObj.HardDrives, hardDrive.(int))
+		}
+		storageGroupObj.ArraySize = sl.Float(float64(storageGroup["array_size"].(int)))
+		storageGroupObj.PartitionTemplateId = sl.Int(storageGroup["partition_template_id"].(int))
+		storageGroups = append(storageGroups, storageGroupObj)
+	}
+	return storageGroups
 }
 
 func getBareMetalOrderFromResourceData(d *schema.ResourceData, meta interface{}) (datatypes.Hardware, error) {
@@ -902,6 +913,11 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 			return datatypes.Container_Product_Order{}, err
 		}
 		order.Prices = append(order.Prices, powerSupply)
+	}
+
+	// Add storage_groups for RAID configuration
+	if _, ok := d.GetOk("storage_groups"); ok {
+		order.StorageGroups = prepareStorageGroups(d)
 	}
 
 	return order, nil
