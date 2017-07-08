@@ -61,6 +61,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 			"os_reference_code": {
 				Type:          schema.TypeString,
 				Optional:      true,
+				Computed:      true,
 				ForceNew:      true,
 				ConflictsWith: []string{"image_template_id"},
 			},
@@ -277,6 +278,13 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				},
 				DiffSuppressFunc: applyOnce,
 			},
+
+			"tcp_monitoring": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+				Default:  false,
+			},
 		},
 	}
 }
@@ -294,8 +302,14 @@ func prepareStorageGroups(d *schema.ResourceData) []datatypes.Container_Product_
 		for _, hardDrive := range hardDrives {
 			storageGroupObj.HardDrives = append(storageGroupObj.HardDrives, hardDrive.(int))
 		}
-		storageGroupObj.ArraySize = sl.Float(float64(storageGroup["array_size"].(int)))
-		storageGroupObj.PartitionTemplateId = sl.Int(storageGroup["partition_template_id"].(int))
+		arraySize := storageGroup["array_size"].(int)
+		if arraySize > 0 {
+			storageGroupObj.ArraySize = sl.Float(float64(arraySize))
+		}
+		partitionTemplateId := storageGroup["partition_template_id"].(int)
+		if partitionTemplateId > 0 {
+			storageGroupObj.PartitionTemplateId = sl.Int(partitionTemplateId)
+		}
 		storageGroups = append(storageGroups, storageGroupObj)
 	}
 	return storageGroups
@@ -819,6 +833,17 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 		return datatypes.Container_Product_Order{}, err
 	}
 
+	monitoring, err := getItemPriceId(items, "monitoring", "MONITORING_HOST_PING")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	if d.Get("tcp_monitoring").(bool) {
+		monitoring, err = getItemPriceId(items, "monitoring", "MONITORING_HOST_PING_AND_TCP_SERVICE")
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+	}
+
 	// Other common default options
 	priIpAddress, err := getItemPriceId(items, "pri_ip_addresses", "1_IP_ADDRESS")
 	if err != nil {
@@ -832,10 +857,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
-	monitoring, err := getItemPriceId(items, "monitoring", "MONITORING_HOST_PING")
-	if err != nil {
-		return datatypes.Container_Product_Order{}, err
-	}
+
 	notification, err := getItemPriceId(items, "notification", "NOTIFICATION_EMAIL_AND_TICKET")
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err

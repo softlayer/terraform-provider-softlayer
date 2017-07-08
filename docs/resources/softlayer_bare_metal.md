@@ -80,7 +80,15 @@ resource "softlayer_bare_metal" "custom_bm1" {
       "mesos-master"
     ]
     redundant_power_supply = true
-    storage_groups
+    storage_groups = {
+       # RAID 5
+       array_type_id = 3
+       # Use three disks
+       hard_drives = [ 0, 1, 2]
+       array_size = 1600
+       # Basic partition template for windows
+       partition_template_id = 17
+    }
 }
 ```
 ## Argument Reference
@@ -200,13 +208,31 @@ The following arguments are supported:
 * `memory` | *int*
     * Amount of memory(GB) for the server.
     * *Optional*
-* `raid` | *int*
-    * RAID number for disks.
+* `storage_groups` | *array of storage group objects*
+    * RAID and partition configuration. 
     * *Optional*
+    
+    * Each storage group object has the following sub attributes:
+    * `array_type_id` | *int*
+    * It provides RAID type. You can find `array_type_id` from the [link](https://api.softlayer.com/rest/v3/SoftLayer_Configuration_Storage_Group_Array_Type/getAllObjects). 
+    * *Required*
+    * `hard_drives` | *array of int*
+    * Put the index of hard drives for RAID configuration. The index starts from 0. For example, if you want to use first two hard drives, you can use the following expression: [0,1]
+    * *Required*
+    * `array_size` | *int*
+    * Put target RAID disk size in GB unit. 
+    * *Optional*
+    * `partition_template_id` | *int*
+    * Partition template id for OS disk. The templates are different based on the target OS. Check your OS with the [link](https://api.softlayer.com/rest/v3/SoftLayer_Hardware_Component_Partition_OperatingSystem/getAllObjects ). Note the id of the OS and 
+    check available partition templates using the link : https://api.softlayer.com/rest/v3/SoftLayer_Hardware_Component_Partition_OperatingSystem/OS_ID/getPartitionTemplates . Replace `OS_ID` to your OS ID and choose your template id.  
+    * *Optional*
+    
 * `redundant_power_supply` | *boolean*
     * If `redundant_power_supply` is true, additional power supply will be provided. 
     * *Optional*
-
+* `tcp_monitoring` | *boolean*
+    * If `tcp_monitoring` is `false`, ping monitoring service will be provided. If `tcp_monitoring` is `true`, ping and tcp monitoring service will be provided.
+    * *Optional*
 **Quote based probisioning only attributes**
 
 * `quote_id` | *int*
@@ -231,7 +257,4 @@ The following attributes are exported:
 
 Raid configuration : https://sldn.softlayer.com/blog/hansKristian/Ordering-RAID-through-API
 
-get array type ids : https://api.softlayer.com/rest/v3/SoftLayer_Configuration_Storage_Group_Array_Type/getAllObjects
 
-https://api.softlayer.com/rest/v3/SoftLayer_Hardware_Component_Partition_OperatingSystem/1/getPartitionTemplates
-https://api.softlayer.com/rest/v3/SoftLayer_Hardware_Component_Partition_OperatingSystem/getAllObjects 
