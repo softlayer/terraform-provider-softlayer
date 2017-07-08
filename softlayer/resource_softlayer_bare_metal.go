@@ -283,14 +283,14 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 
 func prepareStorageGroups(d *schema.ResourceData) []datatypes.Container_Product_Order_Storage_Group {
 	storageGroupLists := d.Get("storage_groups").(*schema.Set).List()
-	storageGroups := make([]datatypes.Container_Product_Order_Storage_Group, len(storageGroupLists))
+	storageGroups := make([]datatypes.Container_Product_Order_Storage_Group, 0)
 
 	for _, storageGroupList := range storageGroupLists {
 		storageGroup := storageGroupList.(map[string]interface{})
 		var storageGroupObj datatypes.Container_Product_Order_Storage_Group
 		storageGroupObj.ArrayTypeId = sl.Int(storageGroup["array_type_id"].(int))
 		hardDrives := storageGroup["hard_drives"].([]interface{})
-		storageGroupObj.HardDrives = make([]int, len(hardDrives))
+		storageGroupObj.HardDrives = make([]int, 0)
 		for _, hardDrive := range hardDrives {
 			storageGroupObj.HardDrives = append(storageGroupObj.HardDrives, hardDrive.(int))
 		}
@@ -873,16 +873,6 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 		},
 	}
 
-	// Add disk controller
-	if raid, ok := d.GetOk("raid"); ok {
-		raidStr := "DISK_CONTROLLER_RAID_" + strconv.Itoa(raid.(int))
-		diskController, err := getItemPriceId(items, "disk_controller", raidStr)
-		if err != nil {
-			return datatypes.Container_Product_Order{}, err
-		}
-		order.Prices = append(order.Prices, diskController)
-	}
-
 	// Add public bandwidth
 	if publicBandwidth, ok := d.GetOk("public_bandwidth"); ok {
 		publicBandwidthStr := "BANDWIDTH_" + strconv.Itoa(publicBandwidth.(int)) + "_GB"
@@ -917,6 +907,11 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 
 	// Add storage_groups for RAID configuration
 	if _, ok := d.GetOk("storage_groups"); ok {
+		diskController, err := getItemPriceId(items, "disk_controller", "DISK_CONTROLLER_RAID")
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
+		order.Prices = append(order.Prices, diskController)
 		order.StorageGroups = prepareStorageGroups(d)
 	}
 

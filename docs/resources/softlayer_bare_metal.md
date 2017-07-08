@@ -234,3 +234,4 @@ Raid configuration : https://sldn.softlayer.com/blog/hansKristian/Ordering-RAID-
 get array type ids : https://api.softlayer.com/rest/v3/SoftLayer_Configuration_Storage_Group_Array_Type/getAllObjects
 
 https://api.softlayer.com/rest/v3/SoftLayer_Hardware_Component_Partition_OperatingSystem/1/getPartitionTemplates
+https://api.softlayer.com/rest/v3/SoftLayer_Hardware_Component_Partition_OperatingSystem/getAllObjects 
