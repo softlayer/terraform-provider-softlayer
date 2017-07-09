@@ -58,104 +58,6 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"os_reference_code": {
-				Type:          schema.TypeString,
-				Optional:      true,
-				Computed:      true,
-				ForceNew:      true,
-				ConflictsWith: []string{"image_template_id"},
-			},
-
-			"hourly_billing": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  true,
-				ForceNew: true,
-			},
-
-			"private_network_only": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
-				ForceNew: true,
-			},
-
-			// Custom bare metal server only
-			"redundant_network": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
-				ForceNew: true,
-			},
-
-			// Custom bare metal server only
-			"unbonded_network": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
-				ForceNew: true,
-			},
-
-			// Custom bare metal server only
-			"public_bandwidth": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				ForceNew: true,
-			},
-
-			// Computed when a quote_id is povided.
-			"datacenter": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-				Computed: true,
-			},
-
-			"public_vlan_id": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				ForceNew: true,
-				Computed: true,
-			},
-
-			"public_subnet": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-				Computed: true,
-			},
-
-			"private_vlan_id": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				ForceNew: true,
-				Computed: true,
-			},
-
-			"private_subnet": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-				Computed: true,
-			},
-
-			"network_speed": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  100,
-				ForceNew: true,
-			},
-
-			"public_ipv4_address": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
-			"private_ipv4_address": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
 			"ssh_key_ids": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -182,7 +84,14 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				DiffSuppressFunc: applyOnce,
 			},
 
-			// pre-configured bare metal server only
+			"tags": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				Set:      schema.HashString,
+			},
+
+			// Pre-set configured bare metal server. - Mandatory attribute
 			"fixed_config_preset": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -190,12 +99,13 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				DiffSuppressFunc: applyOnce,
 			},
 
-			// Quote based provisioning only
-			"quote_id": {
-				Type:             schema.TypeInt,
-				Optional:         true,
-				ForceNew:         true,
-				DiffSuppressFunc: applyOnce,
+			// Pe-set configured / custom bare metal server - Mandatory attribute
+			"os_reference_code": {
+				Type:          schema.TypeString,
+				Optional:      true,
+				Computed:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"image_template_id"},
 			},
 
 			"image_template_id": {
@@ -205,11 +115,91 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ConflictsWith: []string{"os_reference_code"},
 			},
 
-			"tags": {
-				Type:     schema.TypeSet,
+			// Pre-set configured / custom bare metal server - Mandatory attribute
+			"datacenter": {
+				Type:     schema.TypeString,
 				Optional: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-				Set:      schema.HashString,
+				ForceNew: true,
+				Computed: true,
+			},
+
+			// Pre-set configured / custom bare metal server
+			"network_speed": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  100,
+				ForceNew: true,
+			},
+
+			// Pre-set configured / custom bare metal server
+			"hourly_billing": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
+				ForceNew: true,
+			},
+
+			// Pre-set configured / custom bare metal server
+			"private_network_only": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+				ForceNew: true,
+			},
+
+			// Pre-set configured / custom bare metal server
+			"tcp_monitoring": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+
+			// Custom bare metal server - Mandatory attribute
+			"package_key_name": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
+			},
+
+			// Custom bare metal server - Mandatory attribute
+			"process_key_name": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
+			},
+
+			// Custom bare metal server - Mandatory attribute
+			"disk_key_names": {
+				Type:             schema.TypeList,
+				Optional:         true,
+				ForceNew:         true,
+				Elem:             &schema.Schema{Type: schema.TypeString},
+				DiffSuppressFunc: applyOnce,
+			},
+
+			// Custom bare metal server only
+			"redundant_network": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+				ForceNew: true,
+			},
+
+			// Custom bare metal server only
+			"unbonded_network": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+				ForceNew: true,
+			},
+
+			// Custom bare metal server only
+			"public_bandwidth": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				ForceNew: true,
 			},
 
 			// Custom bare metal server only
@@ -227,30 +217,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Computed: true,
 			},
 
-			// Custom bare metal server requires key names for baremetal package, process, and disks.
-			"package_key_name": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				DiffSuppressFunc: applyOnce,
-			},
-
-			"process_key_name": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				DiffSuppressFunc: applyOnce,
-			},
-
-			"disk_key_names": {
-				Type:             schema.TypeList,
-				Optional:         true,
-				ForceNew:         true,
-				Elem:             &schema.Schema{Type: schema.TypeString},
-				DiffSuppressFunc: applyOnce,
-			},
-
-			// Order multiple RAID groups
+			// Custom bare metal server only - Order multiple RAID groups
 			"storage_groups": {
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -279,40 +246,57 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				DiffSuppressFunc: applyOnce,
 			},
 
-			"tcp_monitoring": {
-				Type:     schema.TypeBool,
+			// Quote based provisioning only
+			"quote_id": {
+				Type:             schema.TypeInt,
+				Optional:         true,
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
+			},
+
+			// Quote based ordering/custom bare metal server only
+			"public_vlan_id": {
+				Type:     schema.TypeInt,
 				Optional: true,
+				ForceNew: true,
 				Computed: true,
-				Default:  false,
+			},
+
+			// Quote based ordering/custom bare metal server only
+			"public_subnet": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
+			},
+
+			// Quote based ordering/custom bare metal server only
+			"private_vlan_id": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
+			},
+
+			// Quote based ordering/custom bare metal server only
+			"private_subnet": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
+			},
+
+			"public_ipv4_address": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+
+			"private_ipv4_address": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 		},
 	}
-}
-
-func prepareStorageGroups(d *schema.ResourceData) []datatypes.Container_Product_Order_Storage_Group {
-	storageGroupLists := d.Get("storage_groups").(*schema.Set).List()
-	storageGroups := make([]datatypes.Container_Product_Order_Storage_Group, 0)
-
-	for _, storageGroupList := range storageGroupLists {
-		storageGroup := storageGroupList.(map[string]interface{})
-		var storageGroupObj datatypes.Container_Product_Order_Storage_Group
-		storageGroupObj.ArrayTypeId = sl.Int(storageGroup["array_type_id"].(int))
-		hardDrives := storageGroup["hard_drives"].([]interface{})
-		storageGroupObj.HardDrives = make([]int, 0)
-		for _, hardDrive := range hardDrives {
-			storageGroupObj.HardDrives = append(storageGroupObj.HardDrives, hardDrive.(int))
-		}
-		arraySize := storageGroup["array_size"].(int)
-		if arraySize > 0 {
-			storageGroupObj.ArraySize = sl.Float(float64(arraySize))
-		}
-		partitionTemplateId := storageGroup["partition_template_id"].(int)
-		if partitionTemplateId > 0 {
-			storageGroupObj.PartitionTemplateId = sl.Int(partitionTemplateId)
-		}
-		storageGroups = append(storageGroups, storageGroupObj)
-	}
-	return storageGroups
 }
 
 func getBareMetalOrderFromResourceData(d *schema.ResourceData, meta interface{}) (datatypes.Hardware, error) {
@@ -440,7 +424,7 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 		}
 	}
 
-	order, err = setCommonBareMetalOptions(d, meta, order)
+	order, err = setCommonBareMetalOrderOptions(d, meta, order)
 	if err != nil {
 		return fmt.Errorf(
 			"Encountered problem trying to configure bare metal server options: %s", err)
@@ -749,7 +733,8 @@ func setHardwareNotes(id int, d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
-// Example : getItemPriceId(items, 'server', 'INTEL_XEON_2690_2_60')
+// Returns a price from an item list.
+// Example usage : getItemPriceId(items, 'server', 'INTEL_XEON_2690_2_60')
 func getItemPriceId(items []datatypes.Product_Item, categoryCode string, keyName string) (datatypes.Product_Item_Price, error) {
 	availableItems := ""
 	for _, item := range items {
@@ -777,7 +762,6 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 		return datatypes.Container_Product_Order{}, fmt.Errorf("Custom bare metal server only supports monthly billing.")
 	}
 
-	// Check mandatory attributes of custom bare metal server ordering.
 	model, ok := d.GetOk("package_key_name")
 	if !ok {
 		return datatypes.Container_Product_Order{}, fmt.Errorf("The attribute 'package_key_name' is not defined.")
@@ -798,6 +782,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 		return datatypes.Container_Product_Order{}, err
 	}
 
+	// 1. Find a package id using custom bare metal package key name.
 	pkg, err := getPackageByModel(sess, model.(string))
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
@@ -871,6 +856,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 		return datatypes.Container_Product_Order{}, err
 	}
 
+	// Define an order object using basic paramters.
 	order := datatypes.Container_Product_Order{
 		Quantity: sl.Int(1),
 		Hardware: []datatypes.Hardware{{
@@ -895,6 +881,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 		},
 	}
 
+	// Add optional price ids.
 	// Add public bandwidth
 	if publicBandwidth, ok := d.GetOk("public_bandwidth"); ok {
 		publicBandwidthStr := "BANDWIDTH_" + strconv.Itoa(publicBandwidth.(int)) + "_GB"
@@ -934,13 +921,14 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 			return datatypes.Container_Product_Order{}, err
 		}
 		order.Prices = append(order.Prices, diskController)
-		order.StorageGroups = prepareStorageGroups(d)
+		order.StorageGroups = getStorageGroupsFromResourceData(d)
 	}
 
 	return order, nil
 }
 
-func setCommonBareMetalOptions(d *schema.ResourceData, meta interface{}, order datatypes.Container_Product_Order) (datatypes.Container_Product_Order, error) {
+// Set common parameters for quite based, pre-set configured, and custom bare metal server ordering.
+func setCommonBareMetalOrderOptions(d *schema.ResourceData, meta interface{}, order datatypes.Container_Product_Order) (datatypes.Container_Product_Order, error) {
 	public_vlan_id := d.Get("public_vlan_id").(int)
 
 	if public_vlan_id > 0 {
@@ -1002,6 +990,7 @@ func setCommonBareMetalOptions(d *schema.ResourceData, meta interface{}, order d
 	return order, nil
 }
 
+// Find price item using network options
 func findNetworkItemPriceId(items []datatypes.Product_Item, d *schema.ResourceData) (datatypes.Product_Item_Price, error) {
 	networkSpeed := d.Get("network_speed").(int)
 	redundantNetwork := d.Get("redundant_network").(bool)
@@ -1050,6 +1039,7 @@ func findNetworkItemPriceId(items []datatypes.Product_Item, d *schema.ResourceDa
 			networkSpeedStr, redundantNetworkStr, unbondedNetworkStr, privateNetworkOnly)
 }
 
+// Find memory price item using memory size.
 func findMemoryItemPriceId(items []datatypes.Product_Item, d *schema.ResourceData) (datatypes.Product_Item_Price, error) {
 	memory := d.Get("memory").(int)
 	memoryStr := "RAM_" + strconv.Itoa(memory) + "_GB"
@@ -1074,6 +1064,7 @@ func findMemoryItemPriceId(items []datatypes.Product_Item, d *schema.ResourceDat
 		fmt.Errorf("Could not find the price item for %d GB memory. Available items are %s", memory, availableMemories)
 }
 
+// Find a bare metal package object using a package key name
 func getPackageByModel(sess *session.Session, model string) (datatypes.Product_Package, error) {
 	objectMask := "id,keyName,name,description,isActive,type[keyName]"
 	service := services.GetProductPackageService(sess)
@@ -1105,6 +1096,33 @@ func getPackageByModel(sess *session.Session, model string) (datatypes.Product_P
 	return datatypes.Product_Package{}, fmt.Errorf("No custom bare metal package key name for %s. Available package key name(s) is(are) %s", model, availableModels)
 }
 
+func getStorageGroupsFromResourceData(d *schema.ResourceData) []datatypes.Container_Product_Order_Storage_Group {
+	storageGroupLists := d.Get("storage_groups").(*schema.Set).List()
+	storageGroups := make([]datatypes.Container_Product_Order_Storage_Group, 0)
+
+	for _, storageGroupList := range storageGroupLists {
+		storageGroup := storageGroupList.(map[string]interface{})
+		var storageGroupObj datatypes.Container_Product_Order_Storage_Group
+		storageGroupObj.ArrayTypeId = sl.Int(storageGroup["array_type_id"].(int))
+		hardDrives := storageGroup["hard_drives"].([]interface{})
+		storageGroupObj.HardDrives = make([]int, 0)
+		for _, hardDrive := range hardDrives {
+			storageGroupObj.HardDrives = append(storageGroupObj.HardDrives, hardDrive.(int))
+		}
+		arraySize := storageGroup["array_size"].(int)
+		if arraySize > 0 {
+			storageGroupObj.ArraySize = sl.Float(float64(arraySize))
+		}
+		partitionTemplateId := storageGroup["partition_template_id"].(int)
+		if partitionTemplateId > 0 {
+			storageGroupObj.PartitionTemplateId = sl.Int(partitionTemplateId)
+		}
+		storageGroups = append(storageGroups, storageGroupObj)
+	}
+	return storageGroups
+}
+
+// Use this function for attributes which only should be applied in resource creation time.
 func applyOnce(k, o, n string, d *schema.ResourceData) bool {
 	if len(d.Id()) == 0 {
 		return false
