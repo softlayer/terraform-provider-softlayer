@@ -111,10 +111,12 @@ func dataSourceSoftLayerQuoteBareMetal() *schema.Resource {
 						},
 						"array_size": {
 							Type:     schema.TypeInt,
+							Optional: true,
 							Computed: true,
 						},
 						"partition_template_id": {
 							Type:     schema.TypeInt,
+							Optional: true,
 							Computed: true,
 						},
 					},
@@ -156,10 +158,8 @@ func dataSourceSoftLayerQuoteBareMetalRead(d *schema.ResourceData, meta interfac
 				for _, sg := range order.StorageGroups {
 					storageGroup := make(map[string]interface{})
 					storageGroup["array_type_id"] = *sg.ArrayTypeId
-					if sg.ArraySize != nil {
-						storageGroup["array_size"] = *sg.ArraySize
-					}
-					storageGroup["partition_template_id"] = *sg.PartitionTemplateId
+					storageGroup["array_size"] = sl.Get(sg.ArraySize, 0)
+					storageGroup["partition_template_id"] = sl.Get(sg.PartitionTemplateId, 0)
 					storageGroup["hard_drives"] = sg.HardDrives
 					storageGroups = append(storageGroups, storageGroup)
 				}
