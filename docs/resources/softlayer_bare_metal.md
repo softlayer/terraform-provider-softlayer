@@ -1,15 +1,14 @@
 # `softlayer_bare_metal`
 
-Provides a `bare_metal` resource. This allows bare metals to be created, updated and deleted.
-`softlayer_bare_metal` resource supports both pre-set configured bare metal servers and custom bare metal servers.
- For more detail of bare metal types, refer to the [link](https://www.ibm.com/cloud-computing/bluemix/bare-metal-servers)
+Provides a `bare_metal` resource. This allows bare metals to be created, updated and deleted. `softlayer_bare_metal` resource supports both pre-set configured bare metal servers and custom bare metal servers.
+ For more detail on bare metal types, refer to the [link](https://www.ibm.com/cloud-computing/bluemix/bare-metal-servers)
 
 ## Pre-set configured bare metal server
 If the `softlayer_bare_metal` resource definition has a `fixed_config_preset` attribute, terraform will create a pre-set configured 
-bare metal server. The following example creates a new pre-set configured bare metal server with hourly option. Hardware specifications 
+bare metal server. The following example creates a new pre-set configured bare metal server with an hourly option. Hardware specifications 
 are already defined in the `fixed_config_preset` attribute and cannot be modified.
 
-## Example of a pre-set configured bare metal server
+### Example of a pre-set configured bare metal server
 ```hcl
 # Create a new bare metal
 resource "softlayer_bare_metal" "pre-configured-bm1" {
@@ -26,7 +25,7 @@ resource "softlayer_bare_metal" "pre-configured-bm1" {
 
 In addition, users can use configure optional attributes such as `user_metadata`, `tags`, and `notes` attributes as follows:
 
-## Example of additional attributes for the pre-set configured bare metal server
+### Example of additional attributes for the pre-set configured bare metal server
 ```hcl
 # Create a new bare metal
 resource "softlayer_bare_metal" "pre-configured-bm1" {
@@ -49,12 +48,12 @@ resource "softlayer_bare_metal" "pre-configured-bm1" {
 ```
 
 ## Custom bare metal server
-If the `fixed_config_preset` attribute is not configured, terraform will consider it as a monthly custom bare metal server resource. It provides  
+If the `fixed_config_preset` attribute is not configured, terraform will consider it as a monthly custom bare metal server resource. It provides 
 options to configure process, memory, network, disk, and RAID. Users also can assign VLANs and subnets for the target custom bare metal server. To configure the custom bare 
-metal server, you need to configure `package_key_name`, `proecss_key_name`, and `disk_key_names`. The folloing example descrices a basic configuration
+metal server, you need to configure `package_key_name`, `proecss_key_name`, and `disk_key_names`. The following example describes a basic configuration
  of the custom bare metal server.
 
-## Example of a custom bare metal server
+### Example of a custom bare metal server
 ```hcl
 resource "softlayer_bare_metal" "custom_bm1" {
     package_key_name = "DUAL_E52600_V4_12_DRIVES"
@@ -72,9 +71,8 @@ resource "softlayer_bare_metal" "custom_bm1" {
 ```
 
 Users can configure additional options. The following example configures target VLANs, subnets, and a RAID controller. `storage_groups` 
-configures RAIDs and disk partitioning. Refer to the [link](https://sldn.softlayer.com/blog/hansKristian/Ordering-RAID-through-API) to configure `storage_groups`.
-
-## Example of a custom bare metal server with additional options
+configures RAIDs and disk partitioning.
+### Example of a custom bare metal server with additional options
 ```hcl
 resource "softlayer_bare_metal" "custom_bm1" {
 
@@ -120,7 +118,7 @@ resource "softlayer_bare_metal" "custom_bm1" {
 If users already have a quote id for the bare metal server, they can create a new bare metal server with the quote id. The following example describes a basic configuration for a bare metal server with 
  quote_id.
   
-## Example of a quote based ordering
+### Example of a quote based ordering
 ```hcl
 # Create a new bare metal
 resource "softlayer_bare_metal" "quote_test" {
@@ -133,7 +131,7 @@ resource "softlayer_bare_metal" "quote_test" {
 Users can use additional options when they create a new bare metal server with `quote_id`. The folloing example defines target VLANs, subnets, 
  user meta data, and tags additionally. 
  
-## Example of a quote based ordering with additional options
+### Example of a quote based ordering with additional options
 ```hcl
 # Create a new bare metal
 resource "softlayer_bare_metal" "quote_test" {
@@ -272,7 +270,7 @@ The following arguments are supported:
     * Amount of memory(GB) for the server.
     * *Optional*
 * `storage_groups` | *array of storage group objects*
-    * RAID and partition configuration. 
+    * RAID and partition configuration. Refer to the [link](https://sldn.softlayer.com/blog/hansKristian/Ordering-RAID-through-API) to configure `storage_groups`.
     * *Optional*
     * Each storage group object has the following sub attributes:
     * `array_type_id` | *int*
