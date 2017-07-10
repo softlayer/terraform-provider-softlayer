@@ -66,6 +66,62 @@ func TestAccSoftLayerBareMetal_Basic(t *testing.T) {
 	})
 }
 
+func TestAccSoftLayerBareMetalQuote_Basic(t *testing.T) {
+	var bareMetal datatypes.Hardware
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckSoftLayerBareMetalDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:  testAccCheckSoftLayerBareMetalQuoteConfig_basic,
+				Destroy: false,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSoftLayerBareMetalExists("softlayer_bare_metal.terraform-acceptance-test-2", &bareMetal),
+					resource.TestCheckResourceAttr(
+						"softlayer_bare_metal.terraform-acceptance-test-2", "hostname", "terraform-test2"),
+					resource.TestCheckResourceAttr(
+						"softlayer_bare_metal.terraform-acceptance-test-2", "domain", "bar.example.com"),
+					resource.TestCheckResourceAttr(
+						"softlayer_bare_metal.terraform-acceptance-test-2", "user_metadata", "{\"value\":\"newvalue\"}"),
+					resource.TestCheckResourceAttr(
+						"softlayer_bare_metal.terraform-acceptance-test-2", "quote_id", "2179879"),
+					CheckStringSet(
+						"softlayer_bare_metal.terraform-acceptance-test-2",
+						"tags", []string{"collectd"},
+					),
+				),
+			},
+		},
+	})
+}
+
+func TestAccSoftLayerBareMetalCustom_Quote(t *testing.T) {
+	var bareMetal datatypes.Hardware
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckSoftLayerBareMetalDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:  testAccCheckSoftLayerBareMetalCustom_basic,
+				Destroy: false,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSoftLayerBareMetalExists("softlayer_bare_metal.terraform-acceptance-test-3", &bareMetal),
+					resource.TestCheckResourceAttr(
+						"softlayer_bare_metal.terraform-acceptance-test-3", "memory", "32"),
+					resource.TestCheckResourceAttr(
+						"softlayer_bare_metal.terraform-acceptance-test-3", "network_speed", "1000"),
+					resource.TestCheckResourceAttr(
+						"softlayer_bare_metal.terraform-acceptance-test-3", "public_bandwidth", "500"),
+				),
+			},
+		},
+	})
+}
+
 func testAccCheckSoftLayerBareMetalDestroy(s *terraform.State) error {
 	service := services.GetHardwareService(testAccProvider.Meta().(ProviderConfig).SoftLayerSession())
 
@@ -154,5 +210,31 @@ resource "softlayer_bare_metal" "terraform-acceptance-test-1" {
     user_metadata = "{\"value\":\"newvalue\"}"
     fixed_config_preset = "S1270_8GB_2X1TBSATA_NORAID"
     tags = ["mesos-master"]
+}
+`
+
+const testAccCheckSoftLayerBareMetalQuoteConfig_basic = `
+resource "softlayer_bare_metal" "terraform-acceptance-test-2" {
+    hostname = "terraform-test2"
+    domain = "bar.example.com"
+    user_metadata = "{\"value\":\"newvalue\"}"
+    quote_id = 2179879
+    tags = ["collectd"]
+}
+`
+
+const testAccCheckSoftLayerBareMetalCustom_basic = `
+resource "softlayer_bare_metal" "terraform-acceptance-test-3" {
+    package_key_name = "2U_DUAL_E52600_12_DRIVES"
+    process_key_name = "INTEL_DUAL_INTEL_XEON_E52620_2_00"
+    memory = 32
+    os_reference_code = "OS_WINDOWS_2012_R2_FULL_DC_64_BIT_2"
+    hostname = "cust-bm"
+    domain = "ms.com"
+    datacenter = "dal05"
+    network_speed = 1000
+    public_bandwidth = 500
+    disk_key_names = [ "HARD_DRIVE_1_00_TB_SATA_2", "HARD_DRIVE_1_00_TB_SATA_2" ]
+    hourly_billing = false
 }
 `

@@ -96,7 +96,7 @@ func dataSourceSoftLayerQuoteBareMetal() *schema.Resource {
 
 			// Custom bare metal server only - Order multiple RAID groups
 			"storage_groups": {
-				Type:     schema.TypeSet,
+				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{

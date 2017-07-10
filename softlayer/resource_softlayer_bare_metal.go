@@ -219,7 +219,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 
 			// Custom bare metal server only - Order multiple RAID groups
 			"storage_groups": {
-				Type:     schema.TypeSet,
+				Type:     schema.TypeList,
 				Optional: true,
 				ForceNew: true,
 				Elem: &schema.Resource{
@@ -609,7 +609,7 @@ func resourceSoftLayerBareMetalDelete(d *schema.ResourceData, meta interface{}) 
 
 	billingItemService := services.GetBillingItemService(sess)
 	_, err = billingItemService.Id(*billingItem.Id).CancelItem(
-		sl.Bool(true), sl.Bool(true), sl.String("No longer required"), sl.String("Please cancel this server"),
+		sl.Bool(d.Get("hourly_billing").(bool)), sl.Bool(true), sl.String("No longer required"), sl.String("Please cancel this server"),
 	)
 	if err != nil {
 		return fmt.Errorf("Error canceling the bare metal server (%d): %s", id, err)
