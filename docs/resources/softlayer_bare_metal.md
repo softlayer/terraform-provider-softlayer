@@ -128,8 +128,8 @@ resource "softlayer_bare_metal" "quote_test" {
 }
 ```
 
-Users can use additional options when they create a new bare metal server with `quote_id`. The folloing example defines target VLANs, subnets, 
- user meta data, and tags additionally. 
+Users can use additional options when they create a new bare metal server with `quote_id`. The following example defines target VLANs, subnets, 
+ user metadata, and tags additionally. 
  
 ### Example of a quote based ordering with additional options
 ```hcl
@@ -225,7 +225,7 @@ The following arguments are supported:
     * It is a mandatory attribute for pre-set configuration bare metal server provisioning.
     * *Optional*
 
-**Custom bare metal server / Quote based custom bare metal server provisionig attributes**
+**Custom bare metal server / Quote based custom bare metal server provisioning attributes**
 
 * `public_vlan_id` | *int*
     * Public VLAN which is to be used for the public network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans). Click on the desired VLAN and note the id number in the URL.
@@ -267,12 +267,12 @@ The following arguments are supported:
     * `public_bandwidth` can be greater than 0 when `private_network_only` is `false` and the server is a monthly based server.
     * *Optional*
 * `memory` | *int*
-    * Amount of memory(GB) for the server.
+    * An amount of memory(GB) for the server.
     * *Optional*
 * `storage_groups` | *array of storage group objects*
     * RAID and partition configuration. Refer to the [link](https://sldn.softlayer.com/blog/hansKristian/Ordering-RAID-through-API) to configure `storage_groups`.
     * *Optional*
-    * Each storage group object has the following sub attributes:
+    * Each storage group object has the following sub-attributes:
     * `array_type_id` | *int*
     * It provides RAID type. You can find `array_type_id` from the [link](https://api.softlayer.com/rest/v3/SoftLayer_Configuration_Storage_Group_Array_Type/getAllObjects). 
     * *Required*
@@ -288,17 +288,17 @@ The following arguments are supported:
     * *Optional*
     
 * `redundant_power_supply` | *boolean*
-    * If `redundant_power_supply` is true, additional power supply will be provided. 
+    * If `redundant_power_supply` is true, an additional power supply will be provided. 
     * *Optional*
 * `tcp_monitoring` | *boolean*
     * If `tcp_monitoring` is `false`, ping monitoring service will be provided. If `tcp_monitoring` is `true`, ping and tcp monitoring service will be provided.
     * *Optional*
-**Quote based probisioning only attributes**
+**Quote based provisioning only attributes**
 
 * `quote_id` | *int*
     * Create a pre-set configured bare metal server or custom bare metal server using the quote. 
     * If quote_id is defined, the terraform uses specifications in the quote to create a bare metal server.
-    * You can find the quote id by navigating on the portal to _Account > Sales > Quotes_ .
+    * You can find the quote id by navigating on the portal to _Account > Sales > Quotes_.
     * *Optional*
 
 ## Attributes Reference
