@@ -521,11 +521,10 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 
 	d.Set("notes", sl.Get(result.Notes, nil))
 	d.Set("memory", *result.MemoryCapacity)
+	d.Set("redundant_power_supply", false)
 
 	if *result.PowerSupplyCount == 2 {
 		d.Set("redundant_power_supply", true)
-	} else {
-		d.Set("redundant_power_supply", false)
 	}
 
 	d.Set("public_bandwidth", int(*result.BandwidthAllocation))
@@ -607,6 +606,7 @@ func resourceSoftLayerBareMetalDelete(d *schema.ResourceData, meta interface{}) 
 		return fmt.Errorf("Error getting billing item for bare metal server: %s", err)
 	}
 
+	// Monthly bare metal servers only support an anniversary date cancellation option.
 	billingItemService := services.GetBillingItemService(sess)
 	_, err = billingItemService.Id(*billingItem.Id).CancelItem(
 		sl.Bool(d.Get("hourly_billing").(bool)), sl.Bool(true), sl.String("No longer required"), sl.String("Please cancel this server"),
@@ -915,12 +915,12 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	}
 
 	// Add storage_groups for RAID configuration
+	diskController, err := getItemPriceId(items, "disk_controller", "DISK_CONTROLLER_RAID")
+	if err != nil {
+		return datatypes.Container_Product_Order{}, err
+	}
+	order.Prices = append(order.Prices, diskController)
 	if _, ok := d.GetOk("storage_groups"); ok {
-		diskController, err := getItemPriceId(items, "disk_controller", "DISK_CONTROLLER_RAID")
-		if err != nil {
-			return datatypes.Container_Product_Order{}, err
-		}
-		order.Prices = append(order.Prices, diskController)
 		order.StorageGroups = getStorageGroupsFromResourceData(d)
 	}
 
@@ -1097,7 +1097,7 @@ func getPackageByModel(sess *session.Session, model string) (datatypes.Product_P
 }
 
 func getStorageGroupsFromResourceData(d *schema.ResourceData) []datatypes.Container_Product_Order_Storage_Group {
-	storageGroupLists := d.Get("storage_groups").(*schema.Set).List()
+	storageGroupLists := d.Get("storage_groups").([]interface{})
 	storageGroups := make([]datatypes.Container_Product_Order_Storage_Group, 0)
 
 	for _, storageGroupList := range storageGroupLists {
@@ -1105,7 +1105,7 @@ func getStorageGroupsFromResourceData(d *schema.ResourceData) []datatypes.Contai
 		var storageGroupObj datatypes.Container_Product_Order_Storage_Group
 		storageGroupObj.ArrayTypeId = sl.Int(storageGroup["array_type_id"].(int))
 		hardDrives := storageGroup["hard_drives"].([]interface{})
-		storageGroupObj.HardDrives = make([]int, 0)
+		storageGroupObj.HardDrives = make([]int, 0, len(hardDrives))
 		for _, hardDrive := range hardDrives {
 			storageGroupObj.HardDrives = append(storageGroupObj.HardDrives, hardDrive.(int))
 		}

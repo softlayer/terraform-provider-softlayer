@@ -97,7 +97,7 @@ func TestAccSoftLayerBareMetalQuote_Basic(t *testing.T) {
 	})
 }
 
-func TestAccSoftLayerBareMetalCustom_Quote(t *testing.T) {
+func TestAccSoftLayerBareMetalCustom_Basic(t *testing.T) {
 	var bareMetal datatypes.Hardware
 
 	resource.Test(t, resource.TestCase{
@@ -236,5 +236,6 @@ resource "softlayer_bare_metal" "terraform-acceptance-test-3" {
     public_bandwidth = 500
     disk_key_names = [ "HARD_DRIVE_1_00_TB_SATA_2", "HARD_DRIVE_1_00_TB_SATA_2" ]
     hourly_billing = false
+    redundant_power_supply = true
 }
 `
