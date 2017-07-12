@@ -27,11 +27,6 @@ func dataSourceSoftLayerQuoteBareMetal() *schema.Resource {
 				Required:    true,
 			},
 
-			"os_reference_code": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
 			"datacenter": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -58,6 +53,11 @@ func dataSourceSoftLayerQuoteBareMetal() *schema.Resource {
 			},
 
 			"process_key_name": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+
+			"os_key_name": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -185,7 +185,7 @@ func dataSourceSoftLayerQuoteBareMetalRead(d *schema.ResourceData, meta interfac
 				case "server":
 					d.Set("process_key_name", *item.Item.KeyName)
 				case "os":
-					d.Set("os_reference_code", *item.Item.KeyName)
+					d.Set("os_key_name", *item.Item.KeyName)
 				case "ram":
 					d.Set("memory", int(*item.Item.Capacity))
 				case "bandwidth":

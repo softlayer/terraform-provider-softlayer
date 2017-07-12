@@ -101,11 +101,12 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 
 			// Pe-set configured / custom bare metal server - Mandatory attribute
 			"os_reference_code": {
-				Type:          schema.TypeString,
-				Optional:      true,
-				Computed:      true,
-				ForceNew:      true,
-				ConflictsWith: []string{"image_template_id"},
+				Type:             schema.TypeString,
+				Optional:         true,
+				Computed:         true,
+				ForceNew:         true,
+				ConflictsWith:    []string{"image_template_id"},
+				DiffSuppressFunc: applyOnce,
 			},
 
 			"image_template_id": {
@@ -149,9 +150,11 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 
 			// Pre-set configured / custom bare metal server
 			"tcp_monitoring": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
+				Type:             schema.TypeBool,
+				Optional:         true,
+				Default:          false,
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
 			},
 
 			// Custom bare metal server - Mandatory attribute
@@ -164,6 +167,14 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 
 			// Custom bare metal server - Mandatory attribute
 			"process_key_name": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
+			},
+
+			// Custom bare metal server - Mandatory attribute
+			"os_key_name": {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
@@ -197,9 +208,11 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 
 			// Custom bare metal server only
 			"public_bandwidth": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				ForceNew: true,
+				Type:             schema.TypeInt,
+				Optional:         true,
+				Computed:         true,
+				ForceNew:         true,
+				DiffSuppressFunc: applyOnce,
 			},
 
 			// Custom bare metal server only
@@ -431,7 +444,7 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 	}
 
 	log.Println("[INFO] Ordering bare metal server")
-	_, err = services.GetProductOrderService(sess).PlaceOrder(&order, sl.Bool(true))
+	_, err = services.GetProductOrderService(sess).PlaceOrder(&order, sl.Bool(false))
 	if err != nil {
 		return fmt.Errorf("Error ordering bare metal server: %s\n%+v\n", err, order)
 	}
@@ -480,10 +493,9 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 			"hourlyBillingFlag," +
 			"datacenter[id,name,longName]," +
 			"primaryNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],maxSpeed]," +
-			"primaryBackendNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],maxSpeed]," +
-			"memoryCapacity,powerSupplyCount,bandwidthAllocation," +
-			"operatingSystem[softwareLicense[softwareDescription[referenceCode]]]," +
-			"backendNetworkComponentCount,primaryBackendNetworkComponent[networkVlanTrunkCount]",
+			"primaryBackendNetworkComponent[networkVlan[id,primaryRouter,vlanNumber],maxSpeed,redundancyEnabledFlag]," +
+			"memoryCapacity,powerSupplyCount," +
+			"operatingSystem[softwareLicense[softwareDescription[referenceCode]]]",
 	).GetObject()
 
 	if err != nil {
@@ -527,12 +539,21 @@ func resourceSoftLayerBareMetalRead(d *schema.ResourceData, meta interface{}) er
 		d.Set("redundant_power_supply", true)
 	}
 
-	d.Set("public_bandwidth", int(*result.BandwidthAllocation))
-
 	d.Set("redundant_network", false)
 	d.Set("unbonded_network", false)
-	if *result.BackendNetworkComponentCount > 2 && result.PrimaryBackendNetworkComponent != nil {
-		if *result.PrimaryBackendNetworkComponent.NetworkVlanTrunkCount > 0 {
+
+	backendNetworkComponent, err := service.Filter(
+		filter.Build(
+			filter.Path("backendNetworkComponents.status").Eq("ACTIVE"),
+		),
+	).Id(id).GetBackendNetworkComponents()
+
+	if err != nil {
+		return fmt.Errorf("Error retrieving bare metal server network: %s", err)
+	}
+
+	if len(backendNetworkComponent) > 2 && result.PrimaryBackendNetworkComponent != nil {
+		if *result.PrimaryBackendNetworkComponent.RedundancyEnabledFlag {
 			d.Set("redundant_network", true)
 		} else {
 			d.Set("unbonded_network", true)
@@ -668,7 +689,7 @@ func waitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interfa
 		},
 		Timeout:        24 * time.Hour,
 		Delay:          60 * time.Second,
-		MinTimeout:     2 * time.Minute,
+		MinTimeout:     1 * time.Minute,
 		NotFoundChecks: 24 * 60,
 	}
 
@@ -696,7 +717,7 @@ func waitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}
 		},
 		Timeout:        24 * time.Hour,
 		Delay:          60 * time.Second,
-		MinTimeout:     2 * time.Minute,
+		MinTimeout:     1 * time.Minute,
 		NotFoundChecks: 24 * 60,
 	}
 
@@ -772,9 +793,9 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 		return datatypes.Container_Product_Order{}, fmt.Errorf("The attribute 'datacenter' is not defined.")
 	}
 
-	osReferenceCode, ok := d.GetOk("os_reference_code")
+	osKeyName, ok := d.GetOk("os_key_name")
 	if !ok {
-		return datatypes.Container_Product_Order{}, fmt.Errorf("The attribute 'os_reference_code' is not defined.")
+		return datatypes.Container_Product_Order{}, fmt.Errorf("The attribute 'os_key_name' is not defined.")
 	}
 
 	dc, err := location.GetDatacenterByName(sess, datacenter.(string), "id")
@@ -803,7 +824,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
-	os, err := getItemPriceId(items, "os", osReferenceCode.(string))
+	os, err := getItemPriceId(items, "os", osKeyName.(string))
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}

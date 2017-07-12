@@ -114,6 +114,8 @@ resource "softlayer_bare_metal" "custom_bm1" {
 }
 ```
 
+_Please Note_: Custom bare metal servers does not support `immediate cancellation`. If the custom bare metal server is deleted by terraform, `anniversary date cancellation` option will be used. 
+
 ## Create a bare metal server using quote ID
 If users already have a quote id for the bare metal server, they can create a new bare metal server with the quote id. The following example describes a basic configuration for a bare metal server with 
  quote_id.

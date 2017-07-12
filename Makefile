@@ -25,7 +25,7 @@ test: fmtcheck vet
 # testacc runs acceptance tests
 # e.g make testacc TESTARGS="-run TestAccSoftLayerScaleGroup_Basic"
 testacc: fmtcheck vet
-	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m
+	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 1440m
 
 # testrace runs the race checker
 testrace: fmtcheck vet

@@ -230,7 +230,7 @@ resource "softlayer_bare_metal" "terraform-acceptance-test-3" {
     memory = 32
     os_reference_code = "OS_WINDOWS_2012_R2_FULL_DC_64_BIT_2"
     hostname = "cust-bm"
-    domain = "ms.com"
+    domain = "example.com"
     datacenter = "dal05"
     network_speed = 1000
     public_bandwidth = 500
