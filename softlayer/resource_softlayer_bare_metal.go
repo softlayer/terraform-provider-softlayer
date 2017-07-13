@@ -91,7 +91,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Set:      schema.HashString,
 			},
 
-			// Pre-set configured bare metal server. - Mandatory attribute
+			// Hourly only
 			"fixed_config_preset": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -99,7 +99,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				DiffSuppressFunc: applyOnce,
 			},
 
-			// Pe-set configured / custom bare metal server - Mandatory attribute
+			// Hourly only
 			"os_reference_code": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -116,7 +116,6 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ConflictsWith: []string{"os_reference_code"},
 			},
 
-			// Pre-set configured / custom bare metal server - Mandatory attribute
 			"datacenter": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -124,7 +123,6 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Computed: true,
 			},
 
-			// Pre-set configured / custom bare metal server
 			"network_speed": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -132,7 +130,6 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew: true,
 			},
 
-			// Pre-set configured / custom bare metal server
 			"hourly_billing": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -140,7 +137,6 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew: true,
 			},
 
-			// Pre-set configured / custom bare metal server
 			"private_network_only": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -148,7 +144,6 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew: true,
 			},
 
-			// Pre-set configured / custom bare metal server
 			"tcp_monitoring": {
 				Type:             schema.TypeBool,
 				Optional:         true,
@@ -157,7 +152,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				DiffSuppressFunc: applyOnce,
 			},
 
-			// Custom bare metal server - Mandatory attribute
+			// Monthly only
 			"package_key_name": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -165,7 +160,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				DiffSuppressFunc: applyOnce,
 			},
 
-			// Custom bare metal server - Mandatory attribute
+			// Monthly only
 			"process_key_name": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -173,7 +168,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				DiffSuppressFunc: applyOnce,
 			},
 
-			// Custom bare metal server - Mandatory attribute
+			// Monthly only
 			"os_key_name": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -181,7 +176,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				DiffSuppressFunc: applyOnce,
 			},
 
-			// Custom bare metal server - Mandatory attribute
+			// Monthly only
 			"disk_key_names": {
 				Type:             schema.TypeList,
 				Optional:         true,
@@ -190,7 +185,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				DiffSuppressFunc: applyOnce,
 			},
 
-			// Custom bare metal server only
+			// Monthly only
 			"redundant_network": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -198,7 +193,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew: true,
 			},
 
-			// Custom bare metal server only
+			// Monthly only
 			"unbonded_network": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -206,7 +201,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				ForceNew: true,
 			},
 
-			// Custom bare metal server only
+			// Monthly only
 			"public_bandwidth": {
 				Type:             schema.TypeInt,
 				Optional:         true,
@@ -215,7 +210,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				DiffSuppressFunc: applyOnce,
 			},
 
-			// Custom bare metal server only
+			// Monthly only
 			"memory": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -223,14 +218,14 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Computed: true,
 			},
 
-			// Custom bare metal server only
+			// Monthly only
 			"redundant_power_supply": {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Computed: true,
 			},
 
-			// Custom bare metal server only - Order multiple RAID groups
+			// Monthly only
 			"storage_groups": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -267,7 +262,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				DiffSuppressFunc: applyOnce,
 			},
 
-			// Quote based ordering/custom bare metal server only
+			// Quote based provisioning, Monthly
 			"public_vlan_id": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -275,7 +270,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Computed: true,
 			},
 
-			// Quote based ordering/custom bare metal server only
+			// Quote based provisioning, Monthly
 			"public_subnet": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -283,7 +278,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Computed: true,
 			},
 
-			// Quote based ordering/custom bare metal server only
+			// Quote based provisioning, Monthly
 			"private_vlan_id": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -291,7 +286,7 @@ func resourceSoftLayerBareMetal() *schema.Resource {
 				Computed: true,
 			},
 
-			// Quote based ordering/custom bare metal server only
+			// Quote based provisioning, Monthly
 			"private_subnet": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -418,7 +413,7 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 			hardware,
 		)
 	} else if _, ok := d.GetOk("fixed_config_preset"); ok {
-		// Build a pre-configured bare metal server template using fixed_config_preset.
+		// Build an hourly bare metal server template using fixed_config_preset.
 		hardware, err = getBareMetalOrderFromResourceData(d, meta)
 		if err != nil {
 			return err
@@ -429,8 +424,8 @@ func resourceSoftLayerBareMetalCreate(d *schema.ResourceData, meta interface{}) 
 				"Encountered problem trying to get the bare metal order template: %s", err)
 		}
 	} else {
-		// Build a custom bare metal server template
-		order, err = getCustomBareMetalOrder(d, meta)
+		// Build a monthly bare metal server template
+		order, err = getMonthlyBareMetalOrder(d, meta)
 		if err != nil {
 			return fmt.Errorf(
 				"Encountered problem trying to get the custom bare metal order template: %s", err)
@@ -776,11 +771,11 @@ func getItemPriceId(items []datatypes.Product_Item, categoryCode string, keyName
 		fmt.Errorf("Could not find the matching item with categorycode %s and keyName %s. Available item(s) is(are) %s", categoryCode, keyName, availableItems)
 }
 
-func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatypes.Container_Product_Order, error) {
+func getMonthlyBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatypes.Container_Product_Order, error) {
 	sess := meta.(ProviderConfig).SoftLayerSession()
-	// Validate attributes for custom bare metal server ordering.
+	// Validate attributes for monthly bare metal server ordering.
 	if d.Get("hourly_billing").(bool) {
-		return datatypes.Container_Product_Order{}, fmt.Errorf("Custom bare metal server only supports monthly billing.")
+		return datatypes.Container_Product_Order{}, fmt.Errorf("Monthly bare metal server only supports monthly billing.")
 	}
 
 	model, ok := d.GetOk("package_key_name")
@@ -803,7 +798,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 		return datatypes.Container_Product_Order{}, err
 	}
 
-	// 1. Find a package id using custom bare metal package key name.
+	// 1. Find a package id using monthly bare metal package key name.
 	pkg, err := getPackageByModel(sess, model.(string))
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
@@ -948,7 +943,7 @@ func getCustomBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatype
 	return order, nil
 }
 
-// Set common parameters for quite based, pre-set configured, and custom bare metal server ordering.
+// Set common parameters for server ordering.
 func setCommonBareMetalOrderOptions(d *schema.ResourceData, meta interface{}, order datatypes.Container_Product_Order) (datatypes.Container_Product_Order, error) {
 	public_vlan_id := d.Get("public_vlan_id").(int)
 

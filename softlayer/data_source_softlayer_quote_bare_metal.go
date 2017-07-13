@@ -88,13 +88,11 @@ func dataSourceSoftLayerQuoteBareMetal() *schema.Resource {
 				Computed: true,
 			},
 
-			// Custom bare metal server only
 			"redundant_power_supply": {
 				Type:     schema.TypeBool,
 				Computed: true,
 			},
 
-			// Custom bare metal server only - Order multiple RAID groups
 			"storage_groups": {
 				Type:     schema.TypeList,
 				Computed: true,

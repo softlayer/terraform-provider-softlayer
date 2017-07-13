@@ -1,18 +1,17 @@
 # `softlayer_bare_metal`
 
-Provides a `bare_metal` resource. This allows bare metals to be created, updated and deleted. `softlayer_bare_metal` resource supports both pre-set configured bare metal servers and custom bare metal servers.
+Provides a `bare_metal` resource. This allows bare metals to be created, updated and deleted. `softlayer_bare_metal` resource supports both monthly bare metal servers and hourly bare metal servers.
  For more detail on bare metal types, refer to the [link](https://www.ibm.com/cloud-computing/bluemix/bare-metal-servers)
 
-## Pre-set configured bare metal server
-If the `softlayer_bare_metal` resource definition has a `fixed_config_preset` attribute, terraform will create a pre-set configured 
-bare metal server. The following example creates a new pre-set configured bare metal server with an hourly option. Hardware specifications 
+## Hourly bare metal server
+If the `softlayer_bare_metal` resource definition has a `fixed_config_preset` attribute, terraform will create an hourly
+bare metal server. The following example creates a new hourly bare metal server. Hardware specifications 
 are already defined in the `fixed_config_preset` attribute and cannot be modified.
 
-### Example of a pre-set configured bare metal server
+### Example of an hourly bare metal server
 ```hcl
-# Create a new bare metal
-resource "softlayer_bare_metal" "pre-configured-bm1" {
-    hostname = "pre-configured-bm1"
+resource "softlayer_bare_metal" "hourly-bm1" {
+    hostname = "hourly-bm1"
     domain = "example.com"
     os_reference_code = "UBUNTU_16_64"
     datacenter = "dal01"
@@ -25,11 +24,10 @@ resource "softlayer_bare_metal" "pre-configured-bm1" {
 
 In addition, users can use configure optional attributes such as `user_metadata`, `tags`, and `notes` attributes as follows:
 
-### Example of additional attributes for the pre-set configured bare metal server
+### Example of additional attributes for the hourly bare metal server
 ```hcl
-# Create a new bare metal
-resource "softlayer_bare_metal" "pre-configured-bm1" {
-    hostname = "pre-configured-bm1"
+resource "softlayer_bare_metal" "hourly-bm1" {
+    hostname = "hourly-bm1"
     domain = "example.com"
     os_reference_code = "UBUNTU_16_64"
     datacenter = "dal01"
@@ -47,19 +45,19 @@ resource "softlayer_bare_metal" "pre-configured-bm1" {
 }
 ```
 
-## Custom bare metal server
-If the `fixed_config_preset` attribute is not configured, terraform will consider it as a monthly custom bare metal server resource. It provides 
-options to configure process, memory, network, disk, and RAID. Users also can assign VLANs and subnets for the target custom bare metal server. To configure the custom bare 
-metal server, you need to configure `package_key_name`, `proecss_key_name`, and `disk_key_names`. The following example describes a basic configuration
- of the custom bare metal server.
+## Monthly bare metal server
+If the `fixed_config_preset` attribute is not configured, terraform will consider it as a monthly bare metal server resource. It provides 
+options to configure process, memory, network, disk, and RAID. Users also can assign VLANs and subnets for the target monthly bare metal server. To configure the monthly bare 
+metal server, you need to configure `package_key_name`, `proecss_key_name`, `disk_key_names`, and `os_key_name`. The following example describes a basic configuration
+ of the monthly bare metal server.
 
-### Example of a custom bare metal server
+### Example of a monthly bare metal server
 ```hcl
-resource "softlayer_bare_metal" "custom_bm1" {
+resource "softlayer_bare_metal" "monthly_bm1" {
     package_key_name = "DUAL_E52600_V4_12_DRIVES"
     process_key_name = "INTEL_INTEL_XEON_E52620_V4_2_10"
     memory = 64
-    os_reference_code = "OS_WINDOWS_2012_R2_FULL_DC_64_BIT_2"
+    os_key_name = "OS_WINDOWS_2012_R2_FULL_DC_64_BIT_2"
     hostname = "cust-bm"
     domain = "ms.com"
     datacenter = "wdc04"
@@ -72,15 +70,15 @@ resource "softlayer_bare_metal" "custom_bm1" {
 
 Users can configure additional options. The following example configures target VLANs, subnets, and a RAID controller. `storage_groups` 
 configures RAIDs and disk partitioning.
-### Example of a custom bare metal server with additional options
+### Example of a monthly bare metal server with additional options
 ```hcl
-resource "softlayer_bare_metal" "custom_bm1" {
+resource "softlayer_bare_metal" "monthly_bm1" {
 
 # Mandatory attributes
     package_key_name = "DUAL_E52600_V4_12_DRIVES"
     process_key_name = "INTEL_INTEL_XEON_E52620_V4_2_10"
     memory = 64
-    os_reference_code = "OS_WINDOWS_2012_R2_FULL_DC_64_BIT_2"
+    os_key_name = "OS_WINDOWS_2012_R2_FULL_DC_64_BIT_2"
     hostname = "cust-bm"
     domain = "ms.com"
     datacenter = "wdc04"
@@ -114,7 +112,7 @@ resource "softlayer_bare_metal" "custom_bm1" {
 }
 ```
 
-_Please Note_: Custom bare metal servers does not support `immediate cancellation`. If the custom bare metal server is deleted by terraform, `anniversary date cancellation` option will be used. 
+_Please Note_: Monthly bare metal servers does not support `immediate cancellation`. If the monthly bare metal server is deleted by terraform, `anniversary date cancellation` option will be used. 
 
 ## Create a bare metal server using quote ID
 If users already have a quote id for the bare metal server, they can create a new bare metal server with the quote id. The following example describes a basic configuration for a bare metal server with 
@@ -160,8 +158,6 @@ resource "softlayer_bare_metal" "quote_test" {
 
 The following arguments are supported:
 
-**Common attributes**
-
 * `hostname` | *string*
     * Hostname for the computing instance.
     * **Optional**
@@ -187,23 +183,16 @@ The following arguments are supported:
     * Set tags on this bare metal server. The characters permitted are A-Z, 0-9, whitespace, _ (underscore), - (hyphen), . (period), and : (colon). All other characters will be stripped away.
     * *Optional*
 
-**Pre-set configured bare metal server / custom bare metal server attributes**
+**Monthly/Hourly bare metal server attributes**
 
 * `datacenter` | *string*
     * Specifies which datacenter the instance is to be provisioned in.
-    * It is a mandatory attribute for pre-set configured and custom bare metal servers.
+    * It is a mandatory attribute for monthly and hourly bare metal servers.
     * *Optional*
 * `hourly_billing` | *boolean*
     * Specifies the billing type for the instance. When true the computing instance will be billed on hourly usage, otherwise it will be billed on a monthly basis.
-    * Only pre-set configuration bare metal servers support hourly billing.
     * *Default*: true
     * *Optional*
-* `os_reference_code` | *string*
-    * An operating system reference code that will be used to provision the computing instance. 
-    * Pre-set configured bare metal server : [Get a complete list of the os reference codes available for pre-set configuration bare metal servers](https://api.softlayer.com/rest/v3/SoftLayer_Virtual_Guest_Block_Device_Template_Group/getVhdImportSoftwareDescriptions.json?objectMask=referenceCode) (use your api key as the password).
-    * Custom bare metal server : Note the package key ID from the [link](https://api.softlayer.com/rest/v3/SoftLayer_Product_Package/getAllObjects?objectFilter={"type":{"keyName":{"operation":"BARE_METAL_CPU"}}}) and replace **PACKAGE_ID** in the [link](https://api.softlayer.com/rest/v3/SoftLayer_Product_Package/PACKAGE_ID/getItems?objectMask=mask[prices[id,categories[id,name,categoryCode],capacityRestrictionType,capacityRestrictionMinimum,capacityRestrictionMaximum,locationGroupId]]) to your package key ID. Select a OS key name from available OS key names.
-    * *Optional*
-    * **Conflicts with** `image_template_id`.
 * `image_template_id` | *int*
     * The image template id to be used to provision the computing instance. Note this is not the global identifier (uuid), but the image template group id that should point to a valid global identifier. You can get the image template id by navigating on the portal to _Devices > Manage > Images_, clicking on the desired image, and taking note of the id number in the browser URL location.
     * *Optional*
@@ -220,14 +209,18 @@ The following arguments are supported:
     * *Default*: False
     * *Optional*
 
-**Pre-set configured bare metal server only attributes**
+**Hourly bare metal server only attributes**
 
 * `fixed_config_preset` | *string*
-    * The configuration preset that the pre-set configuration bare metal server will be provisioned with. This governs the type of cpu, number of cores, amount of ram, and hard drives which the bare metal server will have. [Take a look at the available presets](https://api.softlayer.com/rest/v3/SoftLayer_Hardware/getCreateObjectOptions.json) (use your api key as the password), and find the key called _fixedConfigurationPresets_. Under that, the presets will be identified by the *keyName*s.
-    * It is a mandatory attribute for pre-set configuration bare metal server provisioning.
+    * The configuration preset that the hourly bare metal server will be provisioned with. This governs the type of cpu, number of cores, amount of ram, and hard drives which the bare metal server will have. [Take a look at the available presets](https://api.softlayer.com/rest/v3/SoftLayer_Hardware/getCreateObjectOptions.json) (use your api key as the password), and find the key called _fixedConfigurationPresets_. Under that, the presets will be identified by the *keyName*s.
+    * It is a mandatory attribute for hourly bare metal server provisioning.
     * *Optional*
-
-**Custom bare metal server / Quote based custom bare metal server provisioning attributes**
+* `os_reference_code` | *string*
+    * An operating system reference code that will be used to provision the computing instance. 
+    * Hourly bare metal server : [Get a complete list of the os reference codes available for hourly bare metal servers](https://api.softlayer.com/rest/v3/SoftLayer_Virtual_Guest_Block_Device_Template_Group/getVhdImportSoftwareDescriptions.json?objectMask=referenceCode) (use your api key as the password).
+    * *Optional*
+    * **Conflicts with** `image_template_id`.
+**Monthly / Quote based bare metal server provisioning attributes**
 
 * `public_vlan_id` | *int*
     * Public VLAN which is to be used for the public network interface of the instance. Accepted values can be found [here](https://control.softlayer.com/network/vlans). Click on the desired VLAN and note the id number in the URL.
@@ -242,19 +235,23 @@ The following arguments are supported:
     * Private subnet which is to be used for the private network interface of the instance. Accepted values are primary private networks and can be found [here](https://control.softlayer.com/network/subnets).
     * *Optional*
 
-**Custom bare metal server only attributes**
+**Monthly bare metal server only attributes**
 
 * `package_key_name` | *string*
-    * Custom bare metal server's package key name. This attribute is only used when a new custom bare metal server is created.
+    * Monthly bare metal server's package key name. This attribute is only used when a new monthly bare metal server is created.
     * You can find available key names in the [link](https://api.softlayer.com/rest/v3/SoftLayer_Product_Package/getAllObjects?objectFilter={"type":{"keyName":{"operation":"BARE_METAL_CPU"}}}). You need your username and api_key to access to the page. 
     * *Optional*
 * `process_key_name` | *string*
-    * Custom bare metal server's process key name. This attribute is only used when a new custom bare metal server is created.
+    * Monthly bare metal server's process key name. This attribute is only used when a new monthly bare metal server is created.
     * Note the package key ID from the [link](https://api.softlayer.com/rest/v3/SoftLayer_Product_Package/getAllObjects?objectFilter={"type":{"keyName":{"operation":"BARE_METAL_CPU"}}}) and replace **PACKAGE_ID** in the [link](https://api.softlayer.com/rest/v3/SoftLayer_Product_Package/PACKAGE_ID/getItems?objectMask=mask[prices[id,categories[id,name,categoryCode],capacityRestrictionType,capacityRestrictionMinimum,capacityRestrictionMaximum,locationGroupId]]) to your package key ID. Select a process key name from available process key names.
     * *Optional*
 * `disk_key_names` | *list*
-    * Array of internal disk key names. This attribute is only used when a new custom bare metal server is created.
+    * Array of internal disk key names. This attribute is only used when a new monthly bare metal server is created.
     * Note the package key ID from the [link](https://api.softlayer.com/rest/v3/SoftLayer_Product_Package/getAllObjects?objectFilter={"type":{"keyName":{"operation":"BARE_METAL_CPU"}}}) and replace **PACKAGE_ID** in the [link](https://api.softlayer.com/rest/v3/SoftLayer_Product_Package/PACKAGE_ID/getItems?objectMask=mask[prices[id,categories[id,name,categoryCode],capacityRestrictionType,capacityRestrictionMinimum,capacityRestrictionMaximum,locationGroupId]]) to your package key ID. Select a disk key name from available disk key names.
+    * *Optional*
+* `os_key_name` | *string*
+    * An operating system key name that will be used to provision the computing instance. 
+    * Note the package key ID from the [link](https://api.softlayer.com/rest/v3/SoftLayer_Product_Package/getAllObjects?objectFilter={"type":{"keyName":{"operation":"BARE_METAL_CPU"}}}) and replace **PACKAGE_ID** in the [link](https://api.softlayer.com/rest/v3/SoftLayer_Product_Package/PACKAGE_ID/getItems?objectMask=mask[prices[id,categories[id,name,categoryCode],capacityRestrictionType,capacityRestrictionMinimum,capacityRestrictionMaximum,locationGroupId]]) to your package key ID. Select a OS key name from available OS key names.
     * *Optional*
 * `redundant_network` | *boolean*
     * If `redundant_network` is `true`, two physical network interfaces will be provided with a bonding configuration. 
@@ -298,7 +295,7 @@ The following arguments are supported:
 **Quote based provisioning only attributes**
 
 * `quote_id` | *int*
-    * Create a pre-set configured bare metal server or custom bare metal server using the quote. 
+    * Create a bare metal server using the quote. 
     * If quote_id is defined, the terraform uses specifications in the quote to create a bare metal server.
     * You can find the quote id by navigating on the portal to _Account > Sales > Quotes_.
     * *Optional*
