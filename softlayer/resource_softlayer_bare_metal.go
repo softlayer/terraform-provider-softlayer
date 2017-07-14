@@ -683,7 +683,7 @@ func waitForBareMetalProvision(d *datatypes.Hardware, meta interface{}) (interfa
 			}
 		},
 		Timeout:        24 * time.Hour,
-		Delay:          60 * time.Second,
+		Delay:          10 * time.Second,
 		MinTimeout:     1 * time.Minute,
 		NotFoundChecks: 24 * 60,
 	}
@@ -711,7 +711,7 @@ func waitForNoBareMetalActiveTransactions(id int, meta interface{}) (interface{}
 			}
 		},
 		Timeout:        24 * time.Hour,
-		Delay:          60 * time.Second,
+		Delay:          10 * time.Second,
 		MinTimeout:     1 * time.Minute,
 		NotFoundChecks: 24 * 60,
 	}
@@ -931,14 +931,19 @@ func getMonthlyBareMetalOrder(d *schema.ResourceData, meta interface{}) (datatyp
 	}
 
 	// Add storage_groups for RAID configuration
-	diskController, err := getItemPriceId(items, "disk_controller", "DISK_CONTROLLER_RAID")
+	diskController, err := getItemPriceId(items, "disk_controller", "DISK_CONTROLLER_NONRAID")
 	if err != nil {
 		return datatypes.Container_Product_Order{}, err
 	}
-	order.Prices = append(order.Prices, diskController)
+
 	if _, ok := d.GetOk("storage_groups"); ok {
 		order.StorageGroups = getStorageGroupsFromResourceData(d)
+		diskController, err = getItemPriceId(items, "disk_controller", "DISK_CONTROLLER_RAID")
+		if err != nil {
+			return datatypes.Container_Product_Order{}, err
+		}
 	}
+	order.Prices = append(order.Prices, diskController)
 
 	return order, nil
 }

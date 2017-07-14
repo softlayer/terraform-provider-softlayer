@@ -1,7 +1,7 @@
 # `softlayer_bare_metal`
 
 Provides a `bare_metal` resource. This allows bare metals to be created, updated and deleted. `softlayer_bare_metal` resource supports both monthly bare metal servers and hourly bare metal servers.
- For more detail on bare metal types, refer to the [link](https://www.ibm.com/cloud-computing/bluemix/bare-metal-servers)
+ For more detail on bare metal seves, refer to the [link](https://www.ibm.com/cloud-computing/bluemix/bare-metal-servers)
 
 ## Hourly bare metal server
 If the `softlayer_bare_metal` resource definition has a `fixed_config_preset` attribute, terraform will create an hourly
@@ -48,7 +48,7 @@ resource "softlayer_bare_metal" "hourly-bm1" {
 ## Monthly bare metal server
 If the `fixed_config_preset` attribute is not configured, terraform will consider it as a monthly bare metal server resource. It provides 
 options to configure process, memory, network, disk, and RAID. Users also can assign VLANs and subnets for the target monthly bare metal server. To configure the monthly bare 
-metal server, you need to configure `package_key_name`, `proecss_key_name`, `disk_key_names`, and `os_key_name`. The following example describes a basic configuration
+metal server, you need to provide additional attributes such as `package_key_name`, `proecss_key_name`, `disk_key_names`, and `os_key_name`. The following example describes a basic configuration
  of the monthly bare metal server.
 
 ### Example of a monthly bare metal server
@@ -220,6 +220,7 @@ The following arguments are supported:
     * Hourly bare metal server : [Get a complete list of the os reference codes available for hourly bare metal servers](https://api.softlayer.com/rest/v3/SoftLayer_Virtual_Guest_Block_Device_Template_Group/getVhdImportSoftwareDescriptions.json?objectMask=referenceCode) (use your api key as the password).
     * *Optional*
     * **Conflicts with** `image_template_id`.
+    
 **Monthly / Quote based bare metal server provisioning attributes**
 
 * `public_vlan_id` | *int*

@@ -85,8 +85,6 @@ func TestAccSoftLayerBareMetalQuote_Basic(t *testing.T) {
 						"softlayer_bare_metal.terraform-acceptance-test-2", "domain", "bar.example.com"),
 					resource.TestCheckResourceAttr(
 						"softlayer_bare_metal.terraform-acceptance-test-2", "user_metadata", "{\"value\":\"newvalue\"}"),
-					resource.TestCheckResourceAttr(
-						"softlayer_bare_metal.terraform-acceptance-test-2", "quote_id", "2179879"),
 					CheckStringSet(
 						"softlayer_bare_metal.terraform-acceptance-test-2",
 						"tags", []string{"collectd"},
