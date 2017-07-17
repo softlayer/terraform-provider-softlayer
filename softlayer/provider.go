@@ -46,10 +46,10 @@ func Provider() terraform.ResourceProvider {
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{
-			"softlayer_ssh_key":          dataSourceSoftLayerSSHKey(),
-			"softlayer_image_template":   dataSourceSoftLayerImageTemplate(),
-			"softlayer_vlan":             dataSourceSoftLayerVlan(),
-			"softlayer_dns_domain":       dataSourceSoftLayerDnsDomain(),
+			"softlayer_ssh_key":        dataSourceSoftLayerSSHKey(),
+			"softlayer_image_template": dataSourceSoftLayerImageTemplate(),
+			"softlayer_vlan":           dataSourceSoftLayerVlan(),
+			"softlayer_dns_domain":     dataSourceSoftLayerDnsDomain(),
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
