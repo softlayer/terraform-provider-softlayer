@@ -50,7 +50,6 @@ func Provider() terraform.ResourceProvider {
 			"softlayer_image_template":   dataSourceSoftLayerImageTemplate(),
 			"softlayer_vlan":             dataSourceSoftLayerVlan(),
 			"softlayer_dns_domain":       dataSourceSoftLayerDnsDomain(),
-			"softlayer_quote_bare_metal": dataSourceSoftLayerQuoteBareMetal(),
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
