@@ -79,6 +79,7 @@ func Provider() terraform.ResourceProvider {
 			"softlayer_file_storage":                resourceSoftLayerFileStorage(),
 			"softlayer_block_storage":               resourceSoftLayerBlockStorage(),
 			"softlayer_dns_secondary":               resourceSoftLayerDnsSecondary(),
+			"softlayer_subnet":                      resourceSoftLayerSubnet(),
 		},
 
 		ConfigureFunc: providerConfigure,
