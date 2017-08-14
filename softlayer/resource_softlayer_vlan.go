@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
-	"regexp"
 
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
@@ -210,12 +210,12 @@ func resourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error {
 		if validPrimaryType.MatchString(*elem.SubnetType) {
 			primarySubnet["subnet"] = fmt.Sprintf("%s/%s", *elem.NetworkIdentifier, strconv.Itoa(*elem.Cidr))
 			primarySubnet["subnet_type"] = *elem.SubnetType
-			primarySubnet["subnet_size"] = 1<<(uint)(32-*elem.Cidr)
+			primarySubnet["subnet_size"] = 1 << (uint)(32-*elem.Cidr)
 			primarySubnets = append(primarySubnets, primarySubnet)
-	  }
+		}
 		subnet["subnet"] = fmt.Sprintf("%s/%s", *elem.NetworkIdentifier, strconv.Itoa(*elem.Cidr))
 		subnet["subnet_type"] = *elem.SubnetType
-		subnet["subnet_size"] = 1<<(uint)(32-*elem.Cidr)
+		subnet["subnet_size"] = 1 << (uint)(32-*elem.Cidr)
 		subnets = append(subnets, subnet)
 	}
 	d.Set("subnets", subnets)
