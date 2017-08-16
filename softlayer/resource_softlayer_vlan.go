@@ -113,7 +113,7 @@ func resourceSoftLayerVlan() *schema.Resource {
 						},
 						"subnet_size": {
 							Type:     schema.TypeInt,
-							Required: true,
+							Optional: true,
 						},
 					},
 				},
@@ -202,15 +202,16 @@ func resourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error {
 	// Subnets
 	subnets := make([]map[string]interface{}, 0)
 	primarySubnets := make([]map[string]interface{}, 0)
+	validPrimaryType := regexp.MustCompile(`.*PRIMARY.*`)
 
 	for _, elem := range vlan.Subnets {
 		subnet := make(map[string]interface{})
-		primarySubnet := make(map[string]interface{})
-		validPrimaryType := regexp.MustCompile(`.*PRIMARY.*`)
 		if validPrimaryType.MatchString(*elem.SubnetType) {
-			primarySubnet["subnet"] = fmt.Sprintf("%s/%s", *elem.NetworkIdentifier, strconv.Itoa(*elem.Cidr))
-			primarySubnet["subnet_type"] = *elem.SubnetType
-			primarySubnet["subnet_size"] = 1 << (uint)(32-*elem.Cidr)
+			primarySubnet := map[string]interface{}{
+				"subnet":      fmt.Sprintf("%s/%d", *elem.NetworkIdentifier, *elem.Cidr),
+				"subnet_type": *elem.SubnetType,
+				"subnet_size": 1 << uint(32-*elem.Cidr),
+			}
 			primarySubnets = append(primarySubnets, primarySubnet)
 		}
 		subnet["subnet"] = fmt.Sprintf("%s/%s", *elem.NetworkIdentifier, strconv.Itoa(*elem.Cidr))
@@ -222,6 +223,8 @@ func resourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error {
 
 	if primarySubnets != nil && len(primarySubnets) > 0 {
 		d.Set("subnet_size", primarySubnets[0]["subnet_size"])
+	} else if vlan.Subnets != nil && len(vlan.Subnets) > 0 {
+		d.Set("subnet_size", 1<<(uint)(32-*vlan.Subnets[0].Cidr))
 	} else {
 		d.Set("subnet_size", 0)
 	}
