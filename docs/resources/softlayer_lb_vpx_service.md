@@ -33,6 +33,9 @@ resource "softlayer_lb_vpx_service" "test_service" {
     * (Required) Set the connection limit for this service. The range is 0 ~ 4294967294. See [maxClient](https://docs.citrix.com/en-us/netscaler/11/reference/netscaler-command-reference/basic/service.html) for details.
 * `health_check` | *string*
     * (Required) Set the health check for the VPX Load Balancer Service. See [the documentation](http://sldn.softlayer.com/reference/datatypes/SoftLayer_Network_LoadBalancer_Service) for details.
+* `usip` | *string*
+    * (Optional) Configures the service to report the source ip of the client to the service being load balanced. Is either "YES" or "NO".
+    * *Default*: 'NO'
 
 ## Attributes Reference
 
