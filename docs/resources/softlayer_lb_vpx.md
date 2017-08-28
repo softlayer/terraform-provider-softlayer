@@ -52,3 +52,4 @@ resource "softlayer_lb_vpx" "test_vpx" {
 * `id` - A VPX Load Balancer's internal identifier.
 * `name` - A VPX Load Balancer's internal name.
 * `vip_pool` - List of virtual ip addresses for the VPX Load Balancer.
+* `management_ip_address` - Private address of VPX UI
