@@ -35,6 +35,7 @@ resource "softlayer_lb_vpx_service" "test_service" {
     * (Required) Set the health check for the VPX Load Balancer Service. See [the documentation](http://sldn.softlayer.com/reference/datatypes/SoftLayer_Network_LoadBalancer_Service) for details.
 * `usip` | *string*
     * (Optional) Configures the service to report the source ip of the client to the service being load balanced. Is either "YES" or "NO".
+    * Only available for VPX 10.5
     * *Default*: 'NO'
 
 ## Attributes Reference
