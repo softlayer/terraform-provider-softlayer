@@ -76,6 +76,15 @@ The following arguments are supported:
     * Specifies whether or not the instance must only run on hosts with instances from the same account
     * *Default*: false
     * *Optional*
+    * **Conflicts with** `dedicated_host_name`, `dedicated_host_id`.
+*   `dedicated_host_id` | *int*
+    * Specifies [dedicated host](https://console.bluemix.net/docs/vsi/vsi_dedicated.html) for the instance by its id.
+    * *Optional*
+    * **Conflicts with** `dedicated_acct_host_only`, `dedicated_host_name`.
+*   `dedicated_host_name` | *string*
+    * Specifies [dedicated host](https://console.bluemix.net/docs/vsi/vsi_dedicated.html) for the instance by its name.
+    * *Optional*
+    * **Conflicts with** `dedicated_acct_host_only`, `dedicated_host_id`.
 *   `os_reference_code` | *string*
     * An operating system reference code that will be used to provision the computing instance. [Get a complete list of the os reference codes available](https://api.softlayer.com/rest/v3/SoftLayer_Virtual_Guest_Block_Device_Template_Group/getVhdImportSoftwareDescriptions.json?objectMask=referenceCode) (use your api key as the password).
     * **Conflicts with** `image_id`.
