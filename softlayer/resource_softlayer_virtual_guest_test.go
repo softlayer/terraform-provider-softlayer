@@ -99,6 +99,15 @@ func TestAccSoftLayerVirtualGuest_Basic(t *testing.T) {
 						"softlayer_virtual_guest.terraform-acceptance-test-1", "network_speed", "100"),
 				),
 			},
+
+			{
+				Config: testAccCheckSoftLayerVirtualGuestConfig_dedicatedHost,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckSoftLayerVirtualGuestExists("softlayer_virtual_guest.terraform-acceptance-test-dedicated-host", &guest),
+					resource.TestCheckResourceAttr(
+						"softlayer_virtual_guest.terraform-acceptance-test-dedicated-host", "dedicated_host_name", "testDedicatedHost"),
+				),
+			},
 		},
 	})
 }
@@ -369,5 +378,21 @@ resource "softlayer_virtual_guest" "terraform-acceptance-test-disks" {
     local_disk = false
     image_id = 1025457
     disks = [25, 10]
+}
+`
+
+const testAccCheckSoftLayerVirtualGuestConfig_dedicatedHost = `
+resource "softlayer_virtual_guest" "terraform-acceptance-test-dedicated-host" {
+    hostname = "terraform-test-dedicated-host"
+    domain = "bar.example.com"
+    os_reference_code = "DEBIAN_7_64"
+    datacenter = "wdc04"
+    network_speed = 10
+    hourly_billing = true
+	private_network_only = true
+    cores = 1
+    memory = 1024
+    disks = [25, 10, 20]
+	dedicated_host_name = "testDedicatedHost"
 }
 `
