@@ -15,12 +15,6 @@ func dataSourceSoftLayerSSHKey() *schema.Resource {
 		Read: dataSourceSoftLayerSSHKeyRead,
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
-				Description: "The internal id of the new ssh key",
-				Type:        schema.TypeInt,
-				Computed:    true,
-			},
-
 			"label": &schema.Schema{
 				Description: "The label associated with the ssh key",
 				Type:        schema.TypeString,

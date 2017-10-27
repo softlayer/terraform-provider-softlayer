@@ -22,11 +22,6 @@ func resourceSoftLayerProvisioningHook() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-
 			"name": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
@@ -76,7 +71,7 @@ func resourceSoftLayerProvisioningHookRead(d *schema.ResourceData, meta interfac
 		return fmt.Errorf("Error retrieving Provisioning Hook: %s", err)
 	}
 
-	d.Set("id", *hook.Id)
+	d.SetId(strconv.Itoa(*hook.Id))
 	d.Set("name", *hook.Name)
 	d.Set("uri", *hook.Uri)
 

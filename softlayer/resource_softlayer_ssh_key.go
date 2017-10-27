@@ -27,11 +27,6 @@ func resourceSoftLayerSSHKey() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-
 			"label": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -156,7 +151,7 @@ func resourceSoftLayerSSHKeyRead(d *schema.ResourceData, meta interface{}) error
 		return fmt.Errorf("Error retrieving SSH key: %s", err)
 	}
 
-	d.Set("id", *key.Id)
+	d.SetId(strconv.Itoa(*key.Id))
 	d.Set("label", *key.Label)
 	d.Set("public_key", *key.Key)
 	d.Set("fingerprint", *key.Fingerprint)

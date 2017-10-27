@@ -39,10 +39,6 @@ func resourceSoftLayerVlan() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 			"datacenter": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -180,7 +176,7 @@ func resourceSoftLayerVlanRead(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Error retrieving vlan: %s", err)
 	}
 
-	d.Set("id", *vlan.Id)
+	d.SetId(strconv.Itoa(*vlan.Id))
 	d.Set("vlan_number", *vlan.VlanNumber)
 	d.Set("child_resource_count", *vlan.GuestNetworkComponentCount)
 	d.Set("name", sl.Get(vlan.Name, ""))
