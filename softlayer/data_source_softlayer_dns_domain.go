@@ -13,7 +13,7 @@ func dataSourceSoftLayerDnsDomain() *schema.Resource {
 		Read: dataSourceSoftLayerDnsDomainRead,
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
+			"softlayer_id": &schema.Schema{
 				Description: "A domain record's internal identifier",
 				Type:        schema.TypeInt,
 				Computed:    true,

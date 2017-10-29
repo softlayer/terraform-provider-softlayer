@@ -48,7 +48,7 @@ func resourceSoftLayerVirtualGuest() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": {
+			"softlayer_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},

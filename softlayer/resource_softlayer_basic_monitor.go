@@ -22,7 +22,7 @@ func resourceSoftLayerBasicMonitor() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": {
+			"softlayer_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
@@ -175,7 +175,7 @@ func resourceSoftLayerBasicMonitorRead(d *schema.ResourceData, meta interface{})
 
 	guestId := *basicMonitor.GuestId
 
-	d.Set("id", *basicMonitor.Id)
+	d.Set("softlayer_id", *basicMonitor.Id)
 	d.Set("guest_id", guestId)
 	d.Set("ip_address", strings.TrimSpace(*basicMonitor.IpAddress))
 	d.Set("query_type_id", *basicMonitor.QueryTypeId)

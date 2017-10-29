@@ -34,7 +34,7 @@ func resourceSoftLayerGlobalIp() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
+			"softlayer_id": &schema.Schema{
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
@@ -111,7 +111,7 @@ func resourceSoftLayerGlobalIpRead(d *schema.ResourceData, meta interface{}) err
 		return fmt.Errorf("Error retrieving Global Ip: %s", err)
 	}
 
-	d.Set("id", *globalIp.Id)
+	d.Set("softlayer_id", *globalIp.Id)
 	d.Set("ip_address", *globalIp.IpAddress.IpAddress)
 	if globalIp.DestinationIpAddress != nil {
 		d.Set("routes_to", *globalIp.DestinationIpAddress.IpAddress)

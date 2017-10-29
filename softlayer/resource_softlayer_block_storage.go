@@ -24,7 +24,7 @@ func resourceSoftLayerBlockStorage() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": {
+			"softlayer_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
@@ -101,7 +101,7 @@ func resourceSoftLayerBlockStorage() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"hostIQN": {
+						"host_iqn": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
@@ -139,7 +139,7 @@ func resourceSoftLayerBlockStorage() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"hostIQN": {
+						"host_iqn": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
@@ -295,7 +295,7 @@ func resourceSoftLayerBlockStorageRead(d *schema.ResourceData, meta interface{})
 		singleVirtualGuest["id"] = *allowedVirtualGuest.Id
 		singleVirtualGuest["username"] = *allowedVirtualGuest.AllowedHost.Credential.Username
 		singleVirtualGuest["password"] = *allowedVirtualGuest.AllowedHost.Credential.Password
-		singleVirtualGuest["hostIQN"] = *allowedVirtualGuest.AllowedHost.Name
+		singleVirtualGuest["host_iqn"] = *allowedVirtualGuest.AllowedHost.Name
 		allowedVirtualGuestInfoList = append(allowedVirtualGuestInfoList, singleVirtualGuest)
 		allowedVirtualGuestIdsList = append(allowedVirtualGuestIdsList, *allowedVirtualGuest.Id)
 	}
@@ -310,7 +310,7 @@ func resourceSoftLayerBlockStorageRead(d *schema.ResourceData, meta interface{})
 		singleHardware["id"] = *allowedHW.Id
 		singleHardware["username"] = *allowedHW.AllowedHost.Credential.Username
 		singleHardware["password"] = *allowedHW.AllowedHost.Credential.Password
-		singleHardware["hostIQN"] = *allowedHW.AllowedHost.Name
+		singleHardware["host_iqn"] = *allowedHW.AllowedHost.Name
 		allowedHardwareInfoList = append(allowedHardwareInfoList, singleHardware)
 		allowedHardwareIdsList = append(allowedHardwareIdsList, *allowedHW.Id)
 	}
