@@ -36,11 +36,6 @@ func resourceSoftLayerDnsDomainRecord() *schema.Resource {
 		Delete:   resourceSoftLayerDnsDomainRecordDelete,
 		Importer: &schema.ResourceImporter{},
 		Schema: map[string]*schema.Schema{
-			"id": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-
 			"data": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -228,7 +223,7 @@ func resourceSoftLayerDnsDomainRecordCreate(d *schema.ResourceData, meta interfa
 		}
 	}
 
-	log.Printf("[INFO] Creating DNS Resource %s Record for '%d' dns domain", *opts.Type, d.Get("id"))
+	log.Printf("[INFO] Creating DNS Resource %s Record for '%s' dns domain", *opts.Type, d.Id())
 
 	var err error
 	var id int

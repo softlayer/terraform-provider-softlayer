@@ -21,33 +21,28 @@ func resourceSoftLayerDnsSecondary() *schema.Resource {
 		Delete:   resourceSoftLayerDnsSecondaryDelete,
 		Importer: &schema.ResourceImporter{},
 		Schema: map[string]*schema.Schema{
-			"id": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-
-			"masterIpAddress": {
+			"master_ip_address": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
 
-			"transferFrequency": {
+			"transfer_frequency": {
 				Type:     schema.TypeInt,
 				Required: true,
 			},
 
-			"zoneName": {
+			"zone_name": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"statusId": {
+			"status_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
 
-			"statusText": {
+			"status_text": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -61,9 +56,9 @@ func resourceSoftLayerDnsSecondaryCreate(d *schema.ResourceData, meta interface{
 
 	// prepare creation parameters
 	opts := datatypes.Dns_Secondary{
-		MasterIpAddress:   sl.String(d.Get("masterIpAddress").(string)),
-		TransferFrequency: sl.Int(d.Get("transferFrequency").(int)),
-		ZoneName:          sl.String(d.Get("zoneName").(string)),
+		MasterIpAddress:   sl.String(d.Get("master_ip_address").(string)),
+		TransferFrequency: sl.Int(d.Get("transfer_frequency").(int)),
+		ZoneName:          sl.String(d.Get("zone_name").(string)),
 	}
 
 	// create Dns_Secondary object
@@ -94,11 +89,11 @@ func resourceSoftLayerDnsSecondaryRead(d *schema.ResourceData, meta interface{})
 	}
 
 	// populate fields
-	d.Set("masterIpAddress", *dns_domain_secondary.MasterIpAddress)
-	d.Set("transferFrequency", *dns_domain_secondary.TransferFrequency)
-	d.Set("zoneName", *dns_domain_secondary.ZoneName)
-	d.Set("statusId", *dns_domain_secondary.StatusId)
-	d.Set("statusText", *dns_domain_secondary.StatusText)
+	d.Set("master_ip_address", *dns_domain_secondary.MasterIpAddress)
+	d.Set("transfer_frequency", *dns_domain_secondary.TransferFrequency)
+	d.Set("zone_name", *dns_domain_secondary.ZoneName)
+	d.Set("status_id", *dns_domain_secondary.StatusId)
+	d.Set("status_text", *dns_domain_secondary.StatusText)
 
 	return nil
 }
@@ -109,13 +104,13 @@ func resourceSoftLayerDnsSecondaryUpdate(d *schema.ResourceData, meta interface{
 	hasChange := false
 
 	opts := datatypes.Dns_Secondary{}
-	if d.HasChange("masterIpAddress") {
-		opts.MasterIpAddress = sl.String(d.Get("masterIpAddress").(string))
+	if d.HasChange("master_ip_address") {
+		opts.MasterIpAddress = sl.String(d.Get("master_ip_address").(string))
 		hasChange = true
 	}
 
-	if d.HasChange("transferFrequency") {
-		opts.TransferFrequency = sl.Int(d.Get("transferFrequency").(int))
+	if d.HasChange("transfer_frequency") {
+		opts.TransferFrequency = sl.Int(d.Get("transfer_frequency").(int))
 		hasChange = true
 	}
 

@@ -15,11 +15,6 @@ func dataSourceSoftLayerVlan() *schema.Resource {
 		Read: dataSourceSoftLayerVlanRead,
 
 		Schema: map[string]*schema.Schema{
-			"id": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-
 			"name": {
 				Type:     schema.TypeString,
 				Optional: true,

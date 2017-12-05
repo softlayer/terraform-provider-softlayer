@@ -45,10 +45,6 @@ func resourceSoftLayerScalePolicy() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -75,7 +71,7 @@ func resourceSoftLayerScalePolicy() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"id": {
+						"trigger_id": {
 							Type:     schema.TypeInt,
 							Computed: true,
 						},
@@ -90,7 +86,7 @@ func resourceSoftLayerScalePolicy() *schema.Resource {
 							Optional: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"id": {
+									"watch_id": {
 										Type:     schema.TypeInt,
 										Computed: true,
 									},
@@ -469,7 +465,7 @@ func readOneTimeTriggers(list []datatypes.Scale_Policy_Trigger_OneTime) []map[st
 
 	for _, trigger := range list {
 		t := make(map[string]interface{})
-		t["id"] = *trigger.Id
+		t["trigger_id"] = *trigger.Id
 		t["type"] = "ONE_TIME"
 		t["date"] = trigger.Date.In(UTCZone).Format(SoftLayerTimeFormat)
 		triggers = append(triggers, t)
@@ -481,7 +477,7 @@ func readRepeatingTriggers(list []datatypes.Scale_Policy_Trigger_Repeating) []ma
 	triggers := make([]map[string]interface{}, 0, len(list))
 	for _, trigger := range list {
 		t := make(map[string]interface{})
-		t["id"] = *trigger.Id
+		t["trigger_id"] = *trigger.Id
 		t["type"] = "REPEATING"
 		t["schedule"] = *trigger.Schedule
 		triggers = append(triggers, t)
@@ -493,7 +489,7 @@ func readResourceUseTriggers(list []datatypes.Scale_Policy_Trigger_ResourceUse) 
 	triggers := make([]map[string]interface{}, 0, len(list))
 	for _, trigger := range list {
 		t := make(map[string]interface{})
-		t["id"] = *trigger.Id
+		t["trigger_id"] = *trigger.Id
 		t["type"] = "RESOURCE_USE"
 		t["watches"] = schema.NewSet(resourceSoftLayerScalePolicyHandlerHash,
 			readResourceUseWatches(trigger.Watches))
@@ -506,7 +502,7 @@ func readResourceUseWatches(list []datatypes.Scale_Policy_Trigger_ResourceUse_Wa
 	watches := make([]interface{}, 0, len(list))
 	for _, watch := range list {
 		w := make(map[string]interface{})
-		w["id"] = *watch.Id
+		w["watch_id"] = *watch.Id
 		w["metric"] = *watch.Metric
 		w["operator"] = *watch.Operator
 		w["period"] = *watch.Period

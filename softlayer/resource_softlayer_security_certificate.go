@@ -22,12 +22,6 @@ func resourceSoftLayerSecurityCertificate() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
-				Type:     schema.TypeInt,
-				Computed: true,
-				ForceNew: true,
-			},
-
 			"certificate": &schema.Schema{
 				Type:      schema.TypeString,
 				Required:  true,
@@ -154,10 +148,11 @@ func resourceSoftLayerSecurityCertificateDelete(d *schema.ResourceData, meta int
 	sess := meta.(ProviderConfig).SoftLayerSession()
 	service := services.GetSecurityCertificateService(sess)
 
-	_, err := service.Id(d.Get("id").(int)).DeleteObject()
+	id, _ := strconv.Atoi(d.Id())
+	_, err := service.Id(id).DeleteObject()
 
 	if err != nil {
-		return fmt.Errorf("Error deleting Security Certificate %s: %s", d.Get("id"), err)
+		return fmt.Errorf("Error deleting Security Certificate %s: %s", d.Id(), err)
 	}
 
 	return nil

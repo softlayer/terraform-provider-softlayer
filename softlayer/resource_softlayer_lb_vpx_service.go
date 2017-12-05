@@ -46,12 +46,6 @@ func resourceSoftLayerLbVpxService() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": {
-				Type:     schema.TypeString,
-				Computed: true,
-				ForceNew: true,
-			},
-
 			"vip_id": {
 				Type:     schema.TypeString,
 				Required: true,

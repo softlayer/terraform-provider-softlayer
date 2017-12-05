@@ -13,12 +13,6 @@ func dataSourceSoftLayerDnsDomain() *schema.Resource {
 		Read: dataSourceSoftLayerDnsDomainRead,
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
-				Description: "A domain record's internal identifier",
-				Type:        schema.TypeInt,
-				Computed:    true,
-			},
-
 			"name": &schema.Schema{
 				Description: "The name of the domain",
 				Type:        schema.TypeString,

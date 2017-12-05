@@ -27,10 +27,6 @@ func resourceSoftLayerUser() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 			"username": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
@@ -259,7 +255,7 @@ func resourceSoftLayerUserRead(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Error retrieving SoftLayer User: %s", err)
 	}
 
-	d.Set("id", sluserObj.Id)
+	d.SetId(strconv.Itoa(*sluserObj.Id))
 	d.Set("username", sluserObj.Username)
 	d.Set("email", sluserObj.Email)
 	d.Set("first_name", sluserObj.FirstName)
