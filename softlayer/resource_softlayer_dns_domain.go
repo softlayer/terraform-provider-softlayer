@@ -21,7 +21,7 @@ func resourceSoftLayerDnsDomain() *schema.Resource {
 		Delete:   resourceSoftLayerDnsDomainDelete,
 		Importer: &schema.ResourceImporter{},
 		Schema: map[string]*schema.Schema{
-			"id": {
+			"softlayer_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},

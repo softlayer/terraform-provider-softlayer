@@ -43,7 +43,7 @@ func resourceSoftLayerScaleGroup() *schema.Resource {
 		Importer: &schema.ResourceImporter{},
 
 		Schema: map[string]*schema.Schema{
-			"id": {
+			"softlayer_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
@@ -357,7 +357,7 @@ func resourceSoftLayerScaleGroupRead(d *schema.ResourceData, meta interface{}) e
 		return fmt.Errorf("Error retrieving SoftLayer Scale Group: %s", err)
 	}
 
-	d.Set("id", *slGroupObj.Id)
+	d.Set("softlayer_id", *slGroupObj.Id)
 	d.Set("name", *slGroupObj.Name)
 	if slGroupObj.RegionalGroup != nil && slGroupObj.RegionalGroup.Name != nil {
 		d.Set("regional_group", *slGroupObj.RegionalGroup.Name)
